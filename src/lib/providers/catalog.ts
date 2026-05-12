@@ -38,6 +38,10 @@ export type ProviderMeta = {
   testBaseUrl: string | null;
   /** Some providers use x-api-key headers instead of Authorization: Bearer. */
   authStyle: "bearer" | "x-api-key";
+  /** Placeholder shown in the baseUrl input when `requiresBaseUrl` is true. */
+  baseUrlPlaceholder?: string;
+  /** Help text shown under the baseUrl input when `requiresBaseUrl` is true. */
+  baseUrlHelp?: string;
 };
 
 export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
@@ -59,9 +63,12 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     icon: IconCloud,
     docsUrl: "https://console.scaleway.com/iam/api-keys",
     sovereignty: "fr",
-    requiresBaseUrl: false,
-    testBaseUrl: "https://api.scaleway.ai/v1",
+    requiresBaseUrl: true,
+    testBaseUrl: null,
     authStyle: "bearer",
+    baseUrlPlaceholder: "https://api.scaleway.ai/VOTRE_PROJECT_ID/v1",
+    baseUrlHelp:
+      "Scaleway nécessite l'ID de votre projet dans l'URL. Récupérez-le sur console.scaleway.com → Projets, puis remplacez VOTRE_PROJECT_ID ci-dessus.",
   },
   ovh: {
     type: "ovh",
@@ -70,9 +77,13 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     icon: IconServer2,
     docsUrl: "https://endpoints.ai.cloud.ovh.net/",
     sovereignty: "fr",
-    requiresBaseUrl: false,
+    requiresBaseUrl: true,
     testBaseUrl: null,
     authStyle: "bearer",
+    baseUrlPlaceholder:
+      "https://meta-llama-3-1-8b-instruct.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1",
+    baseUrlHelp:
+      "OVH expose un endpoint par modèle. Copiez l'URL OpenAI-compatible depuis endpoints.ai.cloud.ovh.net après avoir choisi votre modèle.",
   },
   albert: {
     type: "albert",
@@ -117,6 +128,9 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     requiresBaseUrl: true,
     testBaseUrl: null,
     authStyle: "bearer",
+    baseUrlPlaceholder: "http://localhost:11434/v1",
+    baseUrlHelp:
+      "Endpoint OpenAI-compatible (Ollama, vLLM, llama.cpp, LiteLLM, etc.).",
   },
 };
 

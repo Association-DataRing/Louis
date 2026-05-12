@@ -181,18 +181,24 @@ export function ChatShell({
       const meta = message?.metadata as
         | { conversationId?: string }
         | undefined;
-      if (meta?.conversationId) {
-        setConversationId((prev) => {
-          if (prev === meta.conversationId) return prev;
-          const url = new URL(window.location.href);
-          url.searchParams.set("id", meta.conversationId!);
-          window.history.replaceState(null, "", url.toString());
-          router.refresh();
-          return meta.conversationId!;
-        });
+      if (meta?.conversationId && meta.conversationId !== conversationId) {
+        setConversationId(meta.conversationId);
       }
     },
   });
+
+  // Sync URL + refresh server-rendered sidebar when conversationId changes.
+  // Skips the initial mount (URL already matches the SSR id) and is fully
+  // imperative — no setState here, so React doesn't complain about cascading
+  // renders.
+  useEffect(() => {
+    if (!conversationId) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("id") === conversationId) return;
+    url.searchParams.set("id", conversationId);
+    window.history.replaceState(null, "", url.toString());
+    router.refresh();
+  }, [conversationId, router]);
 
   const [input, setInput] = useState("");
   const isBusy = status === "submitted" || status === "streaming";

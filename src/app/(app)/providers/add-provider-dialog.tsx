@@ -164,11 +164,11 @@ export function AddProviderDialog() {
                 name="baseUrl"
                 type="url"
                 required
-                placeholder="http://localhost:11434/v1"
+                placeholder={meta.baseUrlPlaceholder ?? "https://…"}
               />
-              <p className="text-xs text-muted-foreground">
-                Endpoint OpenAI-compatible (Ollama, vLLM, llama.cpp, LiteLLM…).
-              </p>
+              {meta.baseUrlHelp && (
+                <p className="text-xs text-muted-foreground">{meta.baseUrlHelp}</p>
+              )}
             </div>
           )}
 
