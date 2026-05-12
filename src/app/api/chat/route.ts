@@ -1,6 +1,7 @@
 import {
   streamText,
   convertToModelMessages,
+  stepCountIs,
   type UIMessage,
 } from "ai";
 import { and, eq, inArray } from "drizzle-orm";
@@ -8,6 +9,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { conversations, documents, messages } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
+import { buildToolsForUser } from "@/lib/connectors/tools";
 
 const SYSTEM_PROMPT_FR = `Tu es Louis, un assistant IA juridique francophone, conçu pour les professions du droit en France.
 
@@ -110,10 +112,14 @@ ${docBlocks.join("\n\n")}`;
     }
   }
 
+  const tools = await buildToolsForUser(userId);
+
   const result = streamText({
     model,
     system: systemPrompt,
     messages: modelMessages,
+    tools,
+    stopWhen: stepCountIs(5),
     onFinish: async ({ text }) => {
       if (!conversationId || !text) return;
       await db.insert(messages).values({

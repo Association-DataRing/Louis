@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { IconSend2, IconPaperclip, IconX } from "@tabler/icons-react";
+import { IconSend2, IconPaperclip, IconX, IconTool } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -57,6 +57,47 @@ function toUIMessages(
     role: m.role as UIMessage["role"],
     parts: [{ type: "text", text: m.content }],
   }));
+}
+
+function ToolPart({
+  name,
+  input,
+  state,
+}: {
+  name: string;
+  input?: unknown;
+  output?: unknown;
+  state?: string;
+}) {
+  const label = TOOL_LABEL[name] ?? name;
+  const inputSummary = formatToolInput(input);
+  const isPending = state === "input-streaming" || state === "input-available";
+  return (
+    <div className="rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs flex items-center gap-2 max-w-[85%]">
+      {isPending ? (
+        <Spinner className="size-3" />
+      ) : (
+        <IconTool className="size-3 text-primary" />
+      )}
+      <span className="font-medium">{label}</span>
+      {inputSummary && (
+        <span className="text-muted-foreground truncate">· {inputSummary}</span>
+      )}
+    </div>
+  );
+}
+
+const TOOL_LABEL: Record<string, string> = {
+  pappers_search: "Pappers · recherche",
+  pappers_get: "Pappers · fiche entreprise",
+};
+
+function formatToolInput(input: unknown): string {
+  if (!input || typeof input !== "object") return "";
+  const obj = input as Record<string, unknown>;
+  if (typeof obj.query === "string") return `« ${obj.query} »`;
+  if (typeof obj.siren === "string") return `SIREN ${obj.siren}`;
+  return "";
 }
 
 function DocPickerContent({
@@ -219,25 +260,41 @@ export function ChatShell({
           )}
 
           {messages.map((m) => {
-            const text = m.parts
-              .filter((p): p is { type: "text"; text: string } => p.type === "text")
-              .map((p) => p.text)
-              .join("");
             const isUser = m.role === "user";
             return (
               <div
                 key={m.id}
-                className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}
               >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                    isUser
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card border border-border"
-                  }`}
-                >
-                  {text || <Spinner className="size-4" />}
-                </div>
+                {m.parts.map((part, i) => {
+                  if (part.type === "text") {
+                    return (
+                      <div
+                        key={i}
+                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                          isUser
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-card border border-border"
+                        }`}
+                      >
+                        {part.text || <Spinner className="size-4" />}
+                      </div>
+                    );
+                  }
+                  if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+                    const p = part as { type: string; input?: unknown; output?: unknown; state?: string };
+                    return (
+                      <ToolPart
+                        key={i}
+                        name={part.type.replace(/^tool-/, "")}
+                        input={p.input}
+                        output={p.output}
+                        state={p.state}
+                      />
+                    );
+                  }
+                  return null;
+                })}
               </div>
             );
           })}
