@@ -1,8 +1,10 @@
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { documents } from "@/db/schema";
+import { documents, documentChunks } from "@/db/schema";
 import { uploadObject, deleteObject } from "@/lib/storage";
 import { extractText, isSupportedContentType } from "@/lib/extract";
+import { chunkText } from "@/lib/rag/chunk";
+import { embedTexts, NoEmbeddingProviderError } from "@/lib/rag/embed";
 import { nanoid } from "nanoid";
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
@@ -60,6 +62,7 @@ export async function POST(req: Request) {
     extractionError = err instanceof Error ? err.message : "Extraction failed";
   }
 
+  let docId: string;
   try {
     const [row] = await db
       .insert(documents)
@@ -74,11 +77,45 @@ export async function POST(req: Request) {
         extractionError,
       })
       .returning({ id: documents.id });
-
-    return Response.json({ id: row.id, extractionStatus });
+    docId = row.id;
   } catch (err) {
     await deleteObject(storageKey).catch(() => {});
     const msg = err instanceof Error ? err.message : "DB error";
     return new Response(`Failed to register document: ${msg}`, { status: 500 });
   }
+
+  // Best-effort RAG indexation. Failures don't block the upload — the
+  // document remains usable via system-prompt injection for small files.
+  let indexedChunks = 0;
+  let indexError: string | null = null;
+  if (extractedText) {
+    try {
+      const chunks = chunkText(extractedText);
+      if (chunks.length > 0) {
+        const embeddings = await embedTexts(userId, chunks);
+        await db.insert(documentChunks).values(
+          chunks.map((content, i) => ({
+            documentId: docId,
+            chunkIndex: i,
+            content,
+            embedding: embeddings[i],
+          }))
+        );
+        indexedChunks = chunks.length;
+      }
+    } catch (err) {
+      if (err instanceof NoEmbeddingProviderError) {
+        indexError = "no_mistral_key";
+      } else {
+        indexError = err instanceof Error ? err.message : "embedding_failed";
+      }
+    }
+  }
+
+  return Response.json({
+    id: docId,
+    extractionStatus,
+    indexedChunks,
+    indexError,
+  });
 }
