@@ -36,12 +36,14 @@ async function main() {
   if (existing) {
     await db
       .update(users)
-      .set({ passwordHash, name, isActive: true })
+      .set({ passwordHash, name, isActive: true, role: "admin" })
       .where(eq(users.id, existing.id));
-    console.log(`Updated existing user: ${email}`);
+    console.log(`Updated existing admin: ${email}`);
   } else {
-    await db.insert(users).values({ email, name, passwordHash });
-    console.log(`Created user: ${email}`);
+    await db
+      .insert(users)
+      .values({ email, name, passwordHash, role: "admin" });
+    console.log(`Created admin: ${email}`);
   }
 
   process.exit(0);

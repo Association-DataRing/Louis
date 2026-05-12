@@ -9,6 +9,7 @@ import {
   IconSettings,
   IconLogout,
   IconBolt,
+  IconShieldLock,
 } from "@tabler/icons-react";
 import { auth, signOut } from "@/auth";
 
@@ -54,6 +55,17 @@ export default async function AppLayout({
               </Link>
             );
           })}
+          {session.user.role === "admin" && (
+            <Link
+              href="/admin/users"
+              className="block rounded-md px-2.5 py-2 text-sm hover:bg-sidebar-accent transition-colors mt-4 border-t border-sidebar-border pt-4"
+            >
+              <span className="flex items-center gap-2.5">
+                <IconShieldLock className="size-4 shrink-0 text-sidebar-primary" />
+                Administration
+              </span>
+            </Link>
+          )}
         </nav>
 
         <div className="border-t border-sidebar-border p-3 space-y-2">
