@@ -17,7 +17,7 @@ const navItems = [
   { href: "/documents", label: "Documents", icon: IconFolder },
   { href: "/providers", label: "Providers IA", icon: IconKey },
   { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected },
-  { href: "/settings", label: "Paramètres", icon: IconSettings, disabled: true },
+  { href: "/settings", label: "Paramètres", icon: IconSettings },
 ];
 
 export default async function AppLayout({
@@ -39,32 +39,16 @@ export default async function AppLayout({
         <nav className="flex-1 px-3 py-4 space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const content = (
-              <span className="flex items-center gap-2.5">
-                <Icon className="size-4 shrink-0" />
-                {item.label}
-                {item.disabled && (
-                  <span className="ml-auto text-[10px] uppercase tracking-wider opacity-60">
-                    bientôt
-                  </span>
-                )}
-              </span>
-            );
-
-            return item.disabled ? (
-              <div
-                key={item.href}
-                className="rounded-md px-2.5 py-2 text-sm text-sidebar-foreground/40 cursor-not-allowed"
-              >
-                {content}
-              </div>
-            ) : (
+            return (
               <Link
                 key={item.href}
                 href={item.href}
                 className="block rounded-md px-2.5 py-2 text-sm hover:bg-sidebar-accent transition-colors"
               >
-                {content}
+                <span className="flex items-center gap-2.5">
+                  <Icon className="size-4 shrink-0" />
+                  {item.label}
+                </span>
               </Link>
             );
           })}
