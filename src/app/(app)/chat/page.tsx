@@ -92,7 +92,7 @@ export default async function ChatPage({
 
   return (
     <div className="flex h-full">
-      <aside className="w-72 shrink-0 border-r border-border bg-card/40 flex flex-col">
+      <aside className="hidden md:flex w-72 shrink-0 border-r border-border bg-card/40 flex-col">
         <div className="p-3 border-b border-border">
           <Link
             href="/chat"
