@@ -11,7 +11,33 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "Louis — L'IA juridique souveraine",
   description:
-    "Louis est une plateforme d'intelligence artificielle open-source pour les professions juridiques. Vos clés, vos données, votre infrastructure.",
+    "Plateforme IA open-source pour les professions juridiques. Bring Your Own Key, connecteurs PISTE/Pappers, chat streaming, documents — auto-hébergé.",
+  keywords: [
+    "IA juridique",
+    "intelligence artificielle avocat",
+    "legal tech français",
+    "RGPD",
+    "souveraineté numérique",
+    "open source",
+    "BYOK",
+    "Mistral",
+    "Légifrance",
+    "Pappers",
+  ],
+  authors: [{ name: "Altij Avocats", url: "https://altij.com" }],
+  openGraph: {
+    title: "Louis — L'IA juridique souveraine",
+    description:
+      "Plateforme IA open-source pour les professions juridiques. Vos clés, vos données, votre infrastructure.",
+    locale: "fr_FR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Louis — L'IA juridique souveraine",
+    description:
+      "Plateforme IA open-source pour les professions juridiques. AGPL-3.0, auto-hébergeable.",
+  },
 };
 
 export default function RootLayout({
