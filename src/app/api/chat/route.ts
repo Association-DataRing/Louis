@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { conversations, documents, messages } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { buildToolsForUser } from "@/lib/connectors/tools";
+import { buildMcpToolsForUser } from "@/lib/mcp/tools";
 
 const SYSTEM_PROMPT_FR = `Tu es Louis, un assistant IA juridique francophone, conçu pour les professions du droit en France.
 
@@ -112,7 +113,11 @@ ${docBlocks.join("\n\n")}`;
     }
   }
 
-  const tools = await buildToolsForUser(userId);
+  const [connectorTools, mcpTools] = await Promise.all([
+    buildToolsForUser(userId),
+    buildMcpToolsForUser(userId),
+  ]);
+  const tools = { ...connectorTools, ...mcpTools };
 
   const result = streamText({
     model,

@@ -8,6 +8,7 @@ import {
   IconFolder,
   IconSettings,
   IconLogout,
+  IconBolt,
 } from "@tabler/icons-react";
 import { auth, signOut } from "@/auth";
 
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/documents", label: "Documents", icon: IconFolder },
   { href: "/providers", label: "Providers IA", icon: IconKey },
   { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected },
+  { href: "/mcp", label: "Serveurs MCP", icon: IconBolt },
   { href: "/settings", label: "Paramètres", icon: IconSettings },
 ];
 

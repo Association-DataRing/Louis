@@ -21,6 +21,7 @@
     "@ai-sdk/openai": "^3.0.63",
     "@ai-sdk/react": "^3.0.182",
     "@aws-sdk/client-s3": "^3.1045.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@tabler/icons-react": "^3.41.1",
     "ai": "^6.0.180",
     "bcryptjs": "^3.0.3",

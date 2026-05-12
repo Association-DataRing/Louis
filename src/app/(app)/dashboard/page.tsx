@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { IconKey, IconPlugConnected, IconMessageCircle, IconArrowRight } from "@tabler/icons-react";
+import {
+  IconKey,
+  IconPlugConnected,
+  IconMessageCircle,
+  IconArrowRight,
+  IconFolder,
+  IconBolt,
+} from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const tiles = [
@@ -9,7 +16,6 @@ const tiles = [
     title: "Providers IA",
     description: "Connectez vos clés Mistral, Scaleway, OVH, Albert ou autres.",
     cta: "Configurer",
-    enabled: true,
   },
   {
     href: "/connectors",
@@ -17,15 +23,27 @@ const tiles = [
     title: "Connecteurs juridiques",
     description: "PISTE, Légifrance, Judilibre, Pappers — vos accès, vos quotas.",
     cta: "Configurer",
-    enabled: true,
+  },
+  {
+    href: "/documents",
+    icon: IconFolder,
+    title: "Documents",
+    description: "Importez vos PDF/DOCX, attachez-les aux conversations.",
+    cta: "Importer",
+  },
+  {
+    href: "/mcp",
+    icon: IconBolt,
+    title: "Serveurs MCP",
+    description: "Branchez vos outils maison via Model Context Protocol.",
+    cta: "Configurer",
   },
   {
     href: "/chat",
     icon: IconMessageCircle,
     title: "Conversations",
-    description: "Discutez avec vos providers, sur vos documents, avec vos sources.",
+    description: "Discutez avec vos providers, vos documents, vos sources.",
     cta: "Discuter",
-    enabled: true,
   },
 ];
 
@@ -42,37 +60,22 @@ export default function DashboardPage() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {tiles.map((tile) => {
           const Icon = tile.icon;
-          const card = (
-            <Card className="h-full transition-colors hover:bg-accent/40">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <Icon className="size-5 text-primary" />
-                  {!tile.enabled && (
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      bientôt
-                    </span>
-                  )}
-                </div>
-                <CardTitle className="font-heading mt-3">{tile.title}</CardTitle>
-                <CardDescription>{tile.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-                  {tile.cta}
-                  <IconArrowRight className="size-3.5" />
-                </span>
-              </CardContent>
-            </Card>
-          );
-
-          return tile.enabled ? (
+          return (
             <Link key={tile.href} href={tile.href} className="block">
-              {card}
+              <Card className="h-full transition-colors hover:bg-accent/40">
+                <CardHeader>
+                  <Icon className="size-5 text-primary" />
+                  <CardTitle className="font-heading mt-3">{tile.title}</CardTitle>
+                  <CardDescription>{tile.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                    {tile.cta}
+                    <IconArrowRight className="size-3.5" />
+                  </span>
+                </CardContent>
+              </Card>
             </Link>
-          ) : (
-            <div key={tile.href} className="cursor-not-allowed opacity-60">
-              {card}
-            </div>
           );
         })}
       </div>
