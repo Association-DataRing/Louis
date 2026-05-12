@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: louis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: louis
+      POSTGRES_PASSWORD: louis
+      POSTGRES_DB: louis
+    ports:
+      - "5432:5432"
+    volumes:
+      - louis-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U louis -d louis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: louis-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - louis-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: louis-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: louis
+      MINIO_ROOT_PASSWORD: louis-dev-only
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - louis-minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  louis-postgres:
+  louis-redis:
+  louis-minio:
