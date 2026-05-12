@@ -14,7 +14,7 @@ import { auth, signOut } from "@/auth";
 const navItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: IconLayoutDashboard },
   { href: "/chat", label: "Conversations", icon: IconMessageCircle },
-  { href: "/documents", label: "Documents", icon: IconFolder, disabled: true },
+  { href: "/documents", label: "Documents", icon: IconFolder },
   { href: "/providers", label: "Providers IA", icon: IconKey },
   { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected },
   { href: "/settings", label: "Paramètres", icon: IconSettings, disabled: true },

@@ -3,10 +3,10 @@ import {
   convertToModelMessages,
   type UIMessage,
 } from "ai";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { conversations, messages } from "@/db/schema";
+import { conversations, documents, messages } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 
 const SYSTEM_PROMPT_FR = `Tu es Louis, un assistant IA juridique francophone, conçu pour les professions du droit en France.
@@ -18,6 +18,7 @@ type Body = {
   providerKeyId: string;
   conversationId?: string | null;
   modelOverride?: string | null;
+  documentIds?: string[];
 };
 
 export async function POST(req: Request) {
@@ -28,7 +29,12 @@ export async function POST(req: Request) {
   const userId = session.user.id;
 
   const body = (await req.json()) as Body;
-  const { messages: uiMessages, providerKeyId, modelOverride } = body;
+  const {
+    messages: uiMessages,
+    providerKeyId,
+    modelOverride,
+    documentIds,
+  } = body;
   let conversationId = body.conversationId ?? null;
 
   if (!providerKeyId) {
@@ -73,9 +79,40 @@ export async function POST(req: Request) {
   const model = modelFromKey(key, modelOverride);
   const modelMessages = await convertToModelMessages(uiMessages);
 
+  let systemPrompt = SYSTEM_PROMPT_FR;
+  if (documentIds && documentIds.length > 0) {
+    const docs = await db
+      .select({
+        filename: documents.filename,
+        extractedText: documents.extractedText,
+      })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.userId, userId),
+          inArray(documents.id, documentIds)
+        )
+      );
+
+    const docBlocks = docs
+      .filter((d) => d.extractedText)
+      .map(
+        (d, i) =>
+          `--- Document ${i + 1} : ${d.filename} ---\n${d.extractedText}\n--- Fin document ${i + 1} ---`
+      );
+
+    if (docBlocks.length > 0) {
+      systemPrompt = `${SYSTEM_PROMPT_FR}
+
+Les documents suivants ont été joints à la conversation par l'utilisateur. Réponds en t'appuyant sur leur contenu quand c'est pertinent et cite explicitement le nom du document quand tu en reprends un extrait.
+
+${docBlocks.join("\n\n")}`;
+    }
+  }
+
   const result = streamText({
     model,
-    system: SYSTEM_PROMPT_FR,
+    system: systemPrompt,
     messages: modelMessages,
     onFinish: async ({ text }) => {
       if (!conversationId || !text) return;

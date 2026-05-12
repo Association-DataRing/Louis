@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { IconSend2 } from "@tabler/icons-react";
+import { IconSend2, IconPaperclip, IconX } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -28,11 +35,18 @@ type KeyOption = {
   isDefault: boolean;
 };
 
+type DocumentOption = {
+  id: string;
+  filename: string;
+  sizeBytes: number;
+};
+
 type Props = {
   providerKeys: KeyOption[];
   initialProviderKeyId: string;
   initialConversationId: string | null;
   initialMessages: { id: string; role: string; content: string }[];
+  availableDocuments: DocumentOption[];
 };
 
 function toUIMessages(
@@ -45,17 +59,71 @@ function toUIMessages(
   }));
 }
 
+function DocPickerContent({
+  documents,
+  selected,
+  onToggle,
+}: {
+  documents: DocumentOption[];
+  selected: string[];
+  onToggle: (id: string) => void;
+}) {
+  if (documents.length === 0) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          Aucun document avec texte extrait.
+        </p>
+        <Link
+          href="/documents"
+          className="mt-2 inline-block text-xs text-primary hover:underline underline-offset-2"
+        >
+          Importer un fichier →
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <div className="max-h-72 overflow-y-auto py-1">
+      <div className="px-3 py-2 border-b border-border">
+        <p className="text-xs font-medium">Joindre au prompt</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          Le texte extrait sera inséré dans le system prompt.
+        </p>
+      </div>
+      {documents.map((doc) => {
+        const isSelected = selected.includes(doc.id);
+        return (
+          <label
+            key={doc.id}
+            className="flex items-center gap-2.5 px-3 py-2 hover:bg-accent cursor-pointer"
+          >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onToggle(doc.id)}
+            />
+            <span className="flex-1 text-sm truncate">{doc.filename}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ChatShell({
   providerKeys,
   initialProviderKeyId,
   initialConversationId,
   initialMessages,
+  availableDocuments,
 }: Props) {
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
   const [conversationId, setConversationId] = useState<string | null>(
     initialConversationId
   );
+  const [attachedDocIds, setAttachedDocIds] = useState<string[]>([]);
+  const [docPickerOpen, setDocPickerOpen] = useState(false);
 
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/chat" }),
@@ -191,14 +259,77 @@ export function ChatShell({
           if (!trimmed || isBusy) return;
           sendMessage(
             { text: trimmed },
-            { body: { providerKeyId, conversationId } }
+            {
+              body: {
+                providerKeyId,
+                conversationId,
+                documentIds: attachedDocIds,
+              },
+            }
           );
           setInput("");
         }}
         className="border-t border-border bg-background"
       >
         <div className="max-w-3xl mx-auto px-6 py-4">
+          {attachedDocIds.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {attachedDocIds.map((id) => {
+                const doc = availableDocuments.find((d) => d.id === id);
+                if (!doc) return null;
+                return (
+                  <Badge
+                    key={id}
+                    variant="secondary"
+                    className="gap-1 pr-1"
+                  >
+                    <IconPaperclip className="size-3" />
+                    <span className="max-w-[200px] truncate">{doc.filename}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAttachedDocIds((ids) => ids.filter((x) => x !== id))
+                      }
+                      className="ml-0.5 rounded-sm hover:bg-background/50 p-0.5"
+                      aria-label={`Retirer ${doc.filename}`}
+                    >
+                      <IconX className="size-3" />
+                    </button>
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
           <div className="relative">
+            <Popover open={docPickerOpen} onOpenChange={setDocPickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  className="absolute bottom-2 left-2 inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
+                  aria-label="Joindre des documents"
+                >
+                  <IconPaperclip className="size-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="start"
+                className="w-80 p-0"
+              >
+                <DocPickerContent
+                  documents={availableDocuments}
+                  selected={attachedDocIds}
+                  onToggle={(id) =>
+                    setAttachedDocIds((ids) =>
+                      ids.includes(id)
+                        ? ids.filter((x) => x !== id)
+                        : [...ids, id]
+                    )
+                  }
+                />
+              </PopoverContent>
+            </Popover>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -211,7 +342,7 @@ export function ChatShell({
               placeholder="Posez votre question…"
               rows={2}
               disabled={isBusy}
-              className="w-full resize-none rounded-md border border-input bg-card px-4 py-3 pr-12 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full resize-none rounded-md border border-input bg-card pl-12 pr-12 py-3 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             />
             <Button
               type="submit"

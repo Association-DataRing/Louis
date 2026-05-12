@@ -4,7 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { IconPlus, IconMessageCircle } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { conversations, messages, providerKeys } from "@/db/schema";
+import { conversations, documents, messages, providerKeys } from "@/db/schema";
+import { isNotNull } from "drizzle-orm";
 import { ChatShell } from "./chat-shell";
 
 type Search = { id?: string };
@@ -48,6 +49,17 @@ export default async function ChatPage({
     .where(eq(conversations.userId, userId))
     .orderBy(desc(conversations.updatedAt))
     .limit(30);
+
+  const docList = await db
+    .select({
+      id: documents.id,
+      filename: documents.filename,
+      sizeBytes: documents.sizeBytes,
+    })
+    .from(documents)
+    .where(and(eq(documents.userId, userId), isNotNull(documents.extractedText)))
+    .orderBy(desc(documents.createdAt))
+    .limit(50);
 
   let initialMessages: { id: string; role: string; content: string }[] = [];
   let initialProviderKeyId = activeKeys[0].id;
@@ -119,6 +131,7 @@ export default async function ChatPage({
         initialProviderKeyId={initialProviderKeyId}
         initialConversationId={currentId ?? null}
         initialMessages={initialMessages}
+        availableDocuments={docList}
       />
     </div>
   );

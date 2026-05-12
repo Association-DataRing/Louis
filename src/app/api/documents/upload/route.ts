@@ -1,0 +1,84 @@
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { documents } from "@/db/schema";
+import { uploadObject, deleteObject } from "@/lib/storage";
+import { extractText, isSupportedContentType } from "@/lib/extract";
+import { nanoid } from "nanoid";
+
+const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
+
+export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const userId = session.user.id;
+
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return new Response("Invalid form data", { status: 400 });
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return new Response("Missing file", { status: 400 });
+  }
+
+  if (file.size > MAX_BYTES) {
+    return new Response("File too large (max 25 MB)", { status: 413 });
+  }
+
+  if (!isSupportedContentType(file.type)) {
+    return new Response(
+      "Unsupported file type. Use PDF, DOCX or plain text.",
+      { status: 415 }
+    );
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const storageKey = `${userId}/${nanoid()}-${file.name}`;
+
+  try {
+    await uploadObject(storageKey, buffer, file.type);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Storage error";
+    return new Response(`Failed to store file: ${msg}`, { status: 500 });
+  }
+
+  let extractedText: string | null = null;
+  let extractionStatus = "ok";
+  let extractionError: string | null = null;
+
+  try {
+    const result = await extractText(buffer, file.type);
+    extractedText = result.text;
+    if (result.truncated) extractionStatus = "truncated";
+  } catch (err) {
+    extractionStatus = "failed";
+    extractionError = err instanceof Error ? err.message : "Extraction failed";
+  }
+
+  try {
+    const [row] = await db
+      .insert(documents)
+      .values({
+        userId,
+        filename: file.name,
+        contentType: file.type,
+        sizeBytes: file.size,
+        storageKey,
+        extractedText,
+        extractionStatus,
+        extractionError,
+      })
+      .returning({ id: documents.id });
+
+    return Response.json({ id: row.id, extractionStatus });
+  } catch (err) {
+    await deleteObject(storageKey).catch(() => {});
+    const msg = err instanceof Error ? err.message : "DB error";
+    return new Response(`Failed to register document: ${msg}`, { status: 500 });
+  }
+}
