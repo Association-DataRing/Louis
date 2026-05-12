@@ -16,7 +16,7 @@ const navItems = [
   { href: "/chat", label: "Conversations", icon: IconMessageCircle },
   { href: "/documents", label: "Documents", icon: IconFolder, disabled: true },
   { href: "/providers", label: "Providers IA", icon: IconKey },
-  { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected, disabled: true },
+  { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected },
   { href: "/settings", label: "Paramètres", icon: IconSettings, disabled: true },
 ];
 

@@ -16,8 +16,8 @@ const tiles = [
     icon: IconPlugConnected,
     title: "Connecteurs juridiques",
     description: "PISTE, Légifrance, Judilibre, Pappers — vos accès, vos quotas.",
-    cta: "Bientôt",
-    enabled: false,
+    cta: "Configurer",
+    enabled: true,
   },
   {
     href: "/chat",
