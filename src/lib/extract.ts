@@ -42,14 +42,12 @@ export async function extractText(
 }
 
 async function extractPdf(buffer: Buffer): Promise<string> {
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: new Uint8Array(buffer) });
-  try {
-    const result = await parser.getText();
-    return result.text ?? "";
-  } finally {
-    await parser.destroy().catch(() => {});
-  }
+  // unpdf is built on pdfjs-dist but ships a Node-friendly build that doesn't
+  // need a worker. Works in serverless and standard Node alike.
+  const { extractText } = await import("unpdf");
+  const data = new Uint8Array(buffer);
+  const result = await extractText(data, { mergePages: true });
+  return Array.isArray(result.text) ? result.text.join("\n") : result.text;
 }
 
 async function extractDocx(buffer: Buffer): Promise<string> {

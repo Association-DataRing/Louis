@@ -50,6 +50,14 @@ export function DocumentRow({ entry }: { entry: Document }) {
             <> · {Math.round(entry.extractedText.length / 1000)}k caractères</>
           )}
         </div>
+        {entry.extractionError && (
+          <div
+            className="text-xs text-destructive mt-1 truncate"
+            title={entry.extractionError}
+          >
+            {entry.extractionError}
+          </div>
+        )}
       </div>
 
       <DropdownMenu>
