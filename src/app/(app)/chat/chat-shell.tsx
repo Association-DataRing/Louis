@@ -92,6 +92,7 @@ function ToolPart({
 const TOOL_LABEL: Record<string, string> = {
   pappers_search: "Pappers · recherche",
   pappers_get: "Pappers · fiche entreprise",
+  legifrance_search: "Légifrance · recherche",
 };
 
 function formatToolInput(input: unknown): string {
