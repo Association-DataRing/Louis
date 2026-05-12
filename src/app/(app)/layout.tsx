@@ -13,7 +13,7 @@ import { auth, signOut } from "@/auth";
 
 const navItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: IconLayoutDashboard },
-  { href: "/chat", label: "Conversations", icon: IconMessageCircle, disabled: true },
+  { href: "/chat", label: "Conversations", icon: IconMessageCircle },
   { href: "/documents", label: "Documents", icon: IconFolder, disabled: true },
   { href: "/providers", label: "Providers IA", icon: IconKey },
   { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected, disabled: true },

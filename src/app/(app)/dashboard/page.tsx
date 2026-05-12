@@ -24,8 +24,8 @@ const tiles = [
     icon: IconMessageCircle,
     title: "Conversations",
     description: "Discutez avec vos providers, sur vos documents, avec vos sources.",
-    cta: "Bientôt",
-    enabled: false,
+    cta: "Discuter",
+    enabled: true,
   },
 ];
 
