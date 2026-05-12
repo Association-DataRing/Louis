@@ -63,6 +63,7 @@ export default async function ChatPage({
 
   let initialMessages: { id: string; role: string; content: string }[] = [];
   let initialProviderKeyId = activeKeys[0].id;
+  let initialModelId: string | null = null;
   if (currentId) {
     const [conv] = await db
       .select()
@@ -75,6 +76,7 @@ export default async function ChatPage({
     if (conv.providerKeyId && activeKeys.some((k) => k.id === conv.providerKeyId)) {
       initialProviderKeyId = conv.providerKeyId;
     }
+    initialModelId = conv.modelId;
     const rows = await db
       .select({
         id: messages.id,
@@ -129,6 +131,7 @@ export default async function ChatPage({
       <ChatShell
         providerKeys={activeKeys}
         initialProviderKeyId={initialProviderKeyId}
+        initialModelId={initialModelId}
         initialConversationId={currentId ?? null}
         initialMessages={initialMessages}
         availableDocuments={docList}

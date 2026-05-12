@@ -29,6 +29,7 @@ import {
   SOVEREIGNTY_LABEL,
   type ProviderType,
 } from "@/lib/providers/catalog";
+import { MODEL_CATALOG, DEFAULT_MODEL } from "@/lib/providers/models";
 
 type KeyOption = {
   id: string;
@@ -46,6 +47,7 @@ type DocumentOption = {
 type Props = {
   providerKeys: KeyOption[];
   initialProviderKeyId: string;
+  initialModelId: string | null;
   initialConversationId: string | null;
   initialMessages: { id: string; role: string; content: string }[];
   availableDocuments: DocumentOption[];
@@ -157,17 +159,33 @@ function DocPickerContent({
 export function ChatShell({
   providerKeys,
   initialProviderKeyId,
+  initialModelId,
   initialConversationId,
   initialMessages,
   availableDocuments,
 }: Props) {
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
+  const initialType =
+    providerKeys.find((k) => k.id === initialProviderKeyId)?.type ?? "mistral";
+  const [modelId, setModelId] = useState<string>(
+    initialModelId ?? DEFAULT_MODEL[initialType]
+  );
   const [conversationId, setConversationId] = useState<string | null>(
     initialConversationId
   );
   const [attachedDocIds, setAttachedDocIds] = useState<string[]>([]);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
+
+  function handleProviderChange(nextId: string) {
+    setProviderKeyId(nextId);
+    const nextType = providerKeys.find((k) => k.id === nextId)?.type;
+    if (nextType) setModelId(DEFAULT_MODEL[nextType]);
+  }
+
+  const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
+  const selectedType: ProviderType = selectedKey?.type ?? "mistral";
+  const modelOptions = MODEL_CATALOG[selectedType];
 
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/chat" }),
@@ -208,50 +226,70 @@ export function ChatShell({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, status]);
 
-  const selectedMeta = PROVIDER_CATALOG[
-    providerKeys.find((k) => k.id === providerKeyId)?.type ?? "mistral"
-  ];
+  const selectedMeta = PROVIDER_CATALOG[selectedType];
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <header className="border-b border-border px-6 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Provider :</span>
-          <Select
-            value={providerKeyId}
-            onValueChange={(v) => setProviderKeyId(v)}
-            disabled={isBusy}
-          >
-            <SelectTrigger className="w-[260px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {providerKeys.map((k) => {
-                const m = PROVIDER_CATALOG[k.type];
-                return (
-                  <SelectItem key={k.id} value={k.id}>
-                    <span className="truncate">{k.label}</span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      · {m.label} · {SOVEREIGNTY_LABEL[m.sovereignty]}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-          <Badge
-            variant={
-              selectedMeta.sovereignty === "fr"
-                ? "default"
-                : selectedMeta.sovereignty === "eu"
-                  ? "secondary"
-                  : "outline"
-            }
-            className="text-[10px]"
-          >
-            {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
-          </Badge>
-        </div>
+      <header className="border-b border-border px-6 py-3 flex items-center gap-3 flex-wrap text-sm">
+        <span className="text-muted-foreground">Provider</span>
+        <Select
+          value={providerKeyId}
+          onValueChange={handleProviderChange}
+          disabled={isBusy}
+        >
+          <SelectTrigger className="w-[220px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {providerKeys.map((k) => {
+              const m = PROVIDER_CATALOG[k.type];
+              return (
+                <SelectItem key={k.id} value={k.id}>
+                  <span className="truncate">{k.label}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    · {SOVEREIGNTY_LABEL[m.sovereignty]}
+                  </span>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+
+        <span className="text-muted-foreground">Modèle</span>
+        <Select
+          value={modelId}
+          onValueChange={(v) => setModelId(v)}
+          disabled={isBusy}
+        >
+          <SelectTrigger className="w-[220px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {modelOptions.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                <span>{m.label}</span>
+                {m.hint && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    · {m.hint}
+                  </span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Badge
+          variant={
+            selectedMeta.sovereignty === "fr"
+              ? "default"
+              : selectedMeta.sovereignty === "eu"
+                ? "secondary"
+                : "outline"
+          }
+          className="text-[10px] ml-auto"
+        >
+          {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
+        </Badge>
       </header>
 
       <div className="flex-1 overflow-y-auto">
@@ -340,6 +378,7 @@ export function ChatShell({
                 providerKeyId,
                 conversationId,
                 documentIds: attachedDocIds,
+                modelOverride: modelId,
               },
             }
           );
