@@ -8,7 +8,9 @@ services:
       POSTGRES_PASSWORD: louis
       POSTGRES_DB: louis
     ports:
-      - "5432:5432"
+      # Host port 5433 to avoid conflict with other local Postgres instances.
+      # Inside the container Postgres still listens on 5432.
+      - "5433:5432"
     volumes:
       - louis-postgres:/var/lib/postgresql/data
     healthcheck:
