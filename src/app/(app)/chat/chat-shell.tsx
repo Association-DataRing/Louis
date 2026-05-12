@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { IconSend2, IconPaperclip, IconX, IconTool } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -271,13 +273,23 @@ export function ChatShell({
                     return (
                       <div
                         key={i}
-                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                           isUser
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-card border border-border"
+                            ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                            : "bg-card border border-border prose prose-sm prose-neutral dark:prose-invert max-w-none prose-pre:my-2 prose-headings:font-heading prose-headings:tracking-tight prose-p:my-1.5 prose-ul:my-2 prose-li:my-0.5"
                         }`}
                       >
-                        {part.text || <Spinner className="size-4" />}
+                        {part.text ? (
+                          isUser ? (
+                            part.text
+                          ) : (
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {part.text}
+                            </ReactMarkdown>
+                          )
+                        ) : (
+                          <Spinner className="size-4" />
+                        )}
                       </div>
                     );
                   }
