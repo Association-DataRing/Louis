@@ -65,6 +65,8 @@ export default async function ChatPage({
   let initialMessages: { id: string; role: string; content: string }[] = [];
   let initialProviderKeyId = activeKeys[0].id;
   let initialModelId: string | null = null;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
   if (currentId) {
     const [conv] = await db
       .select()
@@ -83,11 +85,19 @@ export default async function ChatPage({
         id: messages.id,
         role: messages.role,
         content: messages.content,
+        inputTokens: messages.inputTokens,
+        outputTokens: messages.outputTokens,
       })
       .from(messages)
       .where(eq(messages.conversationId, currentId))
       .orderBy(messages.createdAt);
-    initialMessages = rows;
+    initialMessages = rows.map((r) => ({
+      id: r.id,
+      role: r.role,
+      content: r.content,
+    }));
+    totalInputTokens = rows.reduce((n, r) => n + (r.inputTokens ?? 0), 0);
+    totalOutputTokens = rows.reduce((n, r) => n + (r.outputTokens ?? 0), 0);
   }
 
   return (
@@ -127,6 +137,10 @@ export default async function ChatPage({
         initialConversationId={currentId ?? null}
         initialMessages={initialMessages}
         availableDocuments={docList}
+        initialUsage={{
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+        }}
       />
     </div>
   );

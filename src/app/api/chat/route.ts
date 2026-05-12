@@ -125,12 +125,15 @@ ${docBlocks.join("\n\n")}`;
     messages: modelMessages,
     tools,
     stopWhen: stepCountIs(5),
-    onFinish: async ({ text }) => {
+    onFinish: async ({ text, usage }) => {
       if (!conversationId || !text) return;
       await db.insert(messages).values({
         conversationId,
         role: "assistant",
         content: text,
+        inputTokens: usage?.inputTokens ?? null,
+        outputTokens: usage?.outputTokens ?? null,
+        modelId: modelOverride ?? null,
       });
       await db
         .update(conversations)
@@ -147,6 +150,14 @@ ${docBlocks.join("\n\n")}`;
     messageMetadata: ({ part }) => {
       if (part.type === "start") {
         return { conversationId: finalConversationId };
+      }
+      if (part.type === "finish") {
+        return {
+          usage: {
+            inputTokens: part.totalUsage?.inputTokens ?? 0,
+            outputTokens: part.totalUsage?.outputTokens ?? 0,
+          },
+        };
       }
     },
   });

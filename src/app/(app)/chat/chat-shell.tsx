@@ -44,6 +44,11 @@ type DocumentOption = {
   sizeBytes: number;
 };
 
+type Usage = {
+  inputTokens: number;
+  outputTokens: number;
+};
+
 type Props = {
   providerKeys: KeyOption[];
   initialProviderKeyId: string;
@@ -51,6 +56,7 @@ type Props = {
   initialConversationId: string | null;
   initialMessages: { id: string; role: string; content: string }[];
   availableDocuments: DocumentOption[];
+  initialUsage: Usage;
 };
 
 function toUIMessages(
@@ -61,6 +67,11 @@ function toUIMessages(
     role: m.role as UIMessage["role"],
     parts: [{ type: "text", text: m.content }],
   }));
+}
+
+function formatTokens(n: number): string {
+  if (n < 1000) return `${n}`;
+  return `${(n / 1000).toFixed(1)}k`;
 }
 
 function ToolPart({
@@ -163,9 +174,11 @@ export function ChatShell({
   initialConversationId,
   initialMessages,
   availableDocuments,
+  initialUsage,
 }: Props) {
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
+  const [usage, setUsage] = useState<Usage>(initialUsage);
   const initialType =
     providerKeys.find((k) => k.id === initialProviderKeyId)?.type ?? "mistral";
   const [modelId, setModelId] = useState<string>(
@@ -197,10 +210,16 @@ export function ChatShell({
     transport,
     onFinish: ({ message }) => {
       const meta = message?.metadata as
-        | { conversationId?: string }
+        | { conversationId?: string; usage?: Usage }
         | undefined;
       if (meta?.conversationId && meta.conversationId !== conversationId) {
         setConversationId(meta.conversationId);
+      }
+      if (meta?.usage) {
+        setUsage((u) => ({
+          inputTokens: u.inputTokens + (meta.usage!.inputTokens ?? 0),
+          outputTokens: u.outputTokens + (meta.usage!.outputTokens ?? 0),
+        }));
       }
     },
   });
@@ -278,18 +297,28 @@ export function ChatShell({
           </SelectContent>
         </Select>
 
-        <Badge
-          variant={
-            selectedMeta.sovereignty === "fr"
-              ? "default"
-              : selectedMeta.sovereignty === "eu"
-                ? "secondary"
-                : "outline"
-          }
-          className="text-[10px] ml-auto"
-        >
-          {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
-        </Badge>
+        <div className="ml-auto flex items-center gap-2">
+          {(usage.inputTokens > 0 || usage.outputTokens > 0) && (
+            <span
+              className="text-[10px] text-muted-foreground tabular-nums"
+              title={`${usage.inputTokens} tokens entrée, ${usage.outputTokens} tokens sortie`}
+            >
+              {formatTokens(usage.inputTokens)}↗ {formatTokens(usage.outputTokens)}↘
+            </span>
+          )}
+          <Badge
+            variant={
+              selectedMeta.sovereignty === "fr"
+                ? "default"
+                : selectedMeta.sovereignty === "eu"
+                  ? "secondary"
+                  : "outline"
+            }
+            className="text-[10px]"
+          >
+            {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
+          </Badge>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto">

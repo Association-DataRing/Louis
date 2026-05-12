@@ -5,6 +5,7 @@ import {
   timestamp,
   pgEnum,
   jsonb,
+  integer,
 } from "drizzle-orm/pg-core";
 import { conversations } from "./conversations";
 
@@ -23,6 +24,11 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   // Reserve for future structured data (citations, tool calls, attachments).
   metadata: jsonb("metadata"),
+  // Token usage as reported by the provider (only on assistant messages).
+  // Nullable so old rows stay valid after the migration.
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  modelId: text("model_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
