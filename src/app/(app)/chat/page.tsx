@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { conversations, documents, messages, providerKeys } from "@/db/schema";
 import { isNotNull } from "drizzle-orm";
 import { ChatShell } from "./chat-shell";
-import { ConversationItem } from "./conversation-item";
+import { ConversationsList } from "./conversations-list";
 
 type Search = { id?: string };
 
@@ -112,21 +112,8 @@ export default async function ChatPage({
             Nouvelle conversation
           </Link>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {convList.length === 0 ? (
-            <p className="text-xs text-muted-foreground p-3">
-              Vos conversations apparaîtront ici.
-            </p>
-          ) : (
-            convList.map((c) => (
-              <ConversationItem
-                key={c.id}
-                id={c.id}
-                title={c.title}
-                isCurrent={c.id === currentId}
-              />
-            ))
-          )}
+        <div className="flex-1 overflow-y-auto">
+          <ConversationsList conversations={convList} currentId={currentId} />
         </div>
       </aside>
 
