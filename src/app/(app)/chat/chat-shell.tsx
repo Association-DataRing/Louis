@@ -106,6 +106,7 @@ const TOOL_LABEL: Record<string, string> = {
   pappers_search: "Pappers · recherche",
   pappers_get: "Pappers · fiche entreprise",
   legifrance_search: "Légifrance · recherche",
+  search_documents: "Recherche dans vos documents",
 };
 
 function formatToolInput(input: unknown): string {
