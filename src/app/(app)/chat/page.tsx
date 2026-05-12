@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
-import { IconPlus, IconMessageCircle } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { conversations, documents, messages, providerKeys } from "@/db/schema";
 import { isNotNull } from "drizzle-orm";
 import { ChatShell } from "./chat-shell";
+import { ConversationItem } from "./conversation-item";
 
 type Search = { id?: string };
 
@@ -107,23 +108,14 @@ export default async function ChatPage({
               Vos conversations apparaîtront ici.
             </p>
           ) : (
-            convList.map((c) => {
-              const isCurrent = c.id === currentId;
-              return (
-                <Link
-                  key={c.id}
-                  href={`/chat?id=${c.id}`}
-                  className={`flex items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors ${
-                    isCurrent
-                      ? "bg-accent text-accent-foreground"
-                      : "hover:bg-accent/60"
-                  }`}
-                >
-                  <IconMessageCircle className="size-3.5 shrink-0 opacity-60" />
-                  <span className="truncate">{c.title}</span>
-                </Link>
-              );
-            })
+            convList.map((c) => (
+              <ConversationItem
+                key={c.id}
+                id={c.id}
+                title={c.title}
+                isCurrent={c.id === currentId}
+              />
+            ))
           )}
         </div>
       </aside>
