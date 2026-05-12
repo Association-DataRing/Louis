@@ -1,0 +1,40 @@
+name: Suggestion
+description: Une fonctionnalité, un connecteur, un provider à ajouter
+labels: ["enhancement"]
+body:
+  - type: textarea
+    attributes:
+      label: Problème à résoudre
+      description: Quel besoin métier, quel cas d'usage ? Évitez de proposer une solution sans problème.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Approche envisagée (optionnel)
+      description: Si vous avez une idée d'implémentation, partagez-la — sinon laissez vide
+    validations:
+      required: false
+
+  - type: dropdown
+    attributes:
+      label: Catégorie
+      options:
+        - Nouveau provider IA
+        - Nouveau connecteur juridique
+        - Fonctionnalité chat
+        - Gestion documents / RAG
+        - Sécurité / souveraineté
+        - Multi-utilisateurs / RBAC
+        - Déploiement / DevOps
+        - UX / accessibilité
+        - Autre
+    validations:
+      required: true
+
+  - type: checkboxes
+    attributes:
+      label: Préalables
+      options:
+        - label: J'ai vérifié qu'aucune issue ouverte ne couvre déjà ce besoin
+          required: true

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -53,33 +53,33 @@ export function ChatShell({
 }: Props) {
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
-  const conversationIdRef = useRef<string | null>(initialConversationId);
+  const [conversationId, setConversationId] = useState<string | null>(
+    initialConversationId
+  );
+
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/chat" }),
+    []
+  );
 
   const { messages, sendMessage, status, error } = useChat({
     messages: toUIMessages(initialMessages),
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      prepareSendMessagesRequest: ({ messages, body }) => ({
-        body: {
-          ...body,
-          messages,
-          providerKeyId,
-          conversationId: conversationIdRef.current,
-        },
-      }),
-      fetch: async (input, init) => {
-        const res = await fetch(input, init);
-        const id = res.headers.get("x-conversation-id");
-        if (id && id !== conversationIdRef.current) {
-          conversationIdRef.current = id;
+    transport,
+    onFinish: ({ message }) => {
+      const meta = message?.metadata as
+        | { conversationId?: string }
+        | undefined;
+      if (meta?.conversationId) {
+        setConversationId((prev) => {
+          if (prev === meta.conversationId) return prev;
           const url = new URL(window.location.href);
-          url.searchParams.set("id", id);
+          url.searchParams.set("id", meta.conversationId!);
           window.history.replaceState(null, "", url.toString());
           router.refresh();
-        }
-        return res;
-      },
-    }),
+          return meta.conversationId!;
+        });
+      }
+    },
   });
 
   const [input, setInput] = useState("");
@@ -189,7 +189,10 @@ export function ChatShell({
           e.preventDefault();
           const trimmed = input.trim();
           if (!trimmed || isBusy) return;
-          sendMessage({ text: trimmed });
+          sendMessage(
+            { text: trimmed },
+            { body: { providerKeyId, conversationId } }
+          );
           setInput("");
         }}
         className="border-t border-border bg-background"

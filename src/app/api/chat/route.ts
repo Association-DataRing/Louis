@@ -91,9 +91,15 @@ export async function POST(req: Request) {
     },
   });
 
+  const finalConversationId = conversationId;
   return result.toUIMessageStreamResponse({
     headers: {
-      "x-conversation-id": conversationId,
+      "x-conversation-id": finalConversationId,
+    },
+    messageMetadata: ({ part }) => {
+      if (part.type === "start") {
+        return { conversationId: finalConversationId };
+      }
     },
   });
 }

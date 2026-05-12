@@ -4,6 +4,7 @@
 
 ### L'IA juridique souveraine, sous votre contrôle.
 
+[![CI](https://github.com/D4kooo/louis/actions/workflows/ci.yml/badge.svg)](https://github.com/D4kooo/louis/actions/workflows/ci.yml)
 [![Licence : AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-000091)](./LICENSE)
 [![Status : Alpha](https://img.shields.io/badge/Status-Alpha-orange)]()
 [![Made in France](https://img.shields.io/badge/Made_in-France-000091?labelColor=FFFFFF)]()
@@ -59,18 +60,22 @@ juridiques. Le secret professionnel n'est plus négociable.
 
 ### Disponible (v0.1 — alpha)
 
-- 🏛️ Page d'accueil, structure projet, identité visuelle
-- 📜 Licence AGPL-3.0, documentation FR
-- 🎨 UI shadcn/ui + Tabler Icons, palette inspirée du bleu de France
+- 🔐 **Authentification** NextAuth v5 (Credentials, sessions JWT)
+- 🔑 **Page Providers IA** — BYOK pour Mistral, Scaleway, OVH, Albert
+  (Etalab), Anthropic, OpenAI, et tout endpoint OpenAI-compatible (Ollama,
+  vLLM, llama.cpp). Clés chiffrées AES-256-GCM avant stockage. Test de
+  connexion intégré. Badges FR / UE / US.
+- 🔌 **Page Connecteurs** — PISTE (Légifrance, Judilibre, JADE, INPI,
+  BODACC) et Pappers. Credentials chiffrées en blob JSON.
+- 💬 **Chat streaming** — multi-tour, sélecteur de provider par
+  conversation, persistance auto, system prompt FR anti-hallucination.
+- 🐳 **Docker Compose** : Postgres + pgvector, Redis, MinIO en une commande.
 
 ### En cours (v0.2)
 
-- 🔑 **Page Providers IA** — formulaire BYOK pour Mistral, Scaleway,
-  OVH AI Endpoints, Albert (Etalab), Anthropic, OpenAI, et tout endpoint
-  OpenAI-compatible (Ollama, vLLM, llama.cpp self-hosted)
-- 🔌 **Page Connecteurs** — OAuth PISTE, tokens manuels pour Pappers, etc.
-- 💬 **Chat multi-tour** avec sélection du provider et des connecteurs actifs
+- 🛠️ **Tool calling** — utiliser PISTE/Pappers comme outils dans le chat
 - 📁 **Documents + RAG** — upload, indexation pgvector, citations sourcées
+- 🧠 **MCP-native** — chaque cabinet peut ajouter ses propres MCP servers
 
 ### Planifié (v0.3+)
 

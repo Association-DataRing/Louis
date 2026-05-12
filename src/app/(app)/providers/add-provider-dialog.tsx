@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState, useTransition } from "react";
 import { IconPlus, IconExternalLink } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ import {
   SOVEREIGNTY_LABEL,
   type ProviderType,
 } from "@/lib/providers/catalog";
-import { createProviderKey, type ActionResult } from "./actions";
+import { createProviderKey } from "./actions";
 
 const sovereignTypes = PROVIDER_TYPES.filter(
   (t) => PROVIDER_CATALOG[t].sovereignty !== "us"
@@ -42,16 +42,20 @@ const usTypes = PROVIDER_TYPES.filter(
 export function AddProviderDialog() {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<ProviderType>("mistral");
-  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
-    createProviderKey,
-    null
-  );
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (state?.ok) {
-      setOpen(false);
-    }
-  }, [state]);
+  function handleSubmit(formData: FormData) {
+    setError(null);
+    startTransition(async () => {
+      const result = await createProviderKey(null, formData);
+      if (result.ok) {
+        setOpen(false);
+      } else {
+        setError(result.error);
+      }
+    });
+  }
 
   const meta = PROVIDER_CATALOG[type];
 
@@ -72,7 +76,7 @@ export function AddProviderDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <form action={formAction} className="space-y-4">
+        <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="type">Fournisseur</Label>
             <Select
@@ -168,9 +172,9 @@ export function AddProviderDialog() {
             </div>
           )}
 
-          {state && !state.ok && (
+          {error && (
             <Alert variant="destructive">
-              <AlertDescription>{state.error}</AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 

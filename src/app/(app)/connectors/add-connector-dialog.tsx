@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState, useTransition } from "react";
 import { IconPlus, IconExternalLink } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ import {
   CONNECTOR_TYPES,
   type ConnectorType,
 } from "@/lib/connectors/catalog";
-import { createConnectorKey, type ActionResult } from "./actions";
+import { createConnectorKey } from "./actions";
 
 const officialTypes = CONNECTOR_TYPES.filter(
   (t) => CONNECTOR_CATALOG[t].category === "official"
@@ -42,14 +42,20 @@ const commercialTypes = CONNECTOR_TYPES.filter(
 export function AddConnectorDialog() {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<ConnectorType>("piste");
-  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
-    createConnectorKey,
-    null
-  );
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (state?.ok) setOpen(false);
-  }, [state]);
+  function handleSubmit(formData: FormData) {
+    setError(null);
+    startTransition(async () => {
+      const result = await createConnectorKey(null, formData);
+      if (result.ok) {
+        setOpen(false);
+      } else {
+        setError(result.error);
+      }
+    });
+  }
 
   const meta = CONNECTOR_CATALOG[type];
 
@@ -72,7 +78,7 @@ export function AddConnectorDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <form action={formAction} className="space-y-4">
+        <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="type">Source</Label>
             <Select
@@ -150,9 +156,9 @@ export function AddConnectorDialog() {
             </div>
           ))}
 
-          {state && !state.ok && (
+          {error && (
             <Alert variant="destructive">
-              <AlertDescription>{state.error}</AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
