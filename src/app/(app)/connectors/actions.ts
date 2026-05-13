@@ -77,6 +77,86 @@ export async function deleteConnectorKey(id: string): Promise<void> {
   revalidatePath("/connectors");
 }
 
+export async function updateConnectorKey(
+  _prev: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) {
+    return { ok: false, error: "ID manquant." };
+  }
+
+  const [existing] = await db
+    .select()
+    .from(connectorKeys)
+    .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)))
+    .limit(1);
+
+  if (!existing) return { ok: false, error: "Connecteur introuvable." };
+
+  const meta = CONNECTOR_CATALOG[existing.type];
+  const updates: {
+    label?: string;
+    credentialsCiphertext?: string;
+    credentialsIv?: string;
+    credentialsTag?: string;
+  } = {};
+
+  const labelRaw = formData.get("label");
+  if (typeof labelRaw === "string" && labelRaw.trim()) {
+    updates.label = labelRaw.trim();
+  }
+
+  // Si au moins un champ credential est renseigné, on construit un nouveau
+  // blob complet (tous les champs requis doivent être présents ensemble —
+  // une rotation de credentials est tout-ou-rien).
+  const newCredentials: Record<string, string> = {};
+  let anyCredentialProvided = false;
+  for (const field of meta.credentialFields) {
+    const v = formData.get(field.name);
+    if (typeof v === "string" && v.trim()) {
+      newCredentials[field.name] = v.trim();
+      anyCredentialProvided = true;
+    }
+  }
+  if (anyCredentialProvided) {
+    for (const field of meta.credentialFields) {
+      if (field.required && !newCredentials[field.name]) {
+        return {
+          ok: false,
+          error: `Pour rotater les identifiants, renseignez tous les champs requis (${field.label} manquant).`,
+        };
+      }
+    }
+    const blob = encrypt(JSON.stringify(newCredentials));
+    updates.credentialsCiphertext = blob.ciphertext;
+    updates.credentialsIv = blob.iv;
+    updates.credentialsTag = blob.tag;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { ok: true };
+  }
+
+  try {
+    await db
+      .update(connectorKeys)
+      .set(updates)
+      .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erreur";
+    if (msg.includes("connector_keys_user_label_idx")) {
+      return { ok: false, error: "Ce libellé est déjà utilisé." };
+    }
+    return { ok: false, error: "Impossible de modifier le connecteur." };
+  }
+
+  revalidatePath("/connectors");
+  return { ok: true };
+}
+
 export async function toggleConnectorKeyActive(id: string): Promise<void> {
   const userId = await requireUserId();
   const [current] = await db
