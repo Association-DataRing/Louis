@@ -18,6 +18,7 @@ import {
   IconSearch,
   IconPlus,
   IconFolders,
+  IconTable,
 } from "@tabler/icons-react";
 import { signOutAction } from "@/auth/actions";
 import { ConversationItem } from "./chat/conversation-item";
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/chat", label: "Conversations", icon: IconMessageCircle },
   { href: "/projects", label: "Projets", icon: IconFolders },
   { href: "/documents", label: "Documents", icon: IconFolder },
+  { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
   { href: "/providers", label: "Providers IA", icon: IconKey },
   { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected },
   { href: "/mcp", label: "Serveurs MCP", icon: IconBolt },
