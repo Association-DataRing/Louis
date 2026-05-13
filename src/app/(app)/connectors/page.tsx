@@ -1,29 +1,40 @@
 import { desc, eq } from "drizzle-orm";
-import { IconShieldLock, IconInfoCircle } from "@tabler/icons-react";
+import { IconShieldLock, IconInfoCircle, IconClock } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { connectorKeys, type ConnectorKey } from "@/db/schema";
-import { type ConnectorType } from "@/lib/connectors/catalog";
+import {
+  CONNECTOR_TYPES,
+  type ConnectorType,
+} from "@/lib/connectors/catalog";
 import { ConnectorCard } from "./connector-card";
 
-type Group = {
-  title: string;
-  subtitle: string;
-  types: ConnectorType[];
-};
-
-const groups: Group[] = [
+// Connecteurs prévus dans la roadmap mais pas encore implémentés. Affichés
+// en cartes "Bientôt" pour montrer où va le produit.
+const COMING_SOON: Array<{
+  label: string;
+  description: string;
+  category: "official" | "commercial";
+}> = [
   {
-    title: "Officiels",
-    subtitle:
-      "Passerelles institutionnelles api.gouv.fr — sources de droit français de référence.",
-    types: ["piste"],
+    label: "Judilibre",
+    category: "official",
+    description: "Cour de cassation — accès direct sans passer par PISTE.",
   },
   {
-    title: "Commerciaux",
-    subtitle:
-      "Bases B2B avec compte payant — données structurées entreprises, jurisprudence enrichie, etc.",
-    types: ["pappers"],
+    label: "Doctrine",
+    category: "commercial",
+    description: "Jurisprudence + doctrine enrichie, recherche sémantique.",
+  },
+  {
+    label: "Lefebvre Dalloz",
+    category: "commercial",
+    description: "Encyclopédies, codes commentés, actualité juridique.",
+  },
+  {
+    label: "INPI direct",
+    category: "official",
+    description: "Marques, brevets, RNCS — accès direct sans PISTE.",
   },
 ];
 
@@ -70,27 +81,31 @@ export default async function ConnectorsPage() {
         </div>
       </div>
 
-      {groups.map((group) => (
-        <section key={group.title} className="mb-10 last:mb-0">
-          <div className="mb-4 flex items-baseline justify-between gap-4 flex-wrap">
-            <h2 className="font-heading text-xl tracking-tight">
-              {group.title}
-            </h2>
-            <p className="text-xs text-muted-foreground max-w-xl text-right">
-              {group.subtitle}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {group.types.map((type) => (
-              <ConnectorCard
-                key={type}
-                type={type}
-                keys={keysByType.get(type) ?? []}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      <section className="mb-10">
+        <h2 className="font-heading text-xl tracking-tight mb-4">
+          Disponibles
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {CONNECTOR_TYPES.map((type) => (
+            <ConnectorCard
+              key={type}
+              type={type}
+              keys={keysByType.get(type) ?? []}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="font-heading text-xl tracking-tight mb-4">
+          Bientôt
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {COMING_SOON.map((c) => (
+            <ComingSoonCard key={c.label} {...c} />
+          ))}
+        </div>
+      </section>
 
       <aside className="mt-12 rounded-lg border border-border bg-card p-4 flex items-start gap-3 text-sm">
         <IconInfoCircle className="size-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -102,5 +117,33 @@ export default async function ConnectorsPage() {
         </p>
       </aside>
     </main>
+  );
+}
+
+function ComingSoonCard({
+  label,
+  description,
+  category,
+}: {
+  label: string;
+  description: string;
+  category: "official" | "commercial";
+}) {
+  return (
+    <div className="border border-dashed border-border rounded-lg p-5 bg-muted/20 flex flex-col gap-3 opacity-70">
+      <div className="flex items-center gap-2">
+        <h3 className="font-heading text-base tracking-tight">{label}</h3>
+        <span className="text-[10px] text-muted-foreground rounded-full bg-muted px-2 py-0.5">
+          {category === "official" ? "Officiel" : "Commercial"}
+        </span>
+        <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted-foreground rounded-full bg-muted px-2 py-0.5">
+          <IconClock className="size-2.5" />
+          Bientôt
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        {description}
+      </p>
+    </div>
   );
 }
