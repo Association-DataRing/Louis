@@ -41,38 +41,18 @@ export async function extractText(
   };
 }
 
-type PdfTextItem = { str?: string };
-
 async function extractPdf(buffer: Buffer): Promise<string> {
-  // pdfjs-dist legacy build : pas de worker, fonctionne en Node pur. On
-  // accède au sous-export sans le bundler (Turbopack ne tente pas de
-  // résoudre `pdf.worker.mjs`).
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  // Désactive toute tentative de worker → tout tourne sur le main thread
-  // côté serveur (acceptable car la latence d'extraction n'est pas critique).
-  if (pdfjs.GlobalWorkerOptions) {
-    pdfjs.GlobalWorkerOptions.workerSrc = "";
-  }
-
-  const doc = await pdfjs.getDocument({
-    data: new Uint8Array(buffer),
-    useWorkerFetch: false,
-    useSystemFonts: true,
-    disableFontFace: true,
-  } as Parameters<typeof pdfjs.getDocument>[0]).promise;
-
-  const pages: string[] = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    const text = (content.items as PdfTextItem[])
-      .map((item) => item.str ?? "")
-      .join(" ");
-    pages.push(text);
-    page.cleanup();
-  }
-  await doc.destroy();
-  return pages.join("\n");
+  // pdf-parse v1.1.1 — embarque sa propre copie bundlée de pdfjs sans
+  // worker, ce qui évite tout le tintouin Turbopack / fake worker. Import
+  // du sub-path pour contourner le bug d'auto-test au require de v1.
+  type PdfParseFn = (data: Buffer) => Promise<{ text: string }>;
+  const mod = (await import(
+    "pdf-parse/lib/pdf-parse.js"
+  )) as unknown as { default?: PdfParseFn } | PdfParseFn;
+  const pdfParse: PdfParseFn =
+    typeof mod === "function" ? mod : (mod.default as PdfParseFn);
+  const result = await pdfParse(buffer);
+  return result.text ?? "";
 }
 
 async function extractDocx(buffer: Buffer): Promise<string> {
