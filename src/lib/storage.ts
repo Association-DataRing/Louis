@@ -1,6 +1,7 @@
 import {
   CreateBucketCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadBucketCommand,
   PutObjectCommand,
   S3Client,
@@ -60,6 +61,14 @@ export async function deleteObject(key: string): Promise<void> {
   await getClient().send(
     new DeleteObjectCommand({ Bucket: bucket, Key: key })
   );
+}
+
+export async function getObjectBytes(key: string): Promise<Uint8Array> {
+  const res = await getClient().send(
+    new GetObjectCommand({ Bucket: bucket, Key: key })
+  );
+  if (!res.Body) throw new Error("Empty body");
+  return res.Body.transformToByteArray();
 }
 
 export function bucketName(): string {

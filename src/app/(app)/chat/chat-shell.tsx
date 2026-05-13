@@ -60,6 +60,8 @@ type Props = {
   initialProviderKeyId: string;
   initialModelId: string | null;
   initialConversationId: string | null;
+  initialProjectId: string | null;
+  projectContext: { id: string; name: string } | null;
   initialMessages: { id: string; role: string; content: string }[];
   availableDocuments: DocumentOption[];
   initialUsage: Usage;
@@ -230,6 +232,8 @@ export function ChatShell({
   initialProviderKeyId,
   initialModelId,
   initialConversationId,
+  initialProjectId,
+  projectContext,
   initialMessages,
   availableDocuments,
   initialUsage,
@@ -319,6 +323,7 @@ export function ChatShell({
           conversationId,
           documentIds: attachedDocIds,
           modelOverride: modelId,
+          projectId: initialProjectId,
         },
       }
     );
@@ -330,8 +335,19 @@ export function ChatShell({
   return (
     <div className="flex-1 flex h-full min-w-0 w-full">
     <div className="flex-1 flex flex-col h-full min-w-0 bg-background">
-      {/* Top header — light, just usage + sovereignty */}
-      <header className="border-b border-border px-6 py-3 flex items-center justify-end gap-3 text-xs h-[52px]">
+      {/* Top header — light, breadcrumb project + usage + sovereignty */}
+      <header className="border-b border-border px-6 py-3 flex items-center gap-3 text-xs h-[52px]">
+        {projectContext && (
+          <Link
+            href={`/projects/${projectContext.id}`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Voir le projet"
+          >
+            <span className="size-1.5 rounded-full bg-primary" />
+            <span className="truncate max-w-[200px]">{projectContext.name}</span>
+          </Link>
+        )}
+        <div className="ml-auto flex items-center gap-3">
         {(usage.inputTokens > 0 || usage.outputTokens > 0) && (
           <span
             className="text-muted-foreground tabular-nums"
@@ -352,6 +368,7 @@ export function ChatShell({
         >
           {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
         </Badge>
+        </div>
       </header>
 
       {/* Messages or empty state */}

@@ -3,10 +3,10 @@ import { redirect } from "next/navigation";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { conversations, documents, messages, providerKeys } from "@/db/schema";
+import { conversations, documents, messages, projects, providerKeys } from "@/db/schema";
 import { ChatShell } from "./chat-shell";
 
-type Search = { id?: string };
+type Search = { id?: string; project?: string };
 
 export default async function ChatPage({
   searchParams,
@@ -20,6 +20,21 @@ export default async function ChatPage({
 
   const sp = await searchParams;
   const currentId = sp.id;
+  const projectIdFromUrl = sp.project ?? null;
+
+  // Si l'URL contient ?project=X, on vérifie qu'il appartient bien à
+  // l'utilisateur et on récupère son nom pour l'afficher en breadcrumb.
+  let projectContext: { id: string; name: string } | null = null;
+  if (projectIdFromUrl) {
+    const [proj] = await db
+      .select({ id: projects.id, name: projects.name })
+      .from(projects)
+      .where(
+        and(eq(projects.id, projectIdFromUrl), eq(projects.userId, userId))
+      )
+      .limit(1);
+    if (proj) projectContext = proj;
+  }
 
   const activeKeys = await db
     .select({
@@ -54,6 +69,9 @@ export default async function ChatPage({
   let initialModelId: string | null = null;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  // Si on charge une conversation existante, on hérite de SON projectId pour
+  // le breadcrumb. Sinon on prend celui de l'URL (?project=X).
+  let conversationProjectContext = projectContext;
   if (currentId) {
     const [conv] = await db
       .select()
@@ -67,6 +85,16 @@ export default async function ChatPage({
       initialProviderKeyId = conv.providerKeyId;
     }
     initialModelId = conv.modelId;
+    if (conv.projectId) {
+      const [p] = await db
+        .select({ id: projects.id, name: projects.name })
+        .from(projects)
+        .where(
+          and(eq(projects.id, conv.projectId), eq(projects.userId, userId))
+        )
+        .limit(1);
+      if (p) conversationProjectContext = p;
+    }
     const rows = await db
       .select({
         id: messages.id,
@@ -92,11 +120,15 @@ export default async function ChatPage({
   // le state interne de useChat).
   return (
     <ChatShell
-      key={currentId ?? "new"}
+      key={currentId ?? `new-${projectIdFromUrl ?? ""}`}
       providerKeys={activeKeys}
       initialProviderKeyId={initialProviderKeyId}
       initialModelId={initialModelId}
       initialConversationId={currentId ?? null}
+      initialProjectId={
+        currentId ? null : projectContext?.id ?? null
+      }
+      projectContext={conversationProjectContext}
       initialMessages={initialMessages}
       availableDocuments={docList}
       initialUsage={{

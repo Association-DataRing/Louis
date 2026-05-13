@@ -22,6 +22,7 @@ type Body = {
   conversationId?: string | null;
   modelOverride?: string | null;
   documentIds?: string[];
+  projectId?: string | null;
 };
 
 export async function POST(req: Request) {
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
     providerKeyId,
     modelOverride,
     documentIds,
+    projectId: projectIdFromBody,
   } = body;
   let conversationId = body.conversationId ?? null;
 
@@ -60,6 +62,7 @@ export async function POST(req: Request) {
       .values({
         userId,
         providerKeyId,
+        projectId: projectIdFromBody ?? null,
         modelId: modelOverride ?? null,
         title: title.slice(0, 80),
       })
