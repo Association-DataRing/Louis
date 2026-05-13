@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist, Geist_Mono, Inter, EB_Garamond } from "next/font/google";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const geistMonoHeading = Geist_Mono({ subsets: ["latin"], variable: "--font-heading" });
+// Heading font : EB Garamond — elegant serif, ton "justice" qui aligne Louis
+// sur la palette typographique de Mike. Inter reste la police de corps.
+const ebGaramond = EB_Garamond({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  weight: ["400", "500", "600", "700"],
+});
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -54,7 +60,7 @@ export default function RootLayout({
         geistSans.variable,
         geistMono.variable,
         inter.variable,
-        geistMonoHeading.variable,
+        ebGaramond.variable,
         "font-sans"
       )}
     >

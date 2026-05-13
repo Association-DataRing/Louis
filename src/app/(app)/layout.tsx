@@ -18,12 +18,14 @@ export default async function AppLayout({
   };
 
   return (
-    <div className="min-h-full flex flex-col md:flex-row">
-      <aside className="hidden md:flex w-60 shrink-0 border-r border-sidebar-border">
+    <div className="h-dvh bg-background flex flex-col md:flex-row overflow-hidden">
+      <aside className="hidden md:flex shrink-0">
         <SidebarContent user={user} />
       </aside>
       <MobileNav user={user} />
-      <div className="flex-1 min-w-0 min-h-0">{children}</div>
+      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto md:overflow-hidden">
+        {children}
+      </main>
     </div>
   );
 }

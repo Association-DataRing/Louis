@@ -22,9 +22,13 @@ export function MobileNav({ user }: Props) {
         >
           <IconMenu2 className="size-5" />
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-0">
+        <SheetContent side="left" className="w-64 p-0">
           <SheetTitle className="sr-only">Navigation Louis</SheetTitle>
-          <SidebarContent user={user} onNavigate={() => setOpen(false)} />
+          <SidebarContent
+            user={user}
+            onNavigate={() => setOpen(false)}
+            forceOpen
+          />
         </SheetContent>
       </Sheet>
       <Link

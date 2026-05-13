@@ -19,6 +19,7 @@ export default async function ChatPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const userName = session.user.name;
 
   const sp = await searchParams;
   const currentId = sp.id;
@@ -128,6 +129,7 @@ export default async function ChatPage({
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,
         }}
+        userName={userName}
       />
     </div>
   );
