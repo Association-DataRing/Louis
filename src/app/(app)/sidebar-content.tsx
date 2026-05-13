@@ -9,7 +9,6 @@ import {
   IconPlugConnected,
   IconMessageCircle,
   IconFolder,
-  IconSettings,
   IconLogout,
   IconBolt,
   IconShieldLock,
@@ -32,7 +31,6 @@ const navItems = [
   { href: "/providers", label: "Providers IA", icon: IconKey },
   { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected },
   { href: "/mcp", label: "Serveurs MCP", icon: IconBolt },
-  { href: "/settings", label: "Paramètres", icon: IconSettings },
 ];
 
 type Conversation = { id: string; title: string };
@@ -232,37 +230,65 @@ export function SidebarContent({
         )}
       </div>
 
-      {/* User */}
-      <div className="border-t border-sidebar-border p-2.5 space-y-1">
-        <div
-          className={`flex items-center gap-2.5 px-2 py-1.5 ${
-            !open ? "justify-center" : ""
-          }`}
-        >
-          <div className="size-7 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
-            {initials}
-          </div>
-          {open && (
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium truncate">{user.name}</div>
-              <div className="text-[10px] text-muted-foreground truncate">
-                {user.email}
+      {/* Profile + logout */}
+      <div className="border-t border-sidebar-border p-2">
+        {open ? (
+          <div className="flex items-center gap-1">
+            <Link
+              href="/profile"
+              onClick={onNavigate}
+              className={`flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors min-w-0 ${
+                pathname.startsWith("/profile")
+                  ? "bg-sidebar-accent"
+                  : "hover:bg-sidebar-accent"
+              }`}
+              title="Mon profil"
+            >
+              <div className="size-7 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
+                {initials}
               </div>
-            </div>
-          )}
-        </div>
-        <form action={signOutAction}>
-          <button
-            type="submit"
-            title={!open ? "Se déconnecter" : undefined}
-            className={`w-full flex items-center gap-3 h-9 px-2.5 rounded-md text-sm hover:bg-sidebar-accent transition-colors text-left ${
-              !open ? "justify-center" : ""
-            }`}
-          >
-            <IconLogout className="size-4 shrink-0" />
-            {open && <span>Se déconnecter</span>}
-          </button>
-        </form>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium truncate">{user.name}</div>
+                <div className="text-[10px] text-muted-foreground truncate">
+                  {user.email}
+                </div>
+              </div>
+            </Link>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                title="Se déconnecter"
+                aria-label="Se déconnecter"
+                className="size-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+              >
+                <IconLogout className="size-4" />
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            <Link
+              href="/profile"
+              onClick={onNavigate}
+              title="Mon profil"
+              className="size-9 inline-flex items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors"
+            >
+              <div className="size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
+                {initials}
+              </div>
+            </Link>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                title="Se déconnecter"
+                aria-label="Se déconnecter"
+                className="size-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+              >
+                <IconLogout className="size-4" />
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
