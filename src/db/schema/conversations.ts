@@ -1,6 +1,7 @@
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { providerKeys } from "./provider-keys";
+import { projects } from "./projects";
 
 export const conversations = pgTable("conversations", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -8,6 +9,9 @@ export const conversations = pgTable("conversations", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   providerKeyId: uuid("provider_key_id").references(() => providerKeys.id, {
+    onDelete: "set null",
+  }),
+  projectId: uuid("project_id").references(() => projects.id, {
     onDelete: "set null",
   }),
   title: text("title").notNull().default("Nouvelle conversation"),

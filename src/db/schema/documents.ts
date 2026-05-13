@@ -1,11 +1,15 @@
 import { pgTable, uuid, text, integer, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
+import { projects } from "./projects";
 
 export const documents = pgTable("documents", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "set null",
+  }),
   filename: text("filename").notNull(),
   contentType: text("content_type").notNull(),
   sizeBytes: integer("size_bytes").notNull(),

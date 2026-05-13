@@ -1,4 +1,5 @@
 export * from "./users";
+export * from "./projects";
 export * from "./provider-keys";
 export * from "./conversations";
 export * from "./messages";
