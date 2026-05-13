@@ -3,10 +3,7 @@ import { IconShieldLock, IconInfoCircle } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { providerKeys, type ProviderKey } from "@/db/schema";
-import {
-  PROVIDER_CATALOG,
-  type ProviderType,
-} from "@/lib/providers/catalog";
+import { type ProviderType } from "@/lib/providers/catalog";
 import { ProviderCard } from "./provider-card";
 
 type Group = {
@@ -85,7 +82,7 @@ export default async function ProvidersPage() {
             {group.types.map((type) => (
               <ProviderCard
                 key={type}
-                meta={PROVIDER_CATALOG[type]}
+                type={type}
                 keys={keysByType.get(type) ?? []}
               />
             ))}

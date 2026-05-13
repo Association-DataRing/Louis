@@ -37,7 +37,7 @@ import {
 import {
   PROVIDER_CATALOG,
   SOVEREIGNTY_LABEL,
-  type ProviderMeta,
+  type ProviderType,
 } from "@/lib/providers/catalog";
 import type { ProviderKey } from "@/db/schema/provider-keys";
 import {
@@ -50,11 +50,14 @@ import {
 } from "./actions";
 
 type Props = {
-  meta: ProviderMeta;
+  type: ProviderType;
   keys: ProviderKey[];
 };
 
-export function ProviderCard({ meta, keys }: Props) {
+export function ProviderCard({ type, keys }: Props) {
+  // Le catalogue contient des composants React (icônes) → on ne peut pas le
+  // passer en prop depuis un Server Component. Lookup côté client.
+  const meta = PROVIDER_CATALOG[type];
   // Affiche la clé prioritaire : isDefault > la plus récente.
   const primary =
     keys.find((k) => k.isDefault) ?? keys[0] ?? null;
@@ -402,5 +405,3 @@ function TestBadge({ status }: { status: string | null }) {
   );
 }
 
-// Expose PROVIDER_CATALOG locally for type checks (avoids the unused-import lint).
-void PROVIDER_CATALOG;
