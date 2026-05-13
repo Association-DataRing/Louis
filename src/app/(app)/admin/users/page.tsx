@@ -26,7 +26,7 @@ export default async function AdminUsersPage() {
     .orderBy(desc(users.createdAt));
 
   return (
-    <main className="px-8 py-10 max-w-5xl">
+    <main className="mx-auto w-full max-w-5xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
           <h1 className="font-heading text-3xl tracking-tight">Utilisateurs</h1>
