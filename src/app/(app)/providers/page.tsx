@@ -1,87 +1,108 @@
 import { desc, eq } from "drizzle-orm";
+import { IconShieldLock, IconInfoCircle } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { providerKeys } from "@/db/schema";
-import { Badge } from "@/components/ui/badge";
-import { PROVIDER_CATALOG, SOVEREIGNTY_LABEL } from "@/lib/providers/catalog";
-import { AddProviderDialog } from "./add-provider-dialog";
-import { ProviderRow } from "./provider-row";
+import { providerKeys, type ProviderKey } from "@/db/schema";
+import {
+  PROVIDER_CATALOG,
+  type ProviderType,
+} from "@/lib/providers/catalog";
+import { ProviderCard } from "./provider-card";
+
+type Group = {
+  title: string;
+  subtitle: string;
+  types: ProviderType[];
+};
+
+const groups: Group[] = [
+  {
+    title: "Souverains",
+    subtitle: "Hébergés en France ou par l'État. Privilégiez ces providers pour les dossiers couverts par le secret professionnel.",
+    types: ["mistral", "scaleway", "ovh", "albert"],
+  },
+  {
+    title: "International",
+    subtitle: "Modèles américains les plus capables. Vérifiez vos engagements contractuels avant d'envoyer des données sensibles.",
+    types: ["anthropic", "openai"],
+  },
+  {
+    title: "Self-hosted",
+    subtitle: "Serveurs d'inférence auto-hébergés (Ollama, vLLM, llama.cpp, LiteLLM…) via API OpenAI-compatible.",
+    types: ["openai_compatible"],
+  },
+];
 
 export default async function ProvidersPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const keys = await db
+  const allKeys = await db
     .select()
     .from(providerKeys)
     .where(eq(providerKeys.userId, userId))
-    .orderBy(desc(providerKeys.createdAt));
+    .orderBy(desc(providerKeys.isDefault), desc(providerKeys.createdAt));
 
-  const sovereignCount = keys.filter(
-    (k) => PROVIDER_CATALOG[k.type].sovereignty !== "us"
-  ).length;
-  const totalCount = keys.length;
+  const keysByType = new Map<ProviderType, ProviderKey[]>();
+  for (const k of allKeys) {
+    if (!keysByType.has(k.type)) keysByType.set(k.type, []);
+    keysByType.get(k.type)!.push(k);
+  }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-8 md:px-8 md:py-10">
-      <header className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-3xl tracking-tight">Providers IA</h1>
-          <p className="mt-2 text-muted-foreground max-w-2xl">
-            Connectez vos propres clés d&apos;API. Elles sont chiffrées au repos
-            (AES-256-GCM) et ne quittent jamais votre serveur Louis.
-          </p>
-        </div>
-        <AddProviderDialog />
+    <main className="mx-auto w-full max-w-6xl px-6 py-8 md:px-8 md:py-10">
+      <header className="mb-6">
+        <h1 className="font-heading text-3xl tracking-tight">Gestion des clés API</h1>
+        <p className="mt-2 text-muted-foreground max-w-2xl">
+          Connectez vos propres clés. Une seule règle : <strong>vos clés ne
+          quittent jamais votre instance</strong>.
+        </p>
       </header>
 
-      {totalCount > 0 && (
-        <div className="mb-6 flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline">{totalCount} clé{totalCount > 1 ? "s" : ""}</Badge>
-          <Badge variant="outline">
-            {sovereignCount} souveraine{sovereignCount > 1 ? "s" : ""} ({SOVEREIGNTY_LABEL.fr}/{SOVEREIGNTY_LABEL.eu})
-          </Badge>
+      {/* Security banner */}
+      <div className="mb-8 rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
+        <IconShieldLock className="size-5 text-primary shrink-0 mt-0.5" />
+        <div className="text-sm">
+          <p className="font-medium text-foreground">Sécurité des clés API</p>
+          <p className="mt-1 text-muted-foreground">
+            Toutes les clés sont chiffrées <strong>AES-256-GCM</strong> avant
+            d&apos;être stockées en base. Le décryptage n&apos;intervient
+            qu&apos;à l&apos;instant de l&apos;appel au provider, côté serveur.
+            Aucun appel API n&apos;est relayé par un service tiers.
+          </p>
         </div>
-      )}
+      </div>
 
-      {totalCount === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="border border-border rounded-lg divide-y divide-border bg-card">
-          {keys.map((key) => (
-            <ProviderRow key={key.id} entry={key} />
-          ))}
-        </div>
-      )}
+      {groups.map((group) => (
+        <section key={group.title} className="mb-10 last:mb-0">
+          <div className="mb-4 flex items-baseline justify-between gap-4 flex-wrap">
+            <h2 className="font-heading text-xl tracking-tight">{group.title}</h2>
+            <p className="text-xs text-muted-foreground max-w-xl text-right">
+              {group.subtitle}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {group.types.map((type) => (
+              <ProviderCard
+                key={type}
+                meta={PROVIDER_CATALOG[type]}
+                keys={keysByType.get(type) ?? []}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
 
-      <SovereigntyNote />
+      <aside className="mt-12 rounded-lg border border-border bg-card p-4 flex items-start gap-3 text-sm">
+        <IconInfoCircle className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-muted-foreground">
+          Le badge <strong>FR</strong> / <strong>UE</strong> / <strong>US</strong>{" "}
+          sur chaque carte indique où sont traitées vos requêtes. Pour les
+          dossiers soumis au secret professionnel ou au RGPD strict,
+          privilégiez les providers FR ou UE. Louis ne force aucun choix :
+          votre cabinet décide.
+        </p>
+      </aside>
     </main>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="border border-dashed border-border rounded-lg p-10 text-center">
-      <h2 className="font-heading text-lg">Aucun provider configuré</h2>
-      <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-        Louis n&apos;embarque aucun fournisseur IA par défaut. Ajoutez votre
-        première clé pour commencer — privilégiez un provider souverain
-        (Mistral, Scaleway, OVH, Albert).
-      </p>
-    </div>
-  );
-}
-
-function SovereigntyNote() {
-  return (
-    <aside className="mt-10 border-l-2 border-primary/50 pl-4 text-sm text-muted-foreground">
-      <p className="font-medium text-foreground">À propos de la souveraineté</p>
-      <p className="mt-1 max-w-3xl">
-        Le badge FR / UE / US sur chaque provider indique où sont traitées vos
-        requêtes. Pour les dossiers couverts par le secret professionnel ou
-        soumis au RGPD strict, privilégiez les providers FR ou UE. Louis ne
-        force aucun choix : votre cabinet décide.
-      </p>
-    </aside>
   );
 }

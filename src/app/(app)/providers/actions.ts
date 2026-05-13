@@ -112,6 +112,67 @@ export async function setProviderKeyDefault(id: string): Promise<void> {
   revalidatePath("/providers");
 }
 
+const updateSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().trim().min(1).max(80).optional(),
+  apiKey: z.string().trim().min(1).optional(),
+  baseUrl: z.string().trim().url().optional().or(z.literal("")),
+});
+
+export async function updateProviderKey(
+  _prev: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+
+  const parsed = updateSchema.safeParse({
+    id: formData.get("id"),
+    label: formData.get("label") ?? undefined,
+    apiKey: formData.get("apiKey") ?? undefined,
+    baseUrl: formData.get("baseUrl") ?? "",
+  });
+
+  if (!parsed.success) {
+    return { ok: false, error: "Champs invalides." };
+  }
+
+  const updates: {
+    label?: string;
+    apiKeyCiphertext?: string;
+    apiKeyIv?: string;
+    apiKeyTag?: string;
+    baseUrl?: string | null;
+  } = {};
+  if (parsed.data.label) updates.label = parsed.data.label;
+  if (parsed.data.apiKey) {
+    const blob = encrypt(parsed.data.apiKey);
+    updates.apiKeyCiphertext = blob.ciphertext;
+    updates.apiKeyIv = blob.iv;
+    updates.apiKeyTag = blob.tag;
+  }
+  if (parsed.data.baseUrl !== undefined) {
+    updates.baseUrl = parsed.data.baseUrl || null;
+  }
+
+  try {
+    await db
+      .update(providerKeys)
+      .set(updates)
+      .where(
+        and(eq(providerKeys.id, parsed.data.id), eq(providerKeys.userId, userId))
+      );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erreur inconnue";
+    if (msg.includes("provider_keys_user_label_idx")) {
+      return { ok: false, error: "Ce libellé est déjà utilisé." };
+    }
+    return { ok: false, error: "Impossible de modifier la clé." };
+  }
+
+  revalidatePath("/providers");
+  return { ok: true };
+}
+
 export async function testProviderKey(id: string): Promise<void> {
   const userId = await requireUserId();
   const [key] = await db
