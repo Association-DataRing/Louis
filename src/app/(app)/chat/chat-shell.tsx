@@ -14,6 +14,7 @@ import {
   IconX,
   IconTool,
   IconPlayerStop,
+  IconFileText,
 } from "@tabler/icons-react";
 import {
   Select,
@@ -79,6 +80,38 @@ function toUIMessages(rows: Props["initialMessages"]): UIMessage[] {
 function formatTokens(n: number): string {
   if (n < 1000) return `${n}`;
   return `${(n / 1000).toFixed(1)}k`;
+}
+
+// Escape les caractères regex spéciaux pour un littéral sûr.
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Détecte les mentions de noms de fichiers dans le texte de l'assistant et
+ * les transforme en liens markdown protocole `louis-doc:<id>`. Le component
+ * `a` custom de ReactMarkdown intercepte ces liens et les rend comme
+ * boutons cliquables qui ouvrent le DocPanel.
+ *
+ * Utile parce que les tool calls (search_documents) ne sont pas persistés
+ * en DB — au rechargement d'une conversation, seul le texte reste. Les
+ * mentions de filename sont la trace la plus robuste qu'on peut récupérer.
+ */
+function linkifyDocMentions(
+  raw: string,
+  docs: { id: string; filename: string }[]
+): string {
+  if (!docs.length) return raw;
+  // Tri par longueur décroissante : on traite d'abord les filenames longs
+  // pour éviter qu'un fichier "rapport.pdf" cannibalise "rapport_v2.pdf".
+  const sorted = [...docs].sort((a, b) => b.filename.length - a.filename.length);
+  let out = raw;
+  for (const d of sorted) {
+    if (!d.filename) continue;
+    const pattern = new RegExp(`(?<!\\]\\()(${escapeRegex(d.filename)})(?!\\))`, "g");
+    out = out.replace(pattern, `[$1](louis-doc:${d.id})`);
+  }
+  return out;
 }
 
 const TOOL_LABEL: Record<string, string> = {
@@ -402,8 +435,40 @@ export function ChatShell({
                           className="w-full text-sm leading-relaxed prose prose-sm prose-neutral dark:prose-invert max-w-none prose-pre:my-2 prose-headings:font-heading prose-headings:tracking-tight prose-p:my-1.5 prose-ul:my-2 prose-li:my-0.5"
                         >
                           {part.text ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {part.text}
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                a: ({ href, children, ...rest }) => {
+                                  if (
+                                    typeof href === "string" &&
+                                    href.startsWith("louis-doc:")
+                                  ) {
+                                    const docId = href.slice("louis-doc:".length);
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setOpenDoc({
+                                            documentId: docId,
+                                            targetText: "",
+                                          })
+                                        }
+                                        className="inline-flex items-center gap-1 rounded bg-muted hover:bg-accent px-1.5 py-0.5 text-[0.85em] font-medium not-prose transition-colors no-underline align-baseline"
+                                      >
+                                        <IconFileText className="size-3 shrink-0" />
+                                        {children}
+                                      </button>
+                                    );
+                                  }
+                                  return (
+                                    <a {...rest} href={href}>
+                                      {children}
+                                    </a>
+                                  );
+                                },
+                              }}
+                            >
+                              {linkifyDocMentions(part.text, availableDocuments)}
                             </ReactMarkdown>
                           ) : (
                             <Spinner className="size-4" />
