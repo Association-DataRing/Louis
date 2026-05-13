@@ -87,8 +87,12 @@ export default async function ChatPage({
     totalOutputTokens = rows.reduce((n, r) => n + (r.outputTokens ?? 0), 0);
   }
 
+  // key=currentId force le re-mount de ChatShell quand l'utilisateur change
+  // de conversation via la sidebar (navigation soft Next sinon ne ré-init pas
+  // le state interne de useChat).
   return (
     <ChatShell
+      key={currentId ?? "new"}
       providerKeys={activeKeys}
       initialProviderKeyId={initialProviderKeyId}
       initialModelId={initialModelId}

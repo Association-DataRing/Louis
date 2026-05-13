@@ -235,9 +235,11 @@ export function ChatShell({
     if (!conversationId) return;
     const url = new URL(window.location.href);
     if (url.searchParams.get("id") === conversationId) return;
-    url.searchParams.set("id", conversationId);
-    window.history.replaceState(null, "", url.toString());
-    router.refresh();
+    // router.replace met à jour à la fois l'URL côté navigateur ET le router
+    // Next (la sidebar peut donc lire le bon ?id via useSearchParams pour
+    // highlight la conv active). { scroll: false } évite que la page remonte
+    // en haut.
+    router.replace(`/chat?id=${conversationId}`, { scroll: false });
   }, [conversationId, router]);
 
   const [input, setInput] = useState("");
