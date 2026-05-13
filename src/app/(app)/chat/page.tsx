@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, desc, eq } from "drizzle-orm";
-import { IconPlus } from "@tabler/icons-react";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { conversations, documents, messages, providerKeys } from "@/db/schema";
-import { isNotNull } from "drizzle-orm";
 import { ChatShell } from "./chat-shell";
-import { ConversationsList } from "./conversations-list";
 
 type Search = { id?: string };
 
@@ -40,17 +37,6 @@ export default async function ChatPage({
   if (activeKeys.length === 0) {
     return <NoProviderState />;
   }
-
-  const convList = await db
-    .select({
-      id: conversations.id,
-      title: conversations.title,
-      updatedAt: conversations.updatedAt,
-    })
-    .from(conversations)
-    .where(eq(conversations.userId, userId))
-    .orderBy(desc(conversations.updatedAt))
-    .limit(30);
 
   const docList = await db
     .select({
@@ -102,36 +88,19 @@ export default async function ChatPage({
   }
 
   return (
-    <div className="flex h-full">
-      <aside className="hidden md:flex w-72 shrink-0 border-r border-border bg-card/40 flex-col">
-        <div className="p-3 border-b border-border">
-          <Link
-            href="/chat"
-            className="flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-          >
-            <IconPlus className="size-4" />
-            Nouvelle conversation
-          </Link>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <ConversationsList conversations={convList} currentId={currentId} />
-        </div>
-      </aside>
-
-      <ChatShell
-        providerKeys={activeKeys}
-        initialProviderKeyId={initialProviderKeyId}
-        initialModelId={initialModelId}
-        initialConversationId={currentId ?? null}
-        initialMessages={initialMessages}
-        availableDocuments={docList}
-        initialUsage={{
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-        }}
-        userName={userName}
-      />
-    </div>
+    <ChatShell
+      providerKeys={activeKeys}
+      initialProviderKeyId={initialProviderKeyId}
+      initialModelId={initialModelId}
+      initialConversationId={currentId ?? null}
+      initialMessages={initialMessages}
+      availableDocuments={docList}
+      initialUsage={{
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+      }}
+      userName={userName}
+    />
   );
 }
 

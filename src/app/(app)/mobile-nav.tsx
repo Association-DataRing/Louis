@@ -8,9 +8,10 @@ import { SidebarContent } from "./sidebar-content";
 
 type Props = {
   user: { name: string; email: string; role: string };
+  conversations: { id: string; title: string }[];
 };
 
-export function MobileNav({ user }: Props) {
+export function MobileNav({ user, conversations }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -26,6 +27,7 @@ export function MobileNav({ user }: Props) {
           <SheetTitle className="sr-only">Navigation Louis</SheetTitle>
           <SidebarContent
             user={user}
+            conversations={conversations}
             onNavigate={() => setOpen(false)}
             forceOpen
           />
