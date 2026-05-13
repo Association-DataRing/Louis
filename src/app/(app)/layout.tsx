@@ -36,7 +36,7 @@ export default async function AppLayout({
         <SidebarContent user={user} conversations={convList} />
       </aside>
       <MobileNav user={user} conversations={convList} />
-      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto md:overflow-hidden">
+      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto">
         {children}
       </main>
     </div>
