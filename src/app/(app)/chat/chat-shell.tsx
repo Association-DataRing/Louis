@@ -7,6 +7,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { DocPanel } from "./doc-panel";
 import {
   IconArrowUp,
   IconPaperclip,
@@ -93,19 +94,71 @@ function formatToolInput(input: unknown): string {
   return "";
 }
 
+type SearchDocumentsHit = {
+  documentId: string;
+  filename: string;
+  chunk: number;
+  content: string;
+  similarity: number;
+};
+
 function ToolPart({
   name,
   input,
+  output,
   state,
+  onOpenDoc,
 }: {
   name: string;
   input?: unknown;
   output?: unknown;
   state?: string;
+  onOpenDoc: (documentId: string, targetText: string) => void;
 }) {
   const label = TOOL_LABEL[name] ?? name;
   const inputSummary = formatToolInput(input);
   const isPending = state === "input-streaming" || state === "input-available";
+
+  // search_documents → rendu spécial avec sources cliquables
+  if (
+    name === "search_documents" &&
+    !isPending &&
+    Array.isArray(output) &&
+    output.length > 0
+  ) {
+    const hits = output as SearchDocumentsHit[];
+    return (
+      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs flex flex-col gap-1.5 max-w-[85%]">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <IconTool className="size-3 text-primary" />
+          <span className="font-medium text-foreground">{label}</span>
+          {inputSummary && <span className="truncate">· {inputSummary}</span>}
+          <span className="ml-auto text-[10px]">
+            {hits.length} extrait{hits.length > 1 ? "s" : ""}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          {hits.map((h, i) => (
+            <button
+              key={`${h.documentId}-${h.chunk}-${i}`}
+              type="button"
+              onClick={() => onOpenDoc(h.documentId, h.content)}
+              className="text-left flex items-center gap-2 rounded-md bg-background border border-border px-2 py-1.5 hover:border-primary/50 transition-colors group"
+            >
+              <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                #{h.chunk}
+              </span>
+              <span className="text-xs truncate flex-1 min-w-0 group-hover:text-foreground text-muted-foreground">
+                <span className="font-medium text-foreground">{h.filename}</span>
+                <span className="ml-2">{h.content.slice(0, 80)}…</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs flex items-center gap-2 max-w-[80%]">
       {isPending ? (
@@ -195,6 +248,11 @@ export function ChatShell({
   );
   const [attachedDocIds, setAttachedDocIds] = useState<string[]>([]);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
+  // Panneau document à droite (citation cliquée dans search_documents)
+  const [openDoc, setOpenDoc] = useState<{
+    documentId: string;
+    targetText: string;
+  } | null>(null);
 
   function handleProviderChange(nextId: string) {
     setProviderKeyId(nextId);
@@ -270,6 +328,7 @@ export function ChatShell({
   const isEmpty = messages.length === 0;
 
   return (
+    <div className="flex-1 flex h-full min-w-0 w-full">
     <div className="flex-1 flex flex-col h-full min-w-0 bg-background">
       {/* Top header — light, just usage + sovereignty */}
       <header className="border-b border-border px-6 py-3 flex items-center justify-end gap-3 text-xs h-[52px]">
@@ -352,6 +411,9 @@ export function ChatShell({
                           input={p.input}
                           output={p.output}
                           state={p.state}
+                          onOpenDoc={(documentId, targetText) =>
+                            setOpenDoc({ documentId, targetText })
+                          }
                         />
                       );
                     }
@@ -542,6 +604,15 @@ export function ChatShell({
           </p>
         </div>
       </div>
+    </div>
+    {openDoc && (
+      <DocPanel
+        key={`${openDoc.documentId}::${openDoc.targetText.slice(0, 32)}`}
+        documentId={openDoc.documentId}
+        targetText={openDoc.targetText}
+        onClose={() => setOpenDoc(null)}
+      />
+    )}
     </div>
   );
 }
