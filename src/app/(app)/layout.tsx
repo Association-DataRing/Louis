@@ -61,6 +61,12 @@ export default async function AppLayout({
 
   return (
     <div className="h-dvh bg-background flex flex-col md:flex-row overflow-hidden">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground focus:shadow-md"
+      >
+        Aller au contenu
+      </a>
       <aside className="hidden md:flex shrink-0">
         <SidebarContent
           user={user}
@@ -73,7 +79,11 @@ export default async function AppLayout({
         conversations={convList}
         projects={projectList}
       />
-      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="flex-1 min-w-0 min-h-0 overflow-y-auto outline-none"
+      >
         {children}
       </main>
       <CommandPalette

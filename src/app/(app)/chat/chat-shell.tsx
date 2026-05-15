@@ -506,7 +506,13 @@ export function ChatShell({
       </header>
 
       {/* Messages or empty state */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        className="flex-1 overflow-y-auto"
+        role="log"
+        aria-live="polite"
+        aria-busy={isBusy}
+        aria-label="Conversation avec Louis"
+      >
         {isEmpty ? (
           <EmptyState userName={userName} />
         ) : (
@@ -850,14 +856,50 @@ function EmptyState({ userName }: { userName: string }) {
   const firstName = userName.split(/[\s.]/)[0] || "";
   return (
     <div className="h-full flex flex-col items-center justify-center px-6">
-      <div className="text-center max-w-md">
-        <LouisLogo className="size-10 text-primary mx-auto mb-6" />
-        <h1 className="font-heading text-4xl font-light tracking-tight">
+      <div className="max-w-xl w-full">
+        <LouisLogo className="size-10 text-primary mb-6" />
+        <h1 className="font-heading text-4xl md:text-5xl tracking-tight">
           Bonjour{firstName ? `, ${firstName}` : ""}.
         </h1>
-        <p className="mt-3 text-base text-muted-foreground font-heading font-light italic">
-          Comment puis-je vous aider aujourd&apos;hui ?
+        <p className="mt-3 text-base text-muted-foreground">
+          Quelques pistes pour démarrer — ou tapez directement votre
+          question dans le composer ci-dessous.
         </p>
+        <ul className="mt-8 space-y-3 text-sm">
+          <li className="flex gap-3">
+            <span className="text-muted-foreground tabular-nums">·</span>
+            <span>
+              <strong className="text-foreground">Joindre un document</strong>
+              <span className="text-muted-foreground">
+                {" "}
+                — cliquez sur l&apos;icône trombone pour interroger un PDF
+                ou un DOCX que vous avez importé.
+              </span>
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-muted-foreground tabular-nums">·</span>
+            <span>
+              <strong className="text-foreground">Insérer un workflow</strong>
+              <span className="text-muted-foreground">
+                {" "}
+                — icône étoiles pour piquer un prompt prêt à l&apos;emploi
+                (résumé d&apos;arrêt, analyse de clause…).
+              </span>
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-muted-foreground tabular-nums">·</span>
+            <span>
+              <strong className="text-foreground">Choisir un modèle</strong>
+              <span className="text-muted-foreground">
+                {" "}
+                — sélecteur en bas à gauche, le badge FR / UE / US reste
+                visible pendant toute la conversation.
+              </span>
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
   );
