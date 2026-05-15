@@ -12,7 +12,6 @@ import { uiPartsFromSaved } from "@/lib/ai/saved-parts";
 import type { SavedPart } from "@/db/schema/messages";
 import { DocPanel } from "./doc-panel";
 import { EditCard } from "./edit-card";
-import { ExportPreviewPanel } from "./export-preview-panel";
 import {
   IconArrowUp,
   IconPaperclip,
@@ -195,14 +194,13 @@ type SearchDocumentsHit = {
 };
 
 type GeneratedDocument = {
-  url: string;
+  document_id: string;
   filename: string;
   format: "docx" | "pdf";
-  ttl_minutes?: number;
 };
 
 type EditedDocument = {
-  url: string;
+  document_id: string;
   filename: string;
   format: "docx";
   applied_count: number;
@@ -274,33 +272,43 @@ function unwrapToolResult<T>(o: unknown): T | null {
 function DocumentDownloadCard({
   title,
   filename,
-  url,
+  documentId,
   format,
-  ttlMinutes,
+  onPreview,
 }: {
   title: string;
   filename: string;
-  url: string;
+  documentId: string;
   format: "docx" | "pdf";
-  ttlMinutes: number;
+  onPreview: () => void;
 }) {
   const Icon = format === "pdf" ? IconFileTypePdf : IconFileTypeDocx;
   return (
     <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 max-w-[85%] flex items-center gap-3">
-      <div className="size-10 rounded-md bg-card border border-border flex items-center justify-center shrink-0">
+      <button
+        type="button"
+        onClick={onPreview}
+        className="size-10 rounded-md bg-card border border-border flex items-center justify-center shrink-0 hover:border-primary transition-colors cursor-pointer"
+        aria-label="Aperçu"
+        title="Aperçu"
+      >
         <Icon className="size-5 text-primary" />
-      </div>
-      <div className="min-w-0 flex-1">
+      </button>
+      <button
+        type="button"
+        onClick={onPreview}
+        className="min-w-0 flex-1 text-left"
+      >
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
           {title}
         </p>
         <p className="text-sm font-medium truncate">{filename}</p>
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          Lien valable {ttlMinutes} min
+          Cliquez pour prévisualiser
         </p>
-      </div>
+      </button>
       <a
-        href={url}
+        href={`/api/documents/${documentId}/file?download=1`}
         download={filename}
         className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
       >
@@ -312,24 +320,31 @@ function DocumentDownloadCard({
 }
 
 function EditedDocumentCard({
-  url,
+  documentId,
   filename,
   applied,
   errors,
   appliedCount,
   errorsCount,
+  onPreview,
 }: {
-  url: string;
+  documentId: string;
   filename: string;
   applied: EditedDocument["applied"];
   errors: EditedDocument["errors"];
   appliedCount: number;
   errorsCount: number;
+  onPreview: () => void;
 }) {
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden max-w-[85%]">
       <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
-        <div className="flex items-center gap-2 min-w-0">
+        <button
+          type="button"
+          onClick={onPreview}
+          className="flex items-center gap-2 min-w-0 text-left hover:text-primary transition-colors"
+          aria-label="Aperçu"
+        >
           <IconPencil className="size-4 text-primary shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{filename}</p>
@@ -342,11 +357,12 @@ function EditedDocumentCard({
                   {errorsCount} en erreur
                 </span>
               )}
+              {" · cliquez pour prévisualiser"}
             </p>
           </div>
-        </div>
+        </button>
         <a
-          href={url}
+          href={`/api/documents/${documentId}/file?download=1`}
           download={filename}
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
         >
@@ -435,14 +451,16 @@ function ToolPart({
   // generate_document → carte de téléchargement (.docx ou .pdf)
   if (name === "generate_document" && !isPending) {
     const d = unwrapToolResult<GeneratedDocument>(output);
-    if (d && d.url) {
+    if (d && d.document_id) {
       return (
         <DocumentDownloadCard
           title="Document généré"
           filename={d.filename}
-          url={d.url}
+          documentId={d.document_id}
           format={d.format ?? "docx"}
-          ttlMinutes={d.ttl_minutes ?? 10}
+          onPreview={() =>
+            onOpenDoc(d.document_id, "")
+          }
         />
       );
     }
@@ -451,15 +469,16 @@ function ToolPart({
   // edit_document → carte récap des changes + bouton download .docx édité
   if (name === "edit_document" && !isPending) {
     const d = unwrapToolResult<EditedDocument>(output);
-    if (d && d.url) {
+    if (d && d.document_id) {
       return (
         <EditedDocumentCard
-          url={d.url}
+          documentId={d.document_id}
           filename={d.filename}
           applied={d.applied ?? []}
           errors={d.errors ?? []}
           appliedCount={d.applied_count ?? 0}
           errorsCount={d.errors_count ?? 0}
+          onPreview={() => onOpenDoc(d.document_id, "")}
         />
       );
     }
@@ -664,40 +683,14 @@ export function ChatShell({
     documentId: string;
     targetText: string;
   } | null>(null);
-  // Panneau d'aperçu des exports générés. Persisté en sessionStorage
-  // parce que `<ChatShell key={currentId ?? "new-..."}>` remount le
-  // composant quand l'URL passe de /chat à /chat?id=xxx (à la fin du
-  // premier message d'une nouvelle conv) — sinon le state local est
-  // perdu et le panel se ferme tout seul à ce moment précis.
-  const [openedExport, setOpenedExport] = useState<{
-    url: string;
-    filename: string;
-    format: "docx" | "pdf";
-  } | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const raw = window.sessionStorage.getItem("louis:openedExport");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (openedExport) {
-        window.sessionStorage.setItem(
-          "louis:openedExport",
-          JSON.stringify(openedExport)
-        );
-      } else {
-        window.sessionStorage.removeItem("louis:openedExport");
-      }
-    } catch {
-      // sessionStorage indisponible (Safari private mode) — ignore.
-    }
-  }, [openedExport]);
-  const lastSeenExportUrl = useRef<string | null>(null);
+  // Tracking des document_id déjà auto-ouverts dans le DocPanel pour ne
+  // pas réouvrir à chaque re-render. Survit au remount qui se produit
+  // quand l'URL passe de /chat à /chat?id=xxx via sessionStorage.
+  const lastAutoOpenedDocId = useRef<string | null>(
+    typeof window !== "undefined"
+      ? window.sessionStorage.getItem("louis:lastAutoOpenedDoc")
+      : null
+  );
 
   function handleProviderChange(nextId: string) {
     setProviderKeyId(nextId);
@@ -773,9 +766,9 @@ export function ChatShell({
 
   const isEmpty = messages.length === 0;
 
-  // Auto-ouverture du panneau d'aperçu dès qu'un tool generate_document /
-  // edit_document remonte un résultat. On scanne les parts du dernier
-  // message assistant et on prend le dernier export non encore ouvert.
+  // Auto-ouverture du DocPanel dès qu'un tool generate_document /
+  // edit_document termine avec un document_id. On scanne les parts du
+  // dernier message assistant et on prend le plus récent non vu.
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last || last.role !== "assistant" || !last.parts) return;
@@ -787,14 +780,13 @@ export function ChatShell({
       )
         continue;
       const d = unwrapToolResult<GeneratedDocument | EditedDocument>(p.output);
-      if (!d || !d.url) continue;
-      if (lastSeenExportUrl.current === d.url) return;
-      lastSeenExportUrl.current = d.url;
-      setOpenedExport({
-        url: d.url,
-        filename: d.filename,
-        format: d.format ?? "docx",
-      });
+      if (!d || !d.document_id) continue;
+      if (lastAutoOpenedDocId.current === d.document_id) return;
+      lastAutoOpenedDocId.current = d.document_id;
+      try {
+        window.sessionStorage.setItem("louis:lastAutoOpenedDoc", d.document_id);
+      } catch {}
+      setOpenDoc({ documentId: d.document_id, targetText: "" });
       return;
     }
   }, [messages]);
@@ -1222,15 +1214,6 @@ export function ChatShell({
         documentId={openDoc.documentId}
         targetText={openDoc.targetText}
         onClose={() => setOpenDoc(null)}
-      />
-    )}
-    {openedExport && (
-      <ExportPreviewPanel
-        key={openedExport.url}
-        url={openedExport.url}
-        filename={openedExport.filename}
-        format={openedExport.format}
-        onClose={() => setOpenedExport(null)}
       />
     )}
     </div>

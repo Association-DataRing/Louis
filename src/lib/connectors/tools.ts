@@ -157,7 +157,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
 
   tools.generate_document = tool({
     description:
-      "Génère un document téléchargeable .docx (Word, modifiable) ou .pdf (diffusion finale) à partir d'une structure typée. Utilisez ce tool dès que l'utilisateur demande explicitement un fichier — « rédige une mise en demeure et exporte en docx », « fais-moi un mémo PDF de 3 pages », « génère un tableau comparatif de ces clauses en docx ». Le schéma sections supporte titres (level 1-4), paragraphes (avec alignement justify par défaut, standard juridique), listes ordonnées/à puces, blockquotes, tableaux avec en-têtes, sauts de page (pour pages signature contrat), séparateurs horizontaux. Footer auto avec « Page X / Y ». Renvoie une URL valable 10 minutes — présentez-la à l'utilisateur sous forme « [Télécharger le document](URL) ».",
+      "Génère un document téléchargeable .docx (Word, modifiable) ou .pdf (diffusion finale) à partir d'une structure typée, et l'enregistre dans les documents de l'utilisateur. Utilisez ce tool dès que l'utilisateur demande explicitement un fichier — « rédige une mise en demeure et exporte en docx », « fais-moi un mémo PDF de 3 pages », « génère un tableau comparatif de ces clauses en docx ». Le schéma sections supporte titres (level 1-4), paragraphes (avec alignement justify par défaut, standard juridique), listes ordonnées/à puces, blockquotes, tableaux avec en-têtes, sauts de page (pour pages signature contrat), séparateurs horizontaux. Footer auto avec « Page X / Y ». Le document apparaît automatiquement comme carte cliquable dans le chat (aperçu + bouton télécharger) — vous n'avez PAS besoin d'écrire un lien markdown dans votre réponse, juste de présenter le contenu / les recommandations d'usage.",
     inputSchema: z.object({
       format: z
         .enum(["docx", "pdf"])
@@ -208,9 +208,9 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
           userId,
         });
         return toolOk({
-          ...result,
-          format,
-          ttl_minutes: 10,
+          document_id: result.documentId,
+          filename: result.filename,
+          format: result.format,
         });
       }),
   });
@@ -396,7 +396,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
    */
   tools.edit_document = tool({
     description:
-      "Propose des éditions sur un fichier .docx de l'utilisateur en TRACKED CHANGES Word natifs (insertions/suppressions visibles dans l'onglet Révision de Word/Pages/LibreOffice). Chaque édit est une substitution précise — gardez `find` aussi court que possible (les mots/caractères réellement modifiés, pas un paragraphe entier) et fournissez context_before/context_after (~40 caractères) pour ancrer le match sans ambiguïté. Utilisez read_document ou find_in_document avant pour vérifier le texte exact. Renvoie une URL de téléchargement du document édité (10 min) + le détail des édits appliqués / en erreur.",
+      "Propose des éditions sur un fichier .docx de l'utilisateur en TRACKED CHANGES Word natifs (insertions/suppressions visibles dans l'onglet Révision de Word/Pages/LibreOffice). Chaque édit est une substitution précise — gardez `find` aussi court que possible (les mots/caractères réellement modifiés, pas un paragraphe entier) et fournissez context_before/context_after (~40 caractères) pour ancrer le match sans ambiguïté. Utilisez read_document ou find_in_document avant pour vérifier le texte exact. Le document édité apparaît comme carte cliquable dans le chat (aperçu + bouton télécharger), avec le détail des édits appliqués / en erreur — pas besoin de lien markdown.",
     inputSchema: z.object({
       document_id: z
         .string()
@@ -471,13 +471,13 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
         });
 
         return toolOk({
-          ...stored,
+          document_id: stored.documentId,
+          filename: stored.filename,
           format: "docx" as const,
           applied_count: result.applied.length,
           errors_count: result.errors.length,
           applied: result.applied,
           errors: result.errors,
-          ttl_minutes: 10,
         });
       }),
   });

@@ -6,8 +6,15 @@ import { getObjectBytes } from "@/lib/storage";
 
 type Params = { id: string };
 
+/**
+ * Sert le binaire d'un document de l'utilisateur.
+ *
+ * - `?download=1` → Content-Disposition attachment (force le download)
+ * - sinon → inline (iframe peut afficher PDF directement, navigateur peut
+ *   ouvrir DOCX dans la handler app si associée)
+ */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<Params> }
 ) {
   const session = await auth();
@@ -16,6 +23,8 @@ export async function GET(
   }
   const userId = session.user.id;
   const { id } = await params;
+  const url = new URL(req.url);
+  const forceDownload = url.searchParams.get("download") === "1";
 
   const [doc] = await db
     .select({
@@ -38,10 +47,13 @@ export async function GET(
     return new Response("Storage error", { status: 500 });
   }
 
+  const safeName = doc.filename.replace(/"/g, "");
+  const disposition = forceDownload ? "attachment" : "inline";
+
   return new Response(bytes as BodyInit, {
     headers: {
       "Content-Type": doc.contentType,
-      "Content-Disposition": `inline; filename="${doc.filename.replace(/"/g, "")}"`,
+      "Content-Disposition": `${disposition}; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(doc.filename)}`,
       "Cache-Control": "private, max-age=60",
     },
   });
