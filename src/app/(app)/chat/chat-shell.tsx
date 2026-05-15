@@ -42,6 +42,7 @@ import {
   type ProviderType,
 } from "@/lib/providers/catalog";
 import { MODEL_CATALOG, DEFAULT_MODEL } from "@/lib/providers/models";
+import { computeCost, formatCost } from "@/lib/providers/pricing";
 
 type KeyOption = {
   id: string;
@@ -463,12 +464,30 @@ export function ChatShell({
         )}
         <div className="ml-auto flex items-center gap-3">
         {(usage.inputTokens > 0 || usage.outputTokens > 0) && (
-          <span
-            className="text-muted-foreground tabular-nums"
-            title={`${usage.inputTokens} tokens entrée, ${usage.outputTokens} tokens sortie`}
-          >
-            {formatTokens(usage.inputTokens)}↗ {formatTokens(usage.outputTokens)}↘
-          </span>
+          <>
+            <span
+              className="text-muted-foreground tabular-nums"
+              title={`${usage.inputTokens} tokens entrée, ${usage.outputTokens} tokens sortie`}
+            >
+              {formatTokens(usage.inputTokens)}↗ {formatTokens(usage.outputTokens)}↘
+            </span>
+            {(() => {
+              const cost = computeCost(
+                modelId,
+                usage.inputTokens,
+                usage.outputTokens
+              );
+              if (!cost) return null;
+              return (
+                <span
+                  className="text-muted-foreground tabular-nums"
+                  title="Coût estimé selon les tarifs publics du provider"
+                >
+                  {formatCost(cost)}
+                </span>
+              );
+            })()}
+          </>
         )}
         <Badge
           variant={
