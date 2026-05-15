@@ -9,6 +9,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { documentChunks, providerKeys } from "@/db/schema";
 import { runTool, toolError, toolOk } from "@/lib/tools/result";
+import { generateAndStore } from "@/lib/docgen";
 
 /**
  * Build the set of AI SDK tools available for `userId`, based on which
@@ -99,6 +100,48 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
         legifranceSearch(userId, query, fond ?? "ALL"),
     });
   }
+
+  // Génération de documents — toujours disponible, indépendant de tout
+  // connecteur externe. Utilise des libs pure-JS côté serveur Louis.
+  tools.generate_document = tool({
+    description:
+      "Génère un document téléchargeable au format DOCX (Word) ou PDF à partir d'un titre et d'un contenu Markdown. Utilisez ce tool dès que l'utilisateur demande explicitement un fichier .docx ou .pdf — par exemple « rédige une mise en demeure et exporte en docx », « fais-moi un mémo PDF »… Renvoie une URL de téléchargement valable 10 minutes. Présentez ensuite le lien à l'utilisateur sous forme cliquable en Markdown standard, par exemple : « [Télécharger le document](URL) ».",
+    inputSchema: z.object({
+      format: z
+        .enum(["docx", "pdf"])
+        .describe(
+          "Format du document. docx pour Word/Pages (modifiable), pdf pour la diffusion finale."
+        ),
+      title: z
+        .string()
+        .min(1)
+        .max(200)
+        .describe(
+          "Titre du document, affiché en grand en première page et utilisé comme nom de fichier."
+        ),
+      content_markdown: z
+        .string()
+        .min(1)
+        .describe(
+          "Corps du document en Markdown — # ## ### pour les titres, **gras** _italique_, listes -/1., > blockquote, --- pour séparateur. Pas de tables ni de code fences. Utilisez du français impeccable, pas de phrases bâteau."
+        ),
+    }),
+    execute: async ({ format, title, content_markdown }) =>
+      runTool(async () => {
+        const { url, filename } = await generateAndStore({
+          format,
+          title,
+          contentMarkdown: content_markdown,
+          userId,
+        });
+        return toolOk({
+          url,
+          filename,
+          format,
+          ttl_minutes: 10,
+        });
+      }),
+  });
 
   if (active.includes("pappers")) {
     tools.pappers_search = tool({
