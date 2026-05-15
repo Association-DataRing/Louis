@@ -5,8 +5,14 @@ import { auth } from "@/auth";
 /**
  * Sert le worker pdfjs depuis node_modules — évite le besoin de copier
  * le fichier dans /public via un postinstall, et conserve la souveraineté
- * (zéro dépendance CDN). Authentification simple pour pas servir le
- * worker à des visiteurs anonymes.
+ * (zéro dépendance CDN).
+ *
+ * Crucial : on lit le worker de la sub-dépendance de react-pdf
+ * (node_modules/react-pdf/node_modules/pdfjs-dist) et non du pdfjs-dist
+ * top-level. Sans ça, mismatch entre la version JS embarquée par
+ * react-pdf (ex. 5.4.296) et celle qu'on a installée pour parser des
+ * PDF côté serveur (ex. 5.7.284) → erreur runtime « API version X
+ * does not match Worker version Y ».
  */
 export async function GET() {
   const session = await auth();
@@ -16,7 +22,7 @@ export async function GET() {
 
   const workerPath = path.join(
     process.cwd(),
-    "node_modules/pdfjs-dist/build/pdf.worker.min.mjs"
+    "node_modules/react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs"
   );
 
   let file: Buffer;
