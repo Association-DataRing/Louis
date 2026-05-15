@@ -1,10 +1,21 @@
+import mammoth from "mammoth";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
+import { getObjectBytes } from "@/lib/storage";
 
 type Params = { id: string };
 
+const DOCX_MEDIA_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+/**
+ * Aperçu d'un document : texte extrait pour PDF/text, HTML structuré
+ * (mammoth) pour DOCX afin de préserver titres, listes, paragraphes,
+ * mise en forme inline. Le client (DocPanel) rend `html` en priorité
+ * quand présent, sinon retombe sur extractedText.
+ */
 export async function GET(
   _req: Request,
   { params }: { params: Promise<Params> }
@@ -22,6 +33,7 @@ export async function GET(
       filename: documents.filename,
       contentType: documents.contentType,
       sizeBytes: documents.sizeBytes,
+      storageKey: documents.storageKey,
       extractedText: documents.extractedText,
       extractionStatus: documents.extractionStatus,
     })
@@ -33,5 +45,24 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  return Response.json(doc);
+  let html: string | null = null;
+  if (doc.contentType === DOCX_MEDIA_TYPE) {
+    try {
+      const bytes = Buffer.from(await getObjectBytes(doc.storageKey));
+      const result = await mammoth.convertToHtml({ buffer: bytes });
+      html = result.value;
+    } catch {
+      // pas de fallback hard — DocPanel utilisera extractedText
+    }
+  }
+
+  return Response.json({
+    id: doc.id,
+    filename: doc.filename,
+    contentType: doc.contentType,
+    sizeBytes: doc.sizeBytes,
+    extractedText: doc.extractedText,
+    extractionStatus: doc.extractionStatus,
+    html,
+  });
 }

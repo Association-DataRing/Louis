@@ -678,11 +678,35 @@ export function ChatShell({
   const [attachedDocIds, setAttachedDocIds] = useState<string[]>([]);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [workflowPickerOpen, setWorkflowPickerOpen] = useState(false);
-  // Panneau document à droite (citation cliquée dans search_documents)
-  const [openDoc, setOpenDoc] = useState<{
+  // Panneau document à droite (citation cliquée OU document auto-ouvert
+  // après generate/edit_document). Persisté en sessionStorage pour survivre
+  // au remount qui se produit quand l'URL passe de /chat à /chat?id=xxx via
+  // la key=currentId du parent.
+  const [openDoc, setOpenDocState] = useState<{
     documentId: string;
     targetText: string;
-  } | null>(null);
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.sessionStorage.getItem("louis:openDoc");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  const setOpenDoc = (
+    next: { documentId: string; targetText: string } | null
+  ) => {
+    setOpenDocState(next);
+    if (typeof window === "undefined") return;
+    try {
+      if (next) {
+        window.sessionStorage.setItem("louis:openDoc", JSON.stringify(next));
+      } else {
+        window.sessionStorage.removeItem("louis:openDoc");
+      }
+    } catch {}
+  };
   // Tracking des document_id déjà auto-ouverts dans le DocPanel pour ne
   // pas réouvrir à chaque re-render. Survit au remount qui se produit
   // quand l'URL passe de /chat à /chat?id=xxx via sessionStorage.
