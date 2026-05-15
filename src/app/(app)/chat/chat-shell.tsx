@@ -8,6 +8,8 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { LouisLogo } from "@/components/louis-logo";
+import { uiPartsFromSaved } from "@/lib/ai/saved-parts";
+import type { SavedPart } from "@/db/schema/messages";
 import { DocPanel } from "./doc-panel";
 import {
   IconArrowUp,
@@ -73,7 +75,12 @@ type Props = {
   initialConversationId: string | null;
   initialProjectId: string | null;
   projectContext: { id: string; name: string } | null;
-  initialMessages: { id: string; role: string; content: string }[];
+  initialMessages: {
+    id: string;
+    role: string;
+    content: string;
+    parts: SavedPart[] | null;
+  }[];
   availableDocuments: DocumentOption[];
   workflows: WorkflowOption[];
   initialUsage: Usage;
@@ -81,11 +88,17 @@ type Props = {
 };
 
 function toUIMessages(rows: Props["initialMessages"]): UIMessage[] {
-  return rows.map((m) => ({
-    id: m.id,
-    role: m.role as UIMessage["role"],
-    parts: [{ type: "text", text: m.content }],
-  }));
+  return rows.map((m) => {
+    const parts =
+      m.parts && m.parts.length > 0
+        ? uiPartsFromSaved(m.parts)
+        : ([{ type: "text", text: m.content }] as UIMessage["parts"]);
+    return {
+      id: m.id,
+      role: m.role as UIMessage["role"],
+      parts,
+    };
+  });
 }
 
 function formatTokens(n: number): string {

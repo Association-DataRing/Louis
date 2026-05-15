@@ -128,12 +128,58 @@ ${docBlocks.join("\n\n")}`;
     messages: modelMessages,
     tools,
     stopWhen: stepCountIs(5),
-    onFinish: async ({ text, usage }) => {
+    onFinish: async ({ text, usage, response }) => {
       if (!conversationId || !text) return;
+
+      // Extrait les parts brutes des messages assistants — texte +
+      // tool-calls + tool-results en format normalisé pour re-render
+      // les pills cliquables au reload de la conversation.
+      type SavedPart =
+        | { type: "text"; text: string }
+        | {
+            type: "tool-call";
+            toolCallId: string;
+            toolName: string;
+            input: unknown;
+          }
+        | {
+            type: "tool-result";
+            toolCallId: string;
+            toolName: string;
+            output: unknown;
+          };
+
+      const savedParts: SavedPart[] = [];
+      for (const m of response.messages) {
+        if (m.role !== "assistant" && m.role !== "tool") continue;
+        const content = m.content;
+        if (typeof content === "string") continue;
+        for (const c of content) {
+          if (c.type === "text" && c.text) {
+            savedParts.push({ type: "text", text: c.text });
+          } else if (c.type === "tool-call") {
+            savedParts.push({
+              type: "tool-call",
+              toolCallId: c.toolCallId,
+              toolName: c.toolName,
+              input: c.input,
+            });
+          } else if (c.type === "tool-result") {
+            savedParts.push({
+              type: "tool-result",
+              toolCallId: c.toolCallId,
+              toolName: c.toolName,
+              output: c.output,
+            });
+          }
+        }
+      }
+
       await db.insert(messages).values({
         conversationId,
         role: "assistant",
         content: text,
+        parts: savedParts.length > 0 ? savedParts : null,
         inputTokens: usage?.inputTokens ?? null,
         outputTokens: usage?.outputTokens ?? null,
         modelId: modelOverride ?? null,

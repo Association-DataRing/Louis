@@ -15,6 +15,26 @@ export const messageRoleEnum = pgEnum("message_role", [
   "system",
 ]);
 
+/**
+ * Format minimal stocké pour les tool calls — sera ré-hydraté en UIMessage
+ * parts au load. Volontairement simple : on garde l'essentiel (input/output)
+ * sans embarquer toute la structure interne d'AI SDK v6.
+ */
+export type SavedPart =
+  | { type: "text"; text: string }
+  | {
+      type: "tool-call";
+      toolCallId: string;
+      toolName: string;
+      input: unknown;
+    }
+  | {
+      type: "tool-result";
+      toolCallId: string;
+      toolName: string;
+      output: unknown;
+    };
+
 export const messages = pgTable("messages", {
   id: uuid("id").defaultRandom().primaryKey(),
   conversationId: uuid("conversation_id")
@@ -22,10 +42,10 @@ export const messages = pgTable("messages", {
     .references(() => conversations.id, { onDelete: "cascade" }),
   role: messageRoleEnum("role").notNull(),
   content: text("content").notNull(),
-  // Reserve for future structured data (citations, tool calls, attachments).
   metadata: jsonb("metadata"),
-  // Token usage as reported by the provider (only on assistant messages).
-  // Nullable so old rows stay valid after the migration.
+  // Tool calls + textes au format minimal — null sur les anciens messages
+  // (on retombe alors sur le texte seul).
+  parts: jsonb("parts").$type<SavedPart[]>(),
   inputTokens: integer("input_tokens"),
   outputTokens: integer("output_tokens"),
   modelId: text("model_id"),

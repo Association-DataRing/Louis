@@ -82,7 +82,12 @@ export default async function ChatPage({
     .where(eq(workflows.userId, userId))
     .orderBy(asc(workflows.name));
 
-  let initialMessages: { id: string; role: string; content: string }[] = [];
+  let initialMessages: {
+    id: string;
+    role: string;
+    content: string;
+    parts: import("@/db/schema").SavedPart[] | null;
+  }[] = [];
   let initialProviderKeyId = activeKeys[0].id;
   let initialModelId: string | null = null;
   let totalInputTokens = 0;
@@ -118,6 +123,7 @@ export default async function ChatPage({
         id: messages.id,
         role: messages.role,
         content: messages.content,
+        parts: messages.parts,
         inputTokens: messages.inputTokens,
         outputTokens: messages.outputTokens,
       })
@@ -128,6 +134,7 @@ export default async function ChatPage({
       id: r.id,
       role: r.role,
       content: r.content,
+      parts: r.parts ?? null,
     }));
     totalInputTokens = rows.reduce((n, r) => n + (r.inputTokens ?? 0), 0);
     totalOutputTokens = rows.reduce((n, r) => n + (r.outputTokens ?? 0), 0);
