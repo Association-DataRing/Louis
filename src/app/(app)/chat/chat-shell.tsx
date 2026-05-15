@@ -692,6 +692,13 @@ export function ChatShell({
     () => true,
     () => false
   );
+  // L'entrée sessionStorage embarque la conv d'origine du panel pour qu'on
+  // sache distinguer 2 situations au mount :
+  //  - Remount automatique pendant le 1er message d'une conv (URL passe de
+  //    /chat à /chat?id=xxx) : openDoc.conversationId === null, on garde
+  //    le panel et on lui adopte la nouvelle conv.
+  //  - Switch vers une autre conv via sidebar : openDoc.conversationId !==
+  //    currentConvId → on ferme le panel (purge sessionStorage).
   const [openDoc, setOpenDocState] = useState<{
     documentId: string;
     targetText: string;
@@ -699,7 +706,22 @@ export function ChatShell({
     if (typeof window === "undefined") return null;
     try {
       const raw = window.sessionStorage.getItem("louis:openDoc");
-      return raw ? JSON.parse(raw) : null;
+      if (!raw) return null;
+      const stored = JSON.parse(raw) as {
+        documentId: string;
+        targetText: string;
+        conversationId: string | null;
+      };
+      // Si on entre dans une conv différente de celle qui a ouvert le panel,
+      // purge — sauf cas null → id (création de conv en cours).
+      if (
+        stored.conversationId !== null &&
+        stored.conversationId !== initialConversationId
+      ) {
+        window.sessionStorage.removeItem("louis:openDoc");
+        return null;
+      }
+      return { documentId: stored.documentId, targetText: stored.targetText };
     } catch {
       return null;
     }
@@ -711,7 +733,10 @@ export function ChatShell({
     if (typeof window === "undefined") return;
     try {
       if (next) {
-        window.sessionStorage.setItem("louis:openDoc", JSON.stringify(next));
+        window.sessionStorage.setItem(
+          "louis:openDoc",
+          JSON.stringify({ ...next, conversationId: initialConversationId })
+        );
       } else {
         window.sessionStorage.removeItem("louis:openDoc");
       }
