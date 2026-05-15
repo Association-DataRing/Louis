@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { Spinner } from "@/components/ui/spinner";
 import { DocxView } from "./docx-view";
+import { PdfView } from "./pdf-view";
 
 type DocPreview = {
   id: string;
@@ -104,23 +105,17 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
           </div>
         )}
         {!loading && !error && doc && isPdf && (
-          <iframe
-            src={`/api/documents/${documentId}/file#toolbar=0&navpanes=0&view=FitH`}
-            title={doc.filename}
-            className="w-full h-full border-0 bg-background"
-          />
+          // PdfView (react-pdf custom) plutôt qu'un iframe : la toolbar
+          // de pdf.js / Firefox n'est pas masquable via #toolbar=0,
+          // donc on rend nous-mêmes la page avec une navigation propre.
+          <PdfView fileUrl={`/api/documents/${documentId}/file`} targetText={targetText} />
         )}
         {!loading && !error && doc && !isPdf && doc.hasPdfPreview && (
           // Docs générés par Louis : un PDF preview a été produit via
-          // LibreOffice (Gotenberg) au moment de la génération. On
-          // l'affiche en iframe pour avoir une vraie pagination A4 type
-          // Word — la lib `docx` n'écrit pas de lastRenderedPageBreak
-          // donc docx-preview ne saurait pas paginer correctement.
-          <iframe
-            src={`/api/documents/${documentId}/preview-pdf#toolbar=0&navpanes=0&view=FitH`}
-            title={doc.filename}
-            className="w-full h-full border-0 bg-background"
-          />
+          // LibreOffice (Gotenberg) au moment de la génération. Vraie
+          // pagination A4 type Word, rendu via react-pdf (sans toolbar
+          // browser parasite).
+          <PdfView fileUrl={`/api/documents/${documentId}/preview-pdf`} />
         )}
         {!loading && !error && doc && !isPdf && !doc.hasPdfPreview && (
           // Uploads users : leurs DOCX viennent de Word/Pages avec les
