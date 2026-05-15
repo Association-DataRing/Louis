@@ -21,6 +21,11 @@ import {
   IconFileText,
   IconSparkles,
   IconLibrary,
+  IconDownload,
+  IconFileTypePdf,
+  IconFileTypeDocx,
+  IconAlertTriangle,
+  IconPencil,
 } from "@tabler/icons-react";
 import {
   Select,
@@ -145,6 +150,11 @@ const TOOL_LABEL: Record<string, string> = {
   pappers_get: "Pappers · fiche entreprise",
   legifrance_search: "Légifrance · recherche",
   search_documents: "Recherche dans vos documents",
+  list_documents: "Inventaire des documents",
+  read_document: "Lecture d'un document",
+  find_in_document: "Recherche exacte dans un document",
+  generate_document: "Génération de document",
+  edit_document: "Édition en tracked changes",
 };
 
 function formatToolInput(input: unknown): string {
@@ -152,6 +162,9 @@ function formatToolInput(input: unknown): string {
   const obj = input as Record<string, unknown>;
   if (typeof obj.query === "string") return `« ${obj.query} »`;
   if (typeof obj.siren === "string") return `SIREN ${obj.siren}`;
+  if (typeof obj.title === "string") return `« ${obj.title} »`;
+  if (typeof obj.needle === "string") return `« ${obj.needle} »`;
+  if (Array.isArray(obj.edits)) return `${obj.edits.length} édit${obj.edits.length > 1 ? "s" : ""}`;
   return "";
 }
 
@@ -162,6 +175,187 @@ type SearchDocumentsHit = {
   content: string;
   similarity: number;
 };
+
+type GenerateDocumentResult = {
+  ok: true;
+  data: {
+    url: string;
+    filename: string;
+    format: "docx" | "pdf";
+    ttl_minutes: number;
+  };
+};
+
+type EditDocumentResult = {
+  ok: true;
+  data: {
+    url: string;
+    filename: string;
+    format: "docx";
+    applied_count: number;
+    errors_count: number;
+    applied: Array<{
+      index: number;
+      find: string;
+      replace: string;
+      reason?: string;
+      paragraph: number;
+    }>;
+    errors: Array<{
+      index: number;
+      reason: string;
+      message: string;
+    }>;
+  };
+};
+
+function isOkResult<T>(o: unknown): o is { ok: true; data: T } {
+  return Boolean(o && typeof o === "object" && (o as { ok?: boolean }).ok === true);
+}
+
+function DocumentDownloadCard({
+  title,
+  filename,
+  url,
+  format,
+  ttlMinutes,
+}: {
+  title: string;
+  filename: string;
+  url: string;
+  format: "docx" | "pdf";
+  ttlMinutes: number;
+}) {
+  const Icon = format === "pdf" ? IconFileTypePdf : IconFileTypeDocx;
+  return (
+    <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 max-w-[85%] flex items-center gap-3">
+      <div className="size-10 rounded-md bg-card border border-border flex items-center justify-center shrink-0">
+        <Icon className="size-5 text-primary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {title}
+        </p>
+        <p className="text-sm font-medium truncate">{filename}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          Lien valable {ttlMinutes} min
+        </p>
+      </div>
+      <a
+        href={url}
+        download={filename}
+        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
+      >
+        <IconDownload className="size-3.5" />
+        Télécharger
+      </a>
+    </div>
+  );
+}
+
+function EditedDocumentCard({
+  url,
+  filename,
+  applied,
+  errors,
+  appliedCount,
+  errorsCount,
+}: {
+  url: string;
+  filename: string;
+  applied: EditDocumentResult["data"]["applied"];
+  errors: EditDocumentResult["data"]["errors"];
+  appliedCount: number;
+  errorsCount: number;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden max-w-[85%]">
+      <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
+        <div className="flex items-center gap-2 min-w-0">
+          <IconPencil className="size-4 text-primary shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{filename}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {appliedCount} édition{appliedCount > 1 ? "s" : ""} appliquée
+              {appliedCount > 1 ? "s" : ""}
+              {errorsCount > 0 && (
+                <span className="text-destructive">
+                  {" · "}
+                  {errorsCount} en erreur
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+        <a
+          href={url}
+          download={filename}
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
+        >
+          <IconDownload className="size-3.5" />
+          Télécharger
+        </a>
+      </header>
+
+      {applied.length > 0 && (
+        <ul className="divide-y divide-border">
+          {applied.slice(0, 8).map((edit) => (
+            <li key={edit.index} className="px-4 py-3 text-xs">
+              <div className="grid sm:grid-cols-2 gap-2">
+                <div className="bg-destructive/5 border border-destructive/15 rounded px-2 py-1.5">
+                  <p className="text-[9px] uppercase tracking-wider text-destructive/70 font-semibold mb-0.5">
+                    Avant
+                  </p>
+                  <p className="font-mono text-foreground/80 line-through decoration-destructive/40">
+                    {edit.find}
+                  </p>
+                </div>
+                <div className="bg-primary/5 border border-primary/15 rounded px-2 py-1.5">
+                  <p className="text-[9px] uppercase tracking-wider text-primary font-semibold mb-0.5">
+                    Après
+                  </p>
+                  <p className="font-mono">{edit.replace || <em className="text-muted-foreground">(suppression)</em>}</p>
+                </div>
+              </div>
+              {edit.reason && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground italic">
+                  {edit.reason}
+                </p>
+              )}
+            </li>
+          ))}
+          {applied.length > 8 && (
+            <li className="px-4 py-2 text-[11px] text-muted-foreground text-center">
+              + {applied.length - 8} autre
+              {applied.length - 8 > 1 ? "s" : ""} édition
+              {applied.length - 8 > 1 ? "s" : ""} dans le document.
+            </li>
+          )}
+        </ul>
+      )}
+
+      {errors.length > 0 && (
+        <div className="border-t border-border bg-destructive/5 px-4 py-3">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-destructive mb-1">
+            <IconAlertTriangle className="size-3.5" />
+            Édits non appliqués
+          </div>
+          <ul className="text-[11px] text-muted-foreground space-y-0.5">
+            {errors.slice(0, 5).map((e) => (
+              <li key={e.index}>· {e.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <footer className="px-4 py-2 border-t border-border bg-muted/20 text-[10px] text-muted-foreground">
+        Marques de révision Word natives — ouvrez le fichier dans Word /
+        Pages / LibreOffice et utilisez l&apos;onglet Révision pour
+        Accepter ou Refuser chaque modification.
+      </footer>
+    </div>
+  );
+}
 
 function ToolPart({
   name,
@@ -179,6 +373,43 @@ function ToolPart({
   const label = TOOL_LABEL[name] ?? name;
   const inputSummary = formatToolInput(input);
   const isPending = state === "input-streaming" || state === "input-available";
+
+  // generate_document → carte de téléchargement (.docx ou .pdf)
+  if (
+    name === "generate_document" &&
+    !isPending &&
+    isOkResult<GenerateDocumentResult["data"]>(output)
+  ) {
+    const d = output.data;
+    return (
+      <DocumentDownloadCard
+        title="Document généré"
+        filename={d.filename}
+        url={d.url}
+        format={d.format}
+        ttlMinutes={d.ttl_minutes}
+      />
+    );
+  }
+
+  // edit_document → carte récap des changes + bouton download .docx édité
+  if (
+    name === "edit_document" &&
+    !isPending &&
+    isOkResult<EditDocumentResult["data"]>(output)
+  ) {
+    const d = output.data;
+    return (
+      <EditedDocumentCard
+        url={d.url}
+        filename={d.filename}
+        applied={d.applied}
+        errors={d.errors}
+        appliedCount={d.applied_count}
+        errorsCount={d.errors_count}
+      />
+    );
+  }
 
   // search_documents → rendu spécial avec sources cliquables
   if (
