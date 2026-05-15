@@ -52,6 +52,20 @@ services:
       timeout: 5s
       retries: 10
 
+  # Gotenberg : LibreOffice headless exposé via HTTP, utilisé pour le rendu
+  # fidèle DOCX → PDF du DocPanel. ~300 MB d'image. Activé côté app via
+  # GOTENBERG_URL=http://localhost:3001 dans .env.
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: louis-gotenberg
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--api-port=3000"
+      - "--api-timeout=60s"
+    ports:
+      - "3001:3000"
+
 volumes:
   louis-postgres:
   louis-redis:

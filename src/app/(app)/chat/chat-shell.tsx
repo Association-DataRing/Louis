@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
@@ -680,8 +680,18 @@ export function ChatShell({
   const [workflowPickerOpen, setWorkflowPickerOpen] = useState(false);
   // Panneau document à droite (citation cliquée OU document auto-ouvert
   // après generate/edit_document). Persisté en sessionStorage pour survivre
-  // au remount qui se produit quand l'URL passe de /chat à /chat?id=xxx via
-  // la key=currentId du parent.
+  // au remount qui se produit quand l'URL passe de /chat à /chat?id=xxx.
+  //
+  // useState init lazy lit sessionStorage côté client uniquement. Pour
+  // éviter le hydration mismatch sur <aside>, on rend le panneau derrière
+  // un flag `mounted` (useSyncExternalStore returns false server, true
+  // client). SSR : aside non rendu. 1er client render = même chose qu'
+  // SSR. Après hydratation, mounted bascule à true et l'aside apparaît.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const [openDoc, setOpenDocState] = useState<{
     documentId: string;
     targetText: string;
@@ -1232,7 +1242,7 @@ export function ChatShell({
         </div>
       </div>
     </div>
-    {openDoc && (
+    {mounted && openDoc && (
       <DocPanel
         key={`${openDoc.documentId}::${openDoc.targetText.slice(0, 32)}`}
         documentId={openDoc.documentId}
