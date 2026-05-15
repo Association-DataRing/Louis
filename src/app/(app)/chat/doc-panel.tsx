@@ -18,6 +18,7 @@ type DocPreview = {
   sizeBytes: number;
   extractedText: string | null;
   extractionStatus: string;
+  hasPdfPreview: boolean;
 };
 
 type Props = {
@@ -109,10 +110,22 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
             className="w-full h-full border-0 bg-background"
           />
         )}
-        {!loading && !error && doc && !isPdf && (
-          // Rendu DOCX côté client via docx-preview (approche Mike). Plus
-          // fidèle que mammoth HTML, sans dépendance serveur. La preview
-          // ressemble à l'ouverture Word/Pages.
+        {!loading && !error && doc && !isPdf && doc.hasPdfPreview && (
+          // Docs générés par Louis : un PDF preview a été produit via
+          // LibreOffice (Gotenberg) au moment de la génération. On
+          // l'affiche en iframe pour avoir une vraie pagination A4 type
+          // Word — la lib `docx` n'écrit pas de lastRenderedPageBreak
+          // donc docx-preview ne saurait pas paginer correctement.
+          <iframe
+            src={`/api/documents/${documentId}/preview-pdf#toolbar=0&navpanes=0&view=FitH`}
+            title={doc.filename}
+            className="w-full h-full border-0 bg-background"
+          />
+        )}
+        {!loading && !error && doc && !isPdf && !doc.hasPdfPreview && (
+          // Uploads users : leurs DOCX viennent de Word/Pages avec les
+          // sauts de page pré-calculés (lastRenderedPageBreak), donc
+          // docx-preview affiche la pagination correctement.
           <DocxView documentId={documentId} targetText={targetText} />
         )}
       </div>
@@ -120,7 +133,9 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
       <footer className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground shrink-0">
         {isPdf
           ? "Aperçu PDF natif du navigateur."
-          : "Rendu DOCX via docx-preview — fidèle à l'ouverture Word/Pages."}
+          : doc?.hasPdfPreview
+            ? "Aperçu paginé via LibreOffice — identique au document Word téléchargé."
+            : "Rendu DOCX via docx-preview — fidèle à l'ouverture Word/Pages."}
       </footer>
     </>
   );
