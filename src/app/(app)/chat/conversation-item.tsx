@@ -14,6 +14,7 @@ import {
   IconPin,
   IconPinFilled,
   IconDownload,
+  IconPrinter,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -179,6 +180,14 @@ export function ConversationItem({
           <DropdownMenuItem onSelect={handleExport}>
             <IconDownload className="size-4" />
             Exporter en Markdown
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() =>
+              window.open(`/print/chat/${id}`, "_blank", "noopener,noreferrer")
+            }
+          >
+            <IconPrinter className="size-4" />
+            Imprimer / PDF
           </DropdownMenuItem>
 
           {projects.length > 0 && (
