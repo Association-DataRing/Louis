@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   IconX,
   IconFileText,
@@ -9,6 +9,7 @@ import {
   IconDownload,
 } from "@tabler/icons-react";
 import { Spinner } from "@/components/ui/spinner";
+import { DocxView } from "./docx-view";
 
 type DocPreview = {
   id: string;
@@ -17,39 +18,19 @@ type DocPreview = {
   sizeBytes: number;
   extractedText: string | null;
   extractionStatus: string;
-  hasPdfPreview: boolean;
-  html: string | null;
 };
 
 type Props = {
   documentId: string;
+  /** Citation cliquée — passé à DocxView pour scroll/highlight. */
   targetText?: string;
   onClose: () => void;
 };
-
-/**
- * Rend du HTML produit par mammoth via innerHTML sur un ref — équivalent
- * à dangerouslySetInnerHTML mais structuré différemment pour éviter le
- * faux positif du hook de sécurité sur cette chaîne précise.
- *
- * Sécurité : mammoth produit du HTML structurel safe par construction
- * (paragraphes, headings, listes, formatting inline) — pas de
- * <script>/<iframe>/<style>. Le DOCX source vient soit de Louis (généré),
- * soit d'un upload de l'utilisateur lui-même (pas d'input externe non-trusted).
- */
-function HtmlContent({ html, className }: { html: string; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.innerHTML = html;
-  }, [html]);
-  return <div ref={ref} className={className} />;
-}
 
 export function DocPanel({ documentId, targetText, onClose }: Props) {
   const [doc, setDoc] = useState<DocPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const markRef = useRef<HTMLElement>(null);
 
   // Le parent passe key={documentId} → ce composant remount sur changement
   // de document, useState repart frais. Pas besoin de reset manuel ici.
@@ -74,14 +55,6 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
       cancelled = true;
     };
   }, [documentId]);
-
-  // Auto-scroll au passage surligné dès qu'il est rendu (citations).
-  useEffect(() => {
-    if (!doc || !targetText) return;
-    requestAnimationFrame(() => {
-      markRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-  }, [doc, targetText]);
 
   const isPdf = doc?.contentType === "application/pdf";
   const Icon = isPdf ? IconFileText : IconFile;
@@ -117,9 +90,9 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {loading && (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex-1 flex items-center justify-center">
             <Spinner className="size-5" />
           </div>
         )}
@@ -131,54 +104,29 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
         )}
         {!loading && !error && doc && isPdf && (
           <iframe
-            // `#toolbar=0` masque la barre d'outils PDF du navigateur
-            // (Chrome/Edge/Safari). FitH = ajuste la largeur de la page.
             src={`/api/documents/${documentId}/file#toolbar=0&navpanes=0&view=FitH`}
             title={doc.filename}
             className="w-full h-full border-0 bg-background"
           />
         )}
-        {!loading && !error && doc && !isPdf && doc.hasPdfPreview && (
-          <iframe
-            src={`/api/documents/${documentId}/preview-pdf#toolbar=0&navpanes=0&view=FitH`}
-            title={doc.filename}
-            className="w-full h-full border-0 bg-background"
-          />
-        )}
-        {!loading && !error && doc && !isPdf && !doc.hasPdfPreview && doc.html && (
-          <div className="px-6 py-5">
-            <HtmlContent
-              html={doc.html}
-              className="prose prose-sm prose-neutral dark:prose-invert max-w-none prose-headings:font-heading prose-headings:tracking-tight prose-p:leading-relaxed prose-p:text-justify prose-h1:text-xl prose-h2:text-lg prose-h3:text-base"
-            />
-          </div>
-        )}
-        {!loading && !error && doc && !isPdf && !doc.hasPdfPreview && !doc.html && (
-          <div className="px-5 py-4">
-            <DocBody
-              text={doc.extractedText ?? ""}
-              target={targetText ?? ""}
-              markRef={markRef}
-            />
-          </div>
+        {!loading && !error && doc && !isPdf && (
+          // Rendu DOCX côté client via docx-preview (approche Mike). Plus
+          // fidèle que mammoth HTML, sans dépendance serveur. La preview
+          // ressemble à l'ouverture Word/Pages.
+          <DocxView documentId={documentId} targetText={targetText} />
         )}
       </div>
 
       <footer className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground shrink-0">
         {isPdf
           ? "Aperçu PDF natif du navigateur."
-          : doc?.hasPdfPreview
-            ? "Aperçu rendu via LibreOffice — identique au document Word téléchargé."
-            : doc?.html
-              ? "Rendu via mammoth (LibreOffice indisponible côté serveur) — la mise en forme exacte peut différer dans Word."
-              : "Texte extrait côté serveur. La mise en forme originale n'est pas restituée."}
+          : "Rendu DOCX via docx-preview — fidèle à l'ouverture Word/Pages."}
       </footer>
     </>
   );
 
   return (
     <>
-      {/* Desktop : panneau side-by-side plus large (style Claude artefact) */}
       <aside className="hidden md:flex w-[520px] lg:w-[640px] xl:w-[760px] shrink-0 border-l border-border bg-card/40 flex-col h-full">
         {body}
       </aside>
@@ -191,51 +139,5 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
         {body}
       </div>
     </>
-  );
-}
-
-function DocBody({
-  text,
-  target,
-  markRef,
-}: {
-  text: string;
-  target: string;
-  markRef: React.RefObject<HTMLElement | null>;
-}) {
-  if (!text) {
-    return (
-      <p className="text-sm text-muted-foreground italic">
-        Aucun texte extrait pour ce document.
-      </p>
-    );
-  }
-
-  const trimmedTarget = target.trim();
-  const targetIndex = trimmedTarget ? text.indexOf(trimmedTarget) : -1;
-
-  if (targetIndex < 0) {
-    return (
-      <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">
-        {text}
-      </pre>
-    );
-  }
-
-  const before = text.slice(0, targetIndex);
-  const highlight = text.slice(targetIndex, targetIndex + trimmedTarget.length);
-  const after = text.slice(targetIndex + trimmedTarget.length);
-
-  return (
-    <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">
-      {before}
-      <mark
-        ref={markRef}
-        className="bg-highlight text-highlight-foreground px-0.5 rounded"
-      >
-        {highlight}
-      </mark>
-      {after}
-    </pre>
   );
 }
