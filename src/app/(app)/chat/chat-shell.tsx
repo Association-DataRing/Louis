@@ -7,6 +7,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { LouisLogo } from "@/components/louis-logo";
 import { DocPanel } from "./doc-panel";
 import {
   IconArrowUp,
@@ -704,7 +705,7 @@ function EmptyState({ userName }: { userName: string }) {
   return (
     <div className="h-full flex flex-col items-center justify-center px-6">
       <div className="text-center max-w-md">
-        <OakLogo className="size-10 text-primary mx-auto mb-6" />
+        <LouisLogo className="size-10 text-primary mx-auto mb-6" />
         <h1 className="font-heading text-4xl font-light tracking-tight">
           Bonjour{firstName ? `, ${firstName}` : ""}.
         </h1>
@@ -716,21 +717,3 @@ function EmptyState({ userName }: { userName: string }) {
   );
 }
 
-function OakLogo({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M12 21V13" />
-      <path d="M9 21h6" />
-      <path d="M12 13c0-3 2-4 4-4 1.5 0 3-1 3-3 0-1.5-1-3-3-3-1.5 0-2.5 1-3 2-.5-1-1.5-2-3-2-2 0-3 1.5-3 3 0 2 1.5 3 3 3 2 0 4 1 4 4Z" />
-    </svg>
-  );
-}

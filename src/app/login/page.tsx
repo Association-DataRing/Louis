@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LouisLogo } from "@/components/louis-logo";
 import { loginAction, type LoginState } from "./actions";
 
 const initialState: LoginState = {};
@@ -18,7 +19,7 @@ export default function LoginPage() {
     <main className="flex-1 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2 text-foreground">
-          <OakLogo className="size-6 text-primary" />
+          <LouisLogo className="size-6 text-primary" />
           <span className="font-heading text-lg tracking-tight">Louis</span>
         </Link>
 
@@ -77,12 +78,3 @@ export default function LoginPage() {
   );
 }
 
-function OakLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M12 21V13" />
-      <path d="M9 21h6" />
-      <path d="M12 13c0-3 2-4 4-4 1.5 0 3-1 3-3 0-1.5-1-3-3-3-1.5 0-2.5 1-3 2-.5-1-1.5-2-3-2-2 0-3 1.5-3 3 0 2 1.5 3 3 3 2 0 4 1 4 4Z" />
-    </svg>
-  );
-}

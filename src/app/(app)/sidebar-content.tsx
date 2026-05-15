@@ -20,6 +20,7 @@ import {
   IconTable,
 } from "@tabler/icons-react";
 import { signOutAction } from "@/auth/actions";
+import { LouisLogo } from "@/components/louis-logo";
 import { ConversationItem } from "./chat/conversation-item";
 
 const navItems = [
@@ -108,7 +109,7 @@ export function SidebarContent({
             onClick={onNavigate}
             className="flex items-center gap-2 px-2 hover:opacity-80 transition-opacity"
           >
-            <OakLogo className="size-5 text-primary" />
+            <LouisLogo className="size-5 text-primary" />
             <span className="font-heading text-2xl font-light tracking-tight leading-none">
               Louis
             </span>
@@ -294,21 +295,3 @@ export function SidebarContent({
   );
 }
 
-function OakLogo({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M12 21V13" />
-      <path d="M9 21h6" />
-      <path d="M12 13c0-3 2-4 4-4 1.5 0 3-1 3-3 0-1.5-1-3-3-3-1.5 0-2.5 1-3 2-.5-1-1.5-2-3-2-2 0-3 1.5-3 3 0 2 1.5 3 3 3 2 0 4 1 4 4Z" />
-    </svg>
-  );
-}

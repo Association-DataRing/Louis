@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LouisLogo } from "@/components/louis-logo";
 import {
   IconShieldLock,
   IconFlag,
@@ -30,7 +31,7 @@ function Header() {
     <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
       <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <OakLogo className="size-6 text-primary" />
+          <LouisLogo className="size-6 text-primary" />
           <span className="font-heading text-lg tracking-tight">Louis</span>
         </div>
         <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
@@ -343,7 +344,7 @@ function Footer() {
     <footer className="border-t border-border">
       <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
-          <OakLogo className="size-4 text-primary/70" />
+          <LouisLogo className="size-4 text-primary/70" />
           <span>
             Louis · AGPL-3.0 · Hébergé chez vous, par vous.
           </span>
@@ -367,12 +368,3 @@ function Footer() {
   );
 }
 
-function OakLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M12 21V13" />
-      <path d="M9 21h6" />
-      <path d="M12 13c0-3 2-4 4-4 1.5 0 3-1 3-3 0-1.5-1-3-3-3-1.5 0-2.5 1-3 2-.5-1-1.5-2-3-2-2 0-3 1.5-3 3 0 2 1.5 3 3 3 2 0 4 1 4 4Z" />
-    </svg>
-  );
-}
