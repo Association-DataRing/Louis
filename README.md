@@ -153,6 +153,26 @@ npm run dev
 
 Louis tourne sur [http://localhost:3000](http://localhost:3000).
 
+### Tests E2E
+
+Smoke tests Playwright contre une instance de dev/prod locale :
+
+```bash
+# 1. Seed un user de test
+ADMIN_EMAIL=admin@louis.local ADMIN_PASSWORD=password npm run db:seed
+
+# 2. Démarrer l'app
+npm run dev   # ou: npm run build && npm start
+
+# 3. Dans un autre terminal
+npx playwright install --with-deps chromium  # une fois
+npm run test:e2e            # CLI
+npm run test:e2e:ui         # mode UI interactif
+```
+
+Variables d'env utiles : `E2E_BASE_URL`, `E2E_EMAIL`, `E2E_PASSWORD`. Voir
+[`tests/e2e/README.md`](./tests/e2e/README.md) pour plus de détails.
+
 ---
 
 ## Roadmap publique
