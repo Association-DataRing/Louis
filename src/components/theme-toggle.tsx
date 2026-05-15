@@ -1,34 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { IconSun, IconMoon, IconDeviceLaptop } from "@tabler/icons-react";
 
 /**
- * Toggle clair / sombre / système. Triple-state cyclique pour rester sur un
- * seul bouton dans la sidebar — un dropdown serait plus lourd visuellement
- * pour un usage peu fréquent.
+ * Toggle clair / sombre / système. Triple-state cyclique sur un seul bouton
+ * dans la sidebar — un dropdown serait disproportionné pour un usage peu
+ * fréquent.
+ *
+ * `useSyncExternalStore` est utilisé à la place du pattern
+ * useState+useEffect classique pour éviter un setState synchrone dans un
+ * effet (lint react-hooks/set-state-in-effect). Côté serveur la snapshot
+ * renvoie false, côté client true — sans hydration mismatch.
  */
+function useMounted(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+}
+
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // next-themes ne sait pas le thème avant l'hydratation : on n'affiche rien
-  // pour éviter le flash entre l'icône SSR (toujours système) et la vraie.
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   if (!mounted) {
     return (
-      <button
-        type="button"
+      <span
         className={
           className ??
-          "size-9 inline-flex items-center justify-center rounded-md text-muted-foreground"
+          "size-9 inline-flex items-center justify-center rounded-md"
         }
         aria-hidden
-      >
-        <IconSun className="size-4 opacity-0" />
-      </button>
+      />
     );
   }
 
