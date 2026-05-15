@@ -124,8 +124,21 @@ export function DocxView({
   return (
     <div
       ref={scrollRef}
-      className={`flex-1 min-h-0 overflow-auto bg-muted/30 px-5 py-5 ${className ?? ""}`}
+      className={`flex-1 min-h-0 overflow-auto bg-background px-4 ${className ?? ""}`}
     >
+      {/* Override de la bande grise foncée que docx-preview injecte
+          au-dessus de la première page (margin/header de page Word). */}
+      <style>{`
+        .docx-view-container .docx-wrapper {
+          background: transparent !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        .docx-view-container .docx-wrapper > section.docx {
+          margin: 1rem auto !important;
+          box-shadow: 0 0 0 1px oklch(0.92 0.008 265);
+        }
+      `}</style>
       {loading && (
         <div className="flex h-full items-center justify-center">
           <Spinner className="size-5" />
