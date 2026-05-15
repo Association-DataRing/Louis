@@ -1,4 +1,11 @@
-import { pgTable, uuid, text, integer, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  timestamp,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { projects } from "./projects";
 
@@ -10,6 +17,13 @@ export const documents = pgTable("documents", {
   projectId: uuid("project_id").references(() => projects.id, {
     onDelete: "set null",
   }),
+  // For versioning: every revision (v2, v3, …) points to the original document
+  // (v1). Null for originals. Family lookup: rootId = parentDocumentId ?? id.
+  parentDocumentId: uuid("parent_document_id").references(
+    (): AnyPgColumn => documents.id,
+    { onDelete: "cascade" }
+  ),
+  version: integer("version").notNull().default(1),
   filename: text("filename").notNull(),
   contentType: text("content_type").notNull(),
   sizeBytes: integer("size_bytes").notNull(),

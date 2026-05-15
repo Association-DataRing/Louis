@@ -1,3 +1,4 @@
+import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentChunks } from "@/db/schema";
@@ -39,6 +40,44 @@ export async function POST(req: Request) {
     );
   }
 
+  // When `replaces` is set, this upload is a new version of an existing
+  // document. We inherit the project assignment from the parent and increment
+  // the version counter for the whole family.
+  const replacesRaw = formData.get("replaces");
+  const replacesId =
+    typeof replacesRaw === "string" && replacesRaw.length > 0
+      ? replacesRaw
+      : null;
+  let parentDocumentId: string | null = null;
+  let projectIdOverride: string | null = null;
+  let nextVersion = 1;
+  if (replacesId) {
+    const [parent] = await db
+      .select({
+        id: documents.id,
+        userId: documents.userId,
+        projectId: documents.projectId,
+        parentDocumentId: documents.parentDocumentId,
+      })
+      .from(documents)
+      .where(and(eq(documents.id, replacesId), eq(documents.userId, userId)))
+      .limit(1);
+    if (!parent) {
+      return new Response("Parent document not found", { status: 404 });
+    }
+    parentDocumentId = parent.parentDocumentId ?? parent.id;
+    projectIdOverride = parent.projectId;
+    const [{ max }] = await db
+      .select({
+        max: sql<number>`COALESCE(MAX(${documents.version}), 0)::int`,
+      })
+      .from(documents)
+      .where(eq(documents.parentDocumentId, parentDocumentId));
+    nextVersion = (max ?? 0) + 1;
+    // The root document itself was at version 1, ensure new revisions go higher.
+    if (parentDocumentId === parent.id && nextVersion < 2) nextVersion = 2;
+  }
+
   const buffer = Buffer.from(await file.arrayBuffer());
   const storageKey = `${userId}/${nanoid()}-${file.name}`;
 
@@ -68,6 +107,9 @@ export async function POST(req: Request) {
       .insert(documents)
       .values({
         userId,
+        projectId: projectIdOverride,
+        parentDocumentId,
+        version: nextVersion,
         filename: file.name,
         contentType: file.type,
         sizeBytes: file.size,

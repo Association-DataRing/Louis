@@ -1,7 +1,7 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { documents, projects } from "@/db/schema";
+import { documents, projects, type Document } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { UploadButton } from "./upload-button";
 import { DocumentRow } from "./document-row";
@@ -23,6 +23,29 @@ export default async function DocumentsPage() {
       .orderBy(asc(projects.name)),
   ]);
 
+  // Group documents by family (rootId = parentDocumentId ?? id). For each
+  // family we keep the highest-version row as the "primary" displayed in the
+  // list, and surface the rest as collapsible history.
+  const families = new Map<string, Document[]>();
+  for (const d of docs) {
+    const rootId = d.parentDocumentId ?? d.id;
+    const list = families.get(rootId) ?? [];
+    list.push(d);
+    families.set(rootId, list);
+  }
+  type FamilyView = { latest: Document; older: Document[] };
+  const familyViews: FamilyView[] = Array.from(families.values()).map(
+    (members) => {
+      const sorted = [...members].sort((a, b) => b.version - a.version);
+      return { latest: sorted[0], older: sorted.slice(1) };
+    }
+  );
+  familyViews.sort(
+    (a, b) =>
+      new Date(b.latest.createdAt).getTime() -
+      new Date(a.latest.createdAt).getTime()
+  );
+
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-8 flex items-start justify-between gap-4">
@@ -37,20 +60,25 @@ export default async function DocumentsPage() {
         <UploadButton />
       </header>
 
-      {docs.length > 0 && (
+      {familyViews.length > 0 && (
         <div className="mb-6 flex items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="outline">
-            {docs.length} document{docs.length > 1 ? "s" : ""}
+            {familyViews.length} document{familyViews.length > 1 ? "s" : ""}
           </Badge>
         </div>
       )}
 
-      {docs.length === 0 ? (
+      {familyViews.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border bg-card">
-          {docs.map((doc) => (
-            <DocumentRow key={doc.id} entry={doc} projects={projectList} />
+          {familyViews.map((fv) => (
+            <DocumentRow
+              key={fv.latest.id}
+              entry={fv.latest}
+              projects={projectList}
+              versions={fv.older}
+            />
           ))}
         </div>
       )}
