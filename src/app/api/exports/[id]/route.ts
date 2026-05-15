@@ -1,13 +1,12 @@
 import { auth } from "@/auth";
-import { getExport } from "@/lib/docgen";
+import { getExportForUser } from "@/lib/docgen";
 
 /**
  * Sert un document généré (DOCX/PDF) à partir de son ID éphémère.
  *
- * Les exports vivent 10 min en mémoire serveur — assez pour qu'un avocat
- * clique sur le lien, pas assez pour qu'une URL leakée reste exploitable
- * indéfiniment. Vérification d'identité : seul l'utilisateur qui a
- * déclenché la génération peut télécharger.
+ * Les exports vivent 10 min en DB — survit aux hot-reloads dev et aux
+ * invocations multiples. Vérification d'identité : seul l'utilisateur qui
+ * a déclenché la génération peut télécharger.
  */
 export async function GET(
   _req: Request,
@@ -19,20 +18,16 @@ export async function GET(
   }
 
   const { id } = await params;
-  const entry = getExport(id);
+  const entry = await getExportForUser(id, session.user.id);
 
   if (!entry) {
     return new Response("Export expiré ou introuvable", { status: 404 });
   }
 
-  if (entry.userId !== session.user.id) {
-    return new Response("Forbidden", { status: 403 });
-  }
-
-  // Encode-RFC5987 du filename pour les caractères non-ASCII (accents).
+  // Encode RFC5987 pour les caractères non-ASCII (accents).
   const encoded = encodeURIComponent(entry.filename);
 
-  // Convert Buffer to Uint8Array for Web Response API
+  // Buffer -> Uint8Array pour le Web Response API.
   return new Response(new Uint8Array(entry.buffer), {
     headers: {
       "Content-Type": entry.contentType,

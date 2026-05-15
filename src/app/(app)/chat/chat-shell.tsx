@@ -12,6 +12,7 @@ import { uiPartsFromSaved } from "@/lib/ai/saved-parts";
 import type { SavedPart } from "@/db/schema/messages";
 import { DocPanel } from "./doc-panel";
 import { EditCard } from "./edit-card";
+import { ExportPreviewPanel } from "./export-preview-panel";
 import {
   IconArrowUp,
   IconPaperclip,
@@ -157,6 +158,23 @@ const TOOL_LABEL: Record<string, string> = {
   edit_document: "Édition en tracked changes",
 };
 
+/**
+ * Texte présent pendant l'exécution (« Création du document… »,
+ * « Application des changes… ») pour donner un feedback explicite à
+ * l'utilisateur au lieu du seul nom de tool en gris.
+ */
+const TOOL_PENDING_VERB: Record<string, string> = {
+  pappers_search: "Recherche Pappers en cours…",
+  pappers_get: "Récupération de la fiche entreprise…",
+  legifrance_search: "Recherche Légifrance en cours…",
+  search_documents: "Recherche dans vos documents…",
+  list_documents: "Listing de vos documents…",
+  read_document: "Lecture du document…",
+  find_in_document: "Recherche dans le document…",
+  generate_document: "Création du document…",
+  edit_document: "Application des tracked changes…",
+};
+
 function formatToolInput(input: unknown): string {
   if (!input || typeof input !== "object") return "";
   const obj = input as Record<string, unknown>;
@@ -176,41 +194,60 @@ type SearchDocumentsHit = {
   similarity: number;
 };
 
-type GenerateDocumentResult = {
-  ok: true;
-  data: {
-    url: string;
-    filename: string;
-    format: "docx" | "pdf";
-    ttl_minutes: number;
-  };
+type GeneratedDocument = {
+  url: string;
+  filename: string;
+  format: "docx" | "pdf";
+  ttl_minutes?: number;
 };
 
-type EditDocumentResult = {
-  ok: true;
-  data: {
-    url: string;
-    filename: string;
-    format: "docx";
-    applied_count: number;
-    errors_count: number;
-    applied: Array<{
-      index: number;
-      find: string;
-      replace: string;
-      reason?: string;
-      paragraph: number;
-    }>;
-    errors: Array<{
-      index: number;
-      reason: string;
-      message: string;
-    }>;
-  };
+type EditedDocument = {
+  url: string;
+  filename: string;
+  format: "docx";
+  applied_count: number;
+  errors_count: number;
+  applied: Array<{
+    index: number;
+    find: string;
+    replace: string;
+    reason?: string;
+    paragraph: number;
+  }>;
+  errors: Array<{
+    index: number;
+    reason: string;
+    message: string;
+  }>;
 };
 
-function isOkResult<T>(o: unknown): o is { ok: true; data: T } {
-  return Boolean(o && typeof o === "object" && (o as { ok?: boolean }).ok === true);
+/**
+ * L'AI SDK n'a pas de garantie ferme sur la forme exacte de `output` —
+ * selon le provider et la version le résultat peut être :
+ *   - l'objet brut renvoyé par execute (notre `{ok: true, data: {...}}`)
+ *   - `data` directement (envelope ToolResult dépouillée)
+ *   - une string JSON sérialisée
+ * On unwrap tolérant pour rester robuste.
+ */
+function unwrapToolResult<T>(o: unknown): T | null {
+  if (!o) return null;
+  let candidate: unknown = o;
+  if (typeof candidate === "string") {
+    try {
+      candidate = JSON.parse(candidate);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof candidate !== "object" || candidate === null) return null;
+  const obj = candidate as Record<string, unknown>;
+  // envelope ToolResult {ok, data}
+  if ("ok" in obj && "data" in obj) {
+    if (obj.ok === false) return null;
+    return obj.data as T;
+  }
+  // déjà dépouillé
+  return obj as T;
 }
 
 function DocumentDownloadCard({
@@ -263,8 +300,8 @@ function EditedDocumentCard({
 }: {
   url: string;
   filename: string;
-  applied: EditDocumentResult["data"]["applied"];
-  errors: EditDocumentResult["data"]["errors"];
+  applied: EditedDocument["applied"];
+  errors: EditedDocument["errors"];
   appliedCount: number;
   errorsCount: number;
 }) {
@@ -375,40 +412,36 @@ function ToolPart({
   const isPending = state === "input-streaming" || state === "input-available";
 
   // generate_document → carte de téléchargement (.docx ou .pdf)
-  if (
-    name === "generate_document" &&
-    !isPending &&
-    isOkResult<GenerateDocumentResult["data"]>(output)
-  ) {
-    const d = output.data;
-    return (
-      <DocumentDownloadCard
-        title="Document généré"
-        filename={d.filename}
-        url={d.url}
-        format={d.format}
-        ttlMinutes={d.ttl_minutes}
-      />
-    );
+  if (name === "generate_document" && !isPending) {
+    const d = unwrapToolResult<GeneratedDocument>(output);
+    if (d && d.url) {
+      return (
+        <DocumentDownloadCard
+          title="Document généré"
+          filename={d.filename}
+          url={d.url}
+          format={d.format ?? "docx"}
+          ttlMinutes={d.ttl_minutes ?? 10}
+        />
+      );
+    }
   }
 
   // edit_document → carte récap des changes + bouton download .docx édité
-  if (
-    name === "edit_document" &&
-    !isPending &&
-    isOkResult<EditDocumentResult["data"]>(output)
-  ) {
-    const d = output.data;
-    return (
-      <EditedDocumentCard
-        url={d.url}
-        filename={d.filename}
-        applied={d.applied}
-        errors={d.errors}
-        appliedCount={d.applied_count}
-        errorsCount={d.errors_count}
-      />
-    );
+  if (name === "edit_document" && !isPending) {
+    const d = unwrapToolResult<EditedDocument>(output);
+    if (d && d.url) {
+      return (
+        <EditedDocumentCard
+          url={d.url}
+          filename={d.filename}
+          applied={d.applied ?? []}
+          errors={d.errors ?? []}
+          appliedCount={d.applied_count ?? 0}
+          errorsCount={d.errors_count ?? 0}
+        />
+      );
+    }
   }
 
   // search_documents → rendu spécial avec sources cliquables
@@ -452,14 +485,20 @@ function ToolPart({
   }
 
   return (
-    <div className="rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs flex items-center gap-2 max-w-[80%]">
+    <div
+      className={`relative overflow-hidden rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs flex items-center gap-2 max-w-[80%] ${
+        isPending ? "shimmer" : ""
+      }`}
+    >
       {isPending ? (
         <Spinner className="size-3" />
       ) : (
         <IconTool className="size-3 text-primary" />
       )}
-      <span className="font-medium">{label}</span>
-      {inputSummary && (
+      <span className="font-medium">
+        {isPending ? TOOL_PENDING_VERB[name] ?? `${label}…` : label}
+      </span>
+      {inputSummary && !isPending && (
         <span className="text-muted-foreground truncate">· {inputSummary}</span>
       )}
     </div>
@@ -604,6 +643,13 @@ export function ChatShell({
     documentId: string;
     targetText: string;
   } | null>(null);
+  // Panneau d'aperçu des exports générés (PDF iframe ou DOCX download card)
+  const [openedExport, setOpenedExport] = useState<{
+    url: string;
+    filename: string;
+    format: "docx" | "pdf";
+  } | null>(null);
+  const lastSeenExportUrl = useRef<string | null>(null);
 
   function handleProviderChange(nextId: string) {
     setProviderKeyId(nextId);
@@ -678,6 +724,32 @@ export function ChatShell({
   }
 
   const isEmpty = messages.length === 0;
+
+  // Auto-ouverture du panneau d'aperçu dès qu'un tool generate_document /
+  // edit_document remonte un résultat. On scanne les parts du dernier
+  // message assistant et on prend le dernier export non encore ouvert.
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant" || !last.parts) return;
+    for (let i = last.parts.length - 1; i >= 0; i--) {
+      const p = last.parts[i] as { type: string; output?: unknown };
+      if (
+        p.type !== "tool-generate_document" &&
+        p.type !== "tool-edit_document"
+      )
+        continue;
+      const d = unwrapToolResult<GeneratedDocument | EditedDocument>(p.output);
+      if (!d || !d.url) continue;
+      if (lastSeenExportUrl.current === d.url) return;
+      lastSeenExportUrl.current = d.url;
+      setOpenedExport({
+        url: d.url,
+        filename: d.filename,
+        format: d.format ?? "docx",
+      });
+      return;
+    }
+  }, [messages]);
 
   return (
     <div className="flex-1 flex h-full min-w-0 w-full">
@@ -858,6 +930,31 @@ export function ChatShell({
                 </div>
               );
             })}
+
+            {isBusy && (() => {
+              // Affiche une ligne « Réflexion… » tant qu'aucune part assistant
+              // n'a été produite, OU si la dernière part assistant est vide
+              // (le modèle a appelé un tool et attend son retour avant de
+              // composer la réponse).
+              const last = messages[messages.length - 1];
+              const lastHasRenderableText =
+                last?.role === "assistant" &&
+                last.parts?.some(
+                  (p) =>
+                    p.type === "text" &&
+                    typeof (p as { text?: string }).text === "string" &&
+                    (p as { text: string }).text.trim().length > 0
+                );
+              if (lastHasRenderableText) return null;
+              return (
+                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <LouisLogo className="size-4 text-primary mt-0.5 shrink-0" />
+                  <span className="shimmer relative overflow-hidden rounded-md bg-muted/40 px-3 py-1.5 text-xs font-medium">
+                    Réflexion en cours…
+                  </span>
+                </div>
+              );
+            })()}
 
             {error && (
               <div className="rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm p-3">
@@ -1077,6 +1174,15 @@ export function ChatShell({
         documentId={openDoc.documentId}
         targetText={openDoc.targetText}
         onClose={() => setOpenDoc(null)}
+      />
+    )}
+    {openedExport && (
+      <ExportPreviewPanel
+        key={openedExport.url}
+        url={openedExport.url}
+        filename={openedExport.filename}
+        format={openedExport.format}
+        onClose={() => setOpenedExport(null)}
       />
     )}
     </div>

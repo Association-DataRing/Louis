@@ -462,7 +462,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
         });
 
         const baseName = doc.filename.replace(/\.docx$/i, "");
-        const stored = storeBuffer({
+        const stored = await storeBuffer({
           buffer: result.buffer,
           contentType:
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

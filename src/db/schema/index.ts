@@ -6,6 +6,7 @@ export * from "./messages";
 export * from "./connector-keys";
 export * from "./document-folders";
 export * from "./documents";
+export * from "./document-exports";
 export * from "./document-chunks";
 export * from "./mcp-servers";
 export * from "./tabular-reviews";

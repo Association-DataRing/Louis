@@ -36,7 +36,7 @@ export async function generateAndStore({
     .trim();
   const filename = `${safe || "document"}.${format}`;
 
-  const id = putExport(buffer, CONTENT_TYPES[format], filename, userId);
+  const id = await putExport(buffer, CONTENT_TYPES[format], filename, userId);
   return { url: `/api/exports/${id}`, filename };
 }
 
@@ -44,7 +44,7 @@ export async function generateAndStore({
  * Stocke un buffer arbitraire (utilisé par edit_document après manipulation
  * du DOCX original via tracked changes) en réutilisant le mécanisme TTL.
  */
-export function storeBuffer({
+export async function storeBuffer({
   buffer,
   contentType,
   filename,
@@ -54,10 +54,10 @@ export function storeBuffer({
   contentType: string;
   filename: string;
   userId: string;
-}): { url: string; filename: string } {
-  const id = putExport(buffer, contentType, filename, userId);
+}): Promise<{ url: string; filename: string }> {
+  const id = await putExport(buffer, contentType, filename, userId);
   return { url: `/api/exports/${id}`, filename };
 }
 
-export { getExport } from "./store";
+export { getExport, getExportForUser } from "./store";
 export type { DocumentSpec, Section } from "./types";

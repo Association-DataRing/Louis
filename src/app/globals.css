@@ -115,6 +115,30 @@
   --highlight-foreground: oklch(0.95 0.04 90);
 }
 
+/* Shimmer pendant l'exécution d'un tool / la réflexion IA — bande
+   lumineuse qui traverse l'élément de gauche à droite. Override en
+   reduced-motion : pas d'animation, garde juste l'opacity. */
+@keyframes louis-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--primary) 15%, transparent) 50%,
+    transparent 100%
+  );
+  animation: louis-shimmer 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::before { animation: none; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
