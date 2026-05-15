@@ -8,6 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { projects } from "./projects";
+import { documentFolders } from "./document-folders";
 
 export const documents = pgTable("documents", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -15,6 +16,9 @@ export const documents = pgTable("documents", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "set null",
+  }),
+  folderId: uuid("folder_id").references(() => documentFolders.id, {
     onDelete: "set null",
   }),
   // For versioning: every revision (v2, v3, …) points to the original document

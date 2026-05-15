@@ -16,6 +16,7 @@ import {
   IconChevronDown,
   IconVersions,
   IconHistory,
+  IconFolder,
 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,18 +29,24 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Document } from "@/db/schema/documents";
-import { deleteDocument } from "./actions";
+import type { Document, DocumentFolder } from "@/db/schema";
+import { deleteDocument, moveDocumentToFolder } from "./actions";
 import { moveDocumentToProject } from "../projects/actions";
 
 type Props = {
   entry: Document;
   projects?: { id: string; name: string }[];
+  folders?: DocumentFolder[];
   /** Older revisions (v1, v2…) of the same family, oldest first. */
   versions?: Document[];
 };
 
-export function DocumentRow({ entry, projects = [], versions = [] }: Props) {
+export function DocumentRow({
+  entry,
+  projects = [],
+  folders = [],
+  versions = [],
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const replaceRef = useRef<HTMLInputElement>(null);
@@ -49,6 +56,13 @@ export function DocumentRow({ entry, projects = [], versions = [] }: Props) {
   function moveTo(projectId: string | null) {
     startTransition(async () => {
       await moveDocumentToProject(entry.id, projectId);
+      router.refresh();
+    });
+  }
+
+  function moveToFolder(folderId: string | null) {
+    startTransition(async () => {
+      await moveDocumentToFolder(entry.id, folderId);
       router.refresh();
     });
   }
@@ -181,6 +195,43 @@ export function DocumentRow({ entry, projects = [], versions = [] }: Props) {
                         <IconFolders className="size-4" />
                       )}
                       <span className="truncate">{p.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+            </>
+          )}
+
+          {folders.length > 0 && (
+            <>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <IconFolder className="size-4" />
+                  Déplacer vers (dossier)
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {entry.folderId && (
+                    <>
+                      <DropdownMenuItem onSelect={() => moveToFolder(null)}>
+                        <IconFolderOff className="size-4" />
+                        Remonter à la racine
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  {folders.map((f) => (
+                    <DropdownMenuItem
+                      key={f.id}
+                      onSelect={() => moveToFolder(f.id)}
+                      disabled={f.id === entry.folderId}
+                    >
+                      {f.id === entry.folderId ? (
+                        <IconCheck className="size-4 text-primary" />
+                      ) : (
+                        <IconFolder className="size-4" />
+                      )}
+                      <span className="truncate">{f.name}</span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuSubContent>

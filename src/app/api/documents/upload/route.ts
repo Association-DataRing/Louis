@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { documents, documentChunks } from "@/db/schema";
+import { documents, documentChunks, documentFolders } from "@/db/schema";
 import { uploadObject, deleteObject } from "@/lib/storage";
 import { extractText, isSupportedContentType } from "@/lib/extract";
 import { chunkText } from "@/lib/rag/chunk";
@@ -78,6 +78,25 @@ export async function POST(req: Request) {
     if (parentDocumentId === parent.id && nextVersion < 2) nextVersion = 2;
   }
 
+  // Folder assignment (only on fresh uploads — versions inherit from parent).
+  let folderIdOverride: string | null = null;
+  if (!replacesId) {
+    const folderRaw = formData.get("folder");
+    if (typeof folderRaw === "string" && folderRaw.length > 0) {
+      const [folder] = await db
+        .select({ id: documentFolders.id })
+        .from(documentFolders)
+        .where(
+          and(
+            eq(documentFolders.id, folderRaw),
+            eq(documentFolders.userId, userId)
+          )
+        )
+        .limit(1);
+      if (folder) folderIdOverride = folder.id;
+    }
+  }
+
   const buffer = Buffer.from(await file.arrayBuffer());
   const storageKey = `${userId}/${nanoid()}-${file.name}`;
 
@@ -108,6 +127,7 @@ export async function POST(req: Request) {
       .values({
         userId,
         projectId: projectIdOverride,
+        folderId: folderIdOverride,
         parentDocumentId,
         version: nextVersion,
         filename: file.name,

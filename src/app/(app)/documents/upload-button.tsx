@@ -6,7 +6,11 @@ import { IconUpload } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
-export function UploadButton() {
+export function UploadButton({
+  folderId = null,
+}: {
+  folderId?: string | null;
+}) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +23,7 @@ export function UploadButton() {
 
     const formData = new FormData();
     formData.append("file", file);
+    if (folderId) formData.append("folder", folderId);
 
     startTransition(async () => {
       try {
