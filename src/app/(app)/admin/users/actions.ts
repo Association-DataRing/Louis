@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/permissions";
+import { recordAudit } from "@/lib/audit";
 
 const createSchema = z.object({
   email: z.email(),
@@ -21,7 +22,7 @@ export async function createUser(
   _prev: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
-  await requireAdmin();
+  const { userId: adminId } = await requireAdmin();
 
   const parsed = createSchema.safeParse({
     email: formData.get("email"),
@@ -51,6 +52,12 @@ export async function createUser(
     return { ok: false, error: "Impossible de créer l'utilisateur." };
   }
 
+  await recordAudit({
+    userId: adminId,
+    action: "user.create",
+    target: parsed.data.email,
+    meta: { role: parsed.data.role },
+  });
   revalidatePath("/admin/users");
   return { ok: true };
 }
@@ -61,7 +68,7 @@ export async function toggleUserActive(id: string): Promise<void> {
   if (id === adminId) return;
 
   const [current] = await db
-    .select({ isActive: users.isActive })
+    .select({ isActive: users.isActive, email: users.email })
     .from(users)
     .where(eq(users.id, id))
     .limit(1);
@@ -71,15 +78,28 @@ export async function toggleUserActive(id: string): Promise<void> {
     .update(users)
     .set({ isActive: !current.isActive })
     .where(eq(users.id, id));
+  await recordAudit({
+    userId: adminId,
+    action: current.isActive ? "user.disable" : "user.enable",
+    target: current.email,
+  });
   revalidatePath("/admin/users");
 }
 
 export async function deleteUser(id: string): Promise<void> {
   const { userId: adminId } = await requireAdmin();
-  // Can never delete oneself.
   if (id === adminId) return;
-
+  const [target] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
   await db.delete(users).where(eq(users.id, id));
+  await recordAudit({
+    userId: adminId,
+    action: "user.delete",
+    target: target?.email ?? id,
+  });
   revalidatePath("/admin/users");
 }
 
@@ -87,12 +107,22 @@ export async function resetUserPassword(
   id: string,
   newPassword: string
 ): Promise<ActionResult> {
-  await requireAdmin();
+  const { userId: adminId } = await requireAdmin();
   if (!newPassword || newPassword.length < 10) {
     return { ok: false, error: "Mot de passe trop court (10 minimum)." };
   }
   const passwordHash = await bcrypt.hash(newPassword, 12);
+  const [target] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
   await db.update(users).set({ passwordHash }).where(eq(users.id, id));
+  await recordAudit({
+    userId: adminId,
+    action: "user.password.reset",
+    target: target?.email ?? id,
+  });
   return { ok: true };
 }
 

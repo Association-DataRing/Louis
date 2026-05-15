@@ -10,3 +10,5 @@ export * from "./document-chunks";
 export * from "./mcp-servers";
 export * from "./tabular-reviews";
 export * from "./workflows";
+export * from "./cabinet-settings";
+export * from "./audit-log";
