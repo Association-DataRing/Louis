@@ -222,16 +222,23 @@ type EditedDocument = {
 };
 
 /**
- * L'AI SDK n'a pas de garantie ferme sur la forme exacte de `output` —
- * selon le provider et la version le résultat peut être :
- *   - l'objet brut renvoyé par execute (notre `{ok: true, data: {...}}`)
- *   - `data` directement (envelope ToolResult dépouillée)
- *   - une string JSON sérialisée
- * On unwrap tolérant pour rester robuste.
+ * L'AI SDK v6 emballe la sortie d'un tool dans `{type: "json", value: {...}}`
+ * (ou `{type: "text", text: "..."}` pour les retours scalaires). Notre tool
+ * renvoie ensuite une envelope ToolResult `{ok: true, data: {...}}`. On
+ * unwrap successivement ces couches pour récupérer la `data` métier.
+ *
+ * Cas gérés :
+ *   - { type: "json", value: { ok: true, data: T } }   ← AI SDK + ToolResult
+ *   - { type: "text", text: "<json>" }                  ← AI SDK provider-executed
+ *   - { ok: true, data: T }                             ← envelope brute
+ *   - T                                                 ← objet déjà dépouillé
+ *   - "<json>"                                          ← string serialisée
  */
 function unwrapToolResult<T>(o: unknown): T | null {
   if (!o) return null;
   let candidate: unknown = o;
+
+  // Couche 1 : si string, parse en JSON
   if (typeof candidate === "string") {
     try {
       candidate = JSON.parse(candidate);
@@ -240,14 +247,28 @@ function unwrapToolResult<T>(o: unknown): T | null {
     }
   }
   if (typeof candidate !== "object" || candidate === null) return null;
-  const obj = candidate as Record<string, unknown>;
-  // envelope ToolResult {ok, data}
-  if ("ok" in obj && "data" in obj) {
-    if (obj.ok === false) return null;
-    return obj.data as T;
+
+  // Couche 2 : enveloppe AI SDK {type, value/text}
+  const aiObj = candidate as Record<string, unknown>;
+  if ("type" in aiObj && "value" in aiObj && aiObj.type === "json") {
+    candidate = aiObj.value;
+  } else if ("type" in aiObj && "text" in aiObj && aiObj.type === "text") {
+    try {
+      candidate = JSON.parse(String(aiObj.text));
+    } catch {
+      return null;
+    }
   }
-  // déjà dépouillé
-  return obj as T;
+  if (typeof candidate !== "object" || candidate === null) return null;
+
+  // Couche 3 : envelope ToolResult {ok, data}
+  const env = candidate as Record<string, unknown>;
+  if ("ok" in env && "data" in env) {
+    if (env.ok === false) return null;
+    return env.data as T;
+  }
+
+  return env as T;
 }
 
 function DocumentDownloadCard({
@@ -643,12 +664,39 @@ export function ChatShell({
     documentId: string;
     targetText: string;
   } | null>(null);
-  // Panneau d'aperçu des exports générés (PDF iframe ou DOCX download card)
+  // Panneau d'aperçu des exports générés. Persisté en sessionStorage
+  // parce que `<ChatShell key={currentId ?? "new-..."}>` remount le
+  // composant quand l'URL passe de /chat à /chat?id=xxx (à la fin du
+  // premier message d'une nouvelle conv) — sinon le state local est
+  // perdu et le panel se ferme tout seul à ce moment précis.
   const [openedExport, setOpenedExport] = useState<{
     url: string;
     filename: string;
     format: "docx" | "pdf";
-  } | null>(null);
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.sessionStorage.getItem("louis:openedExport");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (openedExport) {
+        window.sessionStorage.setItem(
+          "louis:openedExport",
+          JSON.stringify(openedExport)
+        );
+      } else {
+        window.sessionStorage.removeItem("louis:openedExport");
+      }
+    } catch {
+      // sessionStorage indisponible (Safari private mode) — ignore.
+    }
+  }, [openedExport]);
   const lastSeenExportUrl = useRef<string | null>(null);
 
   function handleProviderChange(nextId: string) {
