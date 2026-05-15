@@ -1,7 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { documents } from "@/db/schema";
+import { documents, projects } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { UploadButton } from "./upload-button";
 import { DocumentRow } from "./document-row";
@@ -10,11 +10,18 @@ export default async function DocumentsPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const docs = await db
-    .select()
-    .from(documents)
-    .where(eq(documents.userId, userId))
-    .orderBy(desc(documents.createdAt));
+  const [docs, projectList] = await Promise.all([
+    db
+      .select()
+      .from(documents)
+      .where(eq(documents.userId, userId))
+      .orderBy(desc(documents.createdAt)),
+    db
+      .select({ id: projects.id, name: projects.name })
+      .from(projects)
+      .where(eq(projects.userId, userId))
+      .orderBy(asc(projects.name)),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8 md:px-8 md:py-10">
@@ -43,7 +50,7 @@ export default async function DocumentsPage() {
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border bg-card">
           {docs.map((doc) => (
-            <DocumentRow key={doc.id} entry={doc} />
+            <DocumentRow key={doc.id} entry={doc} projects={projectList} />
           ))}
         </div>
       )}

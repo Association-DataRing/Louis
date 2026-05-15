@@ -34,11 +34,13 @@ const navItems = [
   { href: "/mcp", label: "Serveurs MCP", icon: IconBolt },
 ];
 
-type Conversation = { id: string; title: string };
+type Conversation = { id: string; title: string; projectId: string | null };
+type ProjectOption = { id: string; name: string };
 
 type Props = {
   user: { name: string; email: string; role: string };
   conversations: Conversation[];
+  projects: ProjectOption[];
   onNavigate?: () => void;
   /** Forces open layout (used inside Sheet on mobile). */
   forceOpen?: boolean;
@@ -67,6 +69,7 @@ function getServerSnapshot(): string {
 export function SidebarContent({
   user,
   conversations,
+  projects,
   onNavigate,
   forceOpen,
 }: Props) {
@@ -223,6 +226,8 @@ export function SidebarContent({
                     id={c.id}
                     title={c.title}
                     isCurrent={c.id === currentConvId}
+                    currentProjectId={c.projectId}
+                    projects={projects}
                   />
                 ))
               )}

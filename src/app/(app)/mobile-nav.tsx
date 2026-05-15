@@ -9,10 +9,11 @@ import { SidebarContent } from "./sidebar-content";
 
 type Props = {
   user: { name: string; email: string; role: string };
-  conversations: { id: string; title: string }[];
+  conversations: { id: string; title: string; projectId: string | null }[];
+  projects: { id: string; name: string }[];
 };
 
-export function MobileNav({ user, conversations }: Props) {
+export function MobileNav({ user, conversations, projects }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -29,6 +30,7 @@ export function MobileNav({ user, conversations }: Props) {
           <SidebarContent
             user={user}
             conversations={conversations}
+            projects={projects}
             onNavigate={() => setOpen(false)}
             forceOpen
           />

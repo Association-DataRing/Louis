@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import {
   IconDots,
@@ -8,19 +9,40 @@ import {
   IconFileTypeDocx,
   IconAlertTriangle,
   IconTrash,
+  IconFolders,
+  IconFolderOff,
+  IconCheck,
 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Document } from "@/db/schema/documents";
 import { deleteDocument } from "./actions";
+import { moveDocumentToProject } from "../projects/actions";
 
-export function DocumentRow({ entry }: { entry: Document }) {
+type Props = {
+  entry: Document;
+  projects?: { id: string; name: string }[];
+};
+
+export function DocumentRow({ entry, projects = [] }: Props) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
+
+  function moveTo(projectId: string | null) {
+    startTransition(async () => {
+      await moveDocumentToProject(entry.id, projectId);
+      router.refresh();
+    });
+  }
 
   return (
     <div className="px-5 py-4 flex items-center gap-4">
@@ -41,6 +63,12 @@ export function DocumentRow({ entry }: { entry: Document }) {
               <IconAlertTriangle className="size-3" />
               extraction échouée
             </span>
+          )}
+          {entry.projectId && (
+            <Badge variant="secondary" className="shrink-0 text-[10px] gap-1">
+              <IconFolders className="size-2.5" />
+              {projects.find((p) => p.id === entry.projectId)?.name ?? "projet"}
+            </Badge>
           )}
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
@@ -68,6 +96,43 @@ export function DocumentRow({ entry }: { entry: Document }) {
           <IconDots className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {projects.length > 0 && (
+            <>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <IconFolders className="size-4" />
+                  Déplacer vers
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {entry.projectId && (
+                    <>
+                      <DropdownMenuItem onSelect={() => moveTo(null)}>
+                        <IconFolderOff className="size-4" />
+                        Retirer du projet
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  {projects.map((p) => (
+                    <DropdownMenuItem
+                      key={p.id}
+                      onSelect={() => moveTo(p.id)}
+                      disabled={p.id === entry.projectId}
+                    >
+                      {p.id === entry.projectId ? (
+                        <IconCheck className="size-4 text-primary" />
+                      ) : (
+                        <IconFolders className="size-4" />
+                      )}
+                      <span className="truncate">{p.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+            </>
+          )}
+
           <DropdownMenuItem
             variant="destructive"
             disabled={pending}

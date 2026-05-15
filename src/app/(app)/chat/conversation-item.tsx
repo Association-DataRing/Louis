@@ -8,23 +8,38 @@ import {
   IconDots,
   IconPencil,
   IconTrash,
+  IconFolders,
+  IconFolderOff,
+  IconCheck,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { renameConversation, deleteConversation } from "./actions";
+import { moveConversationToProject } from "../projects/actions";
 
 type Props = {
   id: string;
   title: string;
   isCurrent: boolean;
+  currentProjectId?: string | null;
+  projects?: { id: string; name: string }[];
 };
 
-export function ConversationItem({ id, title, isCurrent }: Props) {
+export function ConversationItem({
+  id,
+  title,
+  isCurrent,
+  currentProjectId,
+  projects = [],
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -48,6 +63,13 @@ export function ConversationItem({ id, title, isCurrent }: Props) {
     startTransition(async () => {
       await deleteConversation(id, { redirectToFresh: isCurrent });
       if (!isCurrent) router.refresh();
+    });
+  }
+
+  function moveTo(projectId: string | null) {
+    startTransition(async () => {
+      await moveConversationToProject(id, projectId);
+      router.refresh();
     });
   }
 
@@ -104,6 +126,41 @@ export function ConversationItem({ id, title, isCurrent }: Props) {
             <IconPencil className="size-4" />
             Renommer
           </DropdownMenuItem>
+
+          {projects.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <IconFolders className="size-4" />
+                Déplacer vers
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {currentProjectId && (
+                  <>
+                    <DropdownMenuItem onSelect={() => moveTo(null)}>
+                      <IconFolderOff className="size-4" />
+                      Retirer du projet
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {projects.map((p) => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onSelect={() => moveTo(p.id)}
+                    disabled={p.id === currentProjectId}
+                  >
+                    {p.id === currentProjectId ? (
+                      <IconCheck className="size-4 text-primary" />
+                    ) : (
+                      <IconFolders className="size-4" />
+                    )}
+                    <span className="truncate">{p.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
             <IconTrash className="size-4" />
