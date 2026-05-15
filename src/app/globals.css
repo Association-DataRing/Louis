@@ -9,8 +9,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans), "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --font-sans: var(--font-sans), "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), "Geist Mono", ui-monospace, monospace;
   --font-heading: var(--font-heading), "EB Garamond", ui-serif, Georgia, serif;
   --font-serif: var(--font-heading), "EB Garamond", ui-serif, Georgia, serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -46,64 +48,71 @@
 }
 
 :root {
-  /* Palette quasi-neutre type Mike : blanc pur partout, sidebar gris très clair,
-     bleu de France réservé au primary (accent + boutons CTA). */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.15 0 0);
+  /* Light : neutres légèrement teintés vers bleu de France (chroma 0.006-0.012
+     sur le hue 265°). Imperceptible isolément, cohésion forte à l'échelle. */
+  --background: oklch(0.99 0.003 265);
+  --foreground: oklch(0.16 0.01 265);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
+  --card-foreground: oklch(0.16 0.01 265);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0 0);
+  --popover-foreground: oklch(0.16 0.01 265);
   --primary: oklch(0.32 0.18 265);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.15 0 0);
+  --primary-foreground: oklch(0.985 0.002 265);
+  --secondary: oklch(0.97 0.006 265);
+  --secondary-foreground: oklch(0.16 0.01 265);
+  --muted: oklch(0.97 0.006 265);
+  --muted-foreground: oklch(0.5 0.012 265);
+  --accent: oklch(0.95 0.008 265);
+  --accent-foreground: oklch(0.16 0.01 265);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0 0);
-  --input: oklch(0.92 0 0);
+  --border: oklch(0.92 0.008 265);
+  --input: oklch(0.92 0.008 265);
   --ring: oklch(0.32 0.18 265);
   --radius: 0.875rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar: oklch(0.985 0.005 265);
+  --sidebar-foreground: oklch(0.16 0.01 265);
   --sidebar-primary: oklch(0.32 0.18 265);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.94 0 0);
-  --sidebar-accent-foreground: oklch(0.15 0 0);
-  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0.002 265);
+  --sidebar-accent: oklch(0.94 0.01 265);
+  --sidebar-accent-foreground: oklch(0.16 0.01 265);
+  --sidebar-border: oklch(0.92 0.008 265);
   --sidebar-ring: oklch(0.32 0.18 265);
+  /* Citation / quote highlight (remplace bg-yellow-200 hardcodé) */
+  --highlight: oklch(0.94 0.12 90);
+  --highlight-foreground: oklch(0.2 0.05 90);
 }
 
 .dark {
-  --background: oklch(0.12 0.02 265);
-  --foreground: oklch(0.95 0.01 90);
-  --card: oklch(0.16 0.025 265);
-  --card-foreground: oklch(0.95 0.01 90);
-  --popover: oklch(0.16 0.025 265);
-  --popover-foreground: oklch(0.95 0.01 90);
-  --primary: oklch(0.72 0.16 90);
-  --primary-foreground: oklch(0.16 0.025 265);
-  --secondary: oklch(0.22 0.025 265);
-  --secondary-foreground: oklch(0.95 0.01 90);
-  --muted: oklch(0.22 0.025 265);
-  --muted-foreground: oklch(0.65 0.02 265);
-  --accent: oklch(0.22 0.025 265);
-  --accent-foreground: oklch(0.95 0.01 90);
+  /* Dark : on garde le hue 265° (bleu de France) sur le primary, juste
+     éclairci — rester cohérent avec la marque. Pas de flip vers le jaune. */
+  --background: oklch(0.13 0.015 265);
+  --foreground: oklch(0.95 0.005 265);
+  --card: oklch(0.17 0.018 265);
+  --card-foreground: oklch(0.95 0.005 265);
+  --popover: oklch(0.18 0.02 265);
+  --popover-foreground: oklch(0.95 0.005 265);
+  --primary: oklch(0.68 0.16 265);
+  --primary-foreground: oklch(0.16 0.018 265);
+  --secondary: oklch(0.22 0.018 265);
+  --secondary-foreground: oklch(0.95 0.005 265);
+  --muted: oklch(0.22 0.018 265);
+  --muted-foreground: oklch(0.68 0.015 265);
+  --accent: oklch(0.24 0.022 265);
+  --accent-foreground: oklch(0.95 0.005 265);
   --destructive: oklch(0.65 0.2 25);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.72 0.16 90);
-  --sidebar: oklch(0.1 0.02 265);
-  --sidebar-foreground: oklch(0.95 0.01 90);
-  --sidebar-primary: oklch(0.72 0.16 90);
-  --sidebar-primary-foreground: oklch(0.16 0.025 265);
-  --sidebar-accent: oklch(0.22 0.025 265);
-  --sidebar-accent-foreground: oklch(0.95 0.01 90);
-  --sidebar-border: transparent;
-  --sidebar-ring: oklch(0.72 0.16 90);
+  --ring: oklch(0.68 0.16 265);
+  --sidebar: oklch(0.11 0.015 265);
+  --sidebar-foreground: oklch(0.95 0.005 265);
+  --sidebar-primary: oklch(0.68 0.16 265);
+  --sidebar-primary-foreground: oklch(0.16 0.018 265);
+  --sidebar-accent: oklch(0.22 0.018 265);
+  --sidebar-accent-foreground: oklch(0.95 0.005 265);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.68 0.16 265);
+  --highlight: oklch(0.42 0.14 90);
+  --highlight-foreground: oklch(0.95 0.04 90);
 }
 
 @layer base {

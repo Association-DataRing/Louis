@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter, EB_Garamond } from "next/font/google";
+import { Geist, Geist_Mono, EB_Garamond } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-// Heading font : EB Garamond — elegant serif, ton "justice" qui aligne Louis
-// sur la palette typographique de Mike. Inter reste la police de corps.
+// Heading : EB Garamond, serif élégant, ton « justice » assumé.
+// Body : Geist Sans (l'ancien fallback Inter cassait l'identité — Geist est
+// neutre sans être générique). Mono reste Geist Mono.
 const ebGaramond = EB_Garamond({
   subsets: ["latin"],
   variable: "--font-heading",
   weight: ["400", "500", "600", "700"],
 });
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Louis — L'IA juridique souveraine",
@@ -59,12 +60,13 @@ export default function RootLayout({
         "h-full antialiased",
         geistSans.variable,
         geistMono.variable,
-        inter.variable,
         ebGaramond.variable,
         "font-sans"
       )}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

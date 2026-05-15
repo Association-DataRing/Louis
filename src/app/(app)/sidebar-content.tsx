@@ -23,6 +23,7 @@ import {
 } from "@tabler/icons-react";
 import { signOutAction } from "@/auth/actions";
 import { LouisLogo } from "@/components/louis-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ConversationItem } from "./chat/conversation-item";
 
 const navItems = [
@@ -270,6 +271,7 @@ export function SidebarContent({
                 </div>
               </div>
             </Link>
+            <ThemeToggle />
             <form action={signOutAction}>
               <button
                 type="submit"
@@ -293,6 +295,7 @@ export function SidebarContent({
                 {initials}
               </div>
             </Link>
+            <ThemeToggle />
             <form action={signOutAction}>
               <button
                 type="submit"

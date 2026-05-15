@@ -152,7 +152,7 @@ function DocBody({
       {before}
       <mark
         ref={markRef}
-        className="bg-yellow-200 dark:bg-yellow-500/30 text-foreground px-0.5 rounded"
+        className="bg-highlight text-highlight-foreground px-0.5 rounded"
       >
         {highlight}
       </mark>
