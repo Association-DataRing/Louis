@@ -78,7 +78,7 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
 
   const body = (
     <>
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3 shrink-0">
+      <header className="flex items-center justify-between gap-2 border-b border-border px-4 h-[52px] shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="size-4 text-muted-foreground shrink-0" />
           <span className="text-sm font-medium truncate">
