@@ -8,7 +8,10 @@ import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { Spinner } from "@/components/ui/spinner";
 
 // Worker servi localement par /api/pdf-worker (pas de CDN tiers).
-pdfjs.GlobalWorkerOptions.workerSrc = "/api/pdf-worker";
+// Query param avec la version pdfjs runtime → l'URL change quand on
+// upgrade react-pdf, donc plus de risque qu'un worker périmé en cache
+// navigateur (avec une autre version d'API) ne soit réutilisé.
+pdfjs.GlobalWorkerOptions.workerSrc = `/api/pdf-worker?v=${pdfjs.version}`;
 
 type Props = {
   fileUrl: string;
