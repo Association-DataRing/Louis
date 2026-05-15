@@ -11,6 +11,7 @@ import { LouisLogo } from "@/components/louis-logo";
 import { uiPartsFromSaved } from "@/lib/ai/saved-parts";
 import type { SavedPart } from "@/db/schema/messages";
 import { DocPanel } from "./doc-panel";
+import { EditCard } from "./edit-card";
 import {
   IconArrowUp,
   IconPaperclip,
@@ -538,6 +539,22 @@ export function ChatShell({
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
+                                code: ({ className, children, ...rest }) => {
+                                  const lang =
+                                    (className ?? "").match(/language-(\w+)/)?.[1];
+                                  if (lang === "edit") {
+                                    return (
+                                      <EditCard
+                                        raw={String(children).replace(/\n$/, "")}
+                                      />
+                                    );
+                                  }
+                                  return (
+                                    <code className={className} {...rest}>
+                                      {children}
+                                    </code>
+                                  );
+                                },
                                 a: ({ href, children, ...rest }) => {
                                   if (
                                     typeof href === "string" &&
