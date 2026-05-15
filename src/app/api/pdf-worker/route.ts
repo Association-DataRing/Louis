@@ -35,7 +35,10 @@ export async function GET() {
   return new Response(new Uint8Array(file) as BodyInit, {
     headers: {
       "Content-Type": "text/javascript",
-      "Cache-Control": "public, max-age=86400",
+      // no-store en dev pour que les changements de path de worker ne
+      // soient pas masqués par un cache navigateur. En prod on peut
+      // remettre un long max-age + cache-bust via query string.
+      "Cache-Control": "no-store",
     },
   });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   IconX,
   IconFileText,
@@ -10,7 +11,21 @@ import {
 } from "@tabler/icons-react";
 import { Spinner } from "@/components/ui/spinner";
 import { DocxView } from "./docx-view";
-import { PdfView } from "./pdf-view";
+
+// PdfView importe pdfjs qui touche DOMMatrix / window au module-eval —
+// donc browser-only. Dynamic import ssr:false évite « DOMMatrix is not
+// defined » au rendu serveur de la route /chat.
+const PdfView = dynamic(
+  () => import("./pdf-view").then((m) => m.PdfView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex-1 flex items-center justify-center">
+        <Spinner className="size-5" />
+      </div>
+    ),
+  }
+);
 
 type DocPreview = {
   id: string;
