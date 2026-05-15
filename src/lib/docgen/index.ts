@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { generateDocx } from "./docx";
 import { generatePdf } from "./pdf";
+import { docxToPdf } from "./libreoffice";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
 import { uploadObject } from "@/lib/storage";
@@ -73,8 +74,8 @@ export async function storeBuffer({
   userId: string;
   projectId?: string | null;
 }): Promise<{ documentId: string; filename: string; format: DocFormat }> {
-  const storageKey = `${userId}/louis-generated/${nanoid()}-${filename}`;
-  await uploadObject(storageKey, buffer, contentType);
+  const baseKey = `${userId}/louis-generated/${nanoid()}-${filename}`;
+  await uploadObject(baseKey, buffer, contentType);
 
   // Extraction texte best-effort — permet au document généré d'être
   // attachable / cherchable comme n'importe quel upload utilisateur.
@@ -90,6 +91,23 @@ export async function storeBuffer({
     extractionError = err instanceof Error ? err.message : "Extraction failed";
   }
 
+  // Pour les DOCX, on tente une conversion LibreOffice → PDF pour avoir
+  // un preview visuellement identique à ce que l'utilisateur verra dans
+  // Word. Échec silencieux : on retombe sur la preview HTML mammoth.
+  let previewStorageKey: string | null = null;
+  if (contentType === CONTENT_TYPES.docx) {
+    const pdfBuffer = await docxToPdf(buffer);
+    if (pdfBuffer) {
+      previewStorageKey = `${baseKey}.preview.pdf`;
+      try {
+        await uploadObject(previewStorageKey, pdfBuffer, CONTENT_TYPES.pdf);
+      } catch (err) {
+        console.warn("[docgen] preview PDF upload failed:", err);
+        previewStorageKey = null;
+      }
+    }
+  }
+
   const [row] = await db
     .insert(documents)
     .values({
@@ -98,7 +116,8 @@ export async function storeBuffer({
       filename,
       contentType,
       sizeBytes: buffer.length,
-      storageKey,
+      storageKey: baseKey,
+      previewStorageKey,
       extractedText,
       extractionStatus,
       extractionError,

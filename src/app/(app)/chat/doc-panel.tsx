@@ -17,6 +17,7 @@ type DocPreview = {
   sizeBytes: number;
   extractedText: string | null;
   extractionStatus: string;
+  hasPdfPreview: boolean;
   html: string | null;
 };
 
@@ -135,7 +136,14 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
             className="w-full h-full border-0 bg-background"
           />
         )}
-        {!loading && !error && doc && !isPdf && doc.html && (
+        {!loading && !error && doc && !isPdf && doc.hasPdfPreview && (
+          <iframe
+            src={`/api/documents/${documentId}/preview-pdf`}
+            title={doc.filename}
+            className="w-full h-full border-0 bg-background"
+          />
+        )}
+        {!loading && !error && doc && !isPdf && !doc.hasPdfPreview && doc.html && (
           <div className="px-6 py-5">
             <HtmlContent
               html={doc.html}
@@ -143,7 +151,7 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
             />
           </div>
         )}
-        {!loading && !error && doc && !isPdf && !doc.html && (
+        {!loading && !error && doc && !isPdf && !doc.hasPdfPreview && !doc.html && (
           <div className="px-5 py-4">
             <DocBody
               text={doc.extractedText ?? ""}
@@ -157,9 +165,11 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
       <footer className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground shrink-0">
         {isPdf
           ? "Aperçu PDF natif du navigateur."
-          : doc?.html
-            ? "Rendu via mammoth — la mise en forme exacte du document peut différer dans Word."
-            : "Texte extrait côté serveur. La mise en forme originale n'est pas restituée."}
+          : doc?.hasPdfPreview
+            ? "Aperçu rendu via LibreOffice — identique au document Word téléchargé."
+            : doc?.html
+              ? "Rendu via mammoth (LibreOffice indisponible côté serveur) — la mise en forme exacte peut différer dans Word."
+              : "Texte extrait côté serveur. La mise en forme originale n'est pas restituée."}
       </footer>
     </>
   );

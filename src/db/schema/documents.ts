@@ -32,6 +32,10 @@ export const documents = pgTable("documents", {
   contentType: text("content_type").notNull(),
   sizeBytes: integer("size_bytes").notNull(),
   storageKey: text("storage_key").notNull(),
+  // PDF rendu via LibreOffice utilisé pour la preview fidèle dans le
+  // DocPanel. Null pour les uploads non-DOCX, ou si LibreOffice n'est pas
+  // disponible côté serveur (auquel cas on retombe sur mammoth HTML).
+  previewStorageKey: text("preview_storage_key"),
   // Extracted plain text — capped at ~500KB to stay within typical LLM context.
   // Larger documents would need RAG (chunking + embeddings), not implemented yet.
   extractedText: text("extracted_text"),

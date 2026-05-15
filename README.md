@@ -173,6 +173,13 @@ juridiques. Le secret professionnel n'est plus négociable.
 - Node.js ≥ 24
 - Docker + Docker Compose
 - Au moins une clé API d'un provider IA (Mistral, OpenAI, etc.)
+- **LibreOffice** (optionnel mais recommandé) — utilisé pour le rendu
+  fidèle des DOCX générés dans le panneau d'aperçu (DOCX → PDF). Sans
+  LibreOffice, Louis tombe sur une preview HTML via mammoth (utilisable,
+  mais la mise en forme exacte peut différer de Word).
+  - macOS : `brew install --cask libreoffice`
+  - Debian/Ubuntu : `apt install libreoffice`
+  - Alpine : `apk add libreoffice`
 
 ### Installation
 

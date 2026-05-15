@@ -34,6 +34,7 @@ export async function GET(
       contentType: documents.contentType,
       sizeBytes: documents.sizeBytes,
       storageKey: documents.storageKey,
+      previewStorageKey: documents.previewStorageKey,
       extractedText: documents.extractedText,
       extractionStatus: documents.extractionStatus,
     })
@@ -45,8 +46,10 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
+  // Preview HTML mammoth uniquement comme fallback quand pas de PDF
+  // LibreOffice disponible. Sinon le client utilise preview-pdf.
   let html: string | null = null;
-  if (doc.contentType === DOCX_MEDIA_TYPE) {
+  if (doc.contentType === DOCX_MEDIA_TYPE && !doc.previewStorageKey) {
     try {
       const bytes = Buffer.from(await getObjectBytes(doc.storageKey));
       const result = await mammoth.convertToHtml({ buffer: bytes });
@@ -63,6 +66,7 @@ export async function GET(
     sizeBytes: doc.sizeBytes,
     extractedText: doc.extractedText,
     extractionStatus: doc.extractionStatus,
+    hasPdfPreview: Boolean(doc.previewStorageKey),
     html,
   });
 }
