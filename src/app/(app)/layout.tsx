@@ -2,9 +2,15 @@ import { redirect } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { conversations, projects } from "@/db/schema";
+import {
+  conversations,
+  documents,
+  projects,
+  workflows,
+} from "@/db/schema";
 import { SidebarContent } from "./sidebar-content";
 import { MobileNav } from "./mobile-nav";
+import { CommandPalette } from "./command-palette";
 
 export default async function AppLayout({
   children,
@@ -20,7 +26,7 @@ export default async function AppLayout({
     role: session.user.role,
   };
 
-  const [convList, projectList] = await Promise.all([
+  const [convList, projectList, docList, workflowList] = await Promise.all([
     db
       .select({
         id: conversations.id,
@@ -36,6 +42,17 @@ export default async function AppLayout({
       .from(projects)
       .where(eq(projects.userId, session.user.id))
       .orderBy(asc(projects.name)),
+    db
+      .select({ id: documents.id, filename: documents.filename })
+      .from(documents)
+      .where(eq(documents.userId, session.user.id))
+      .orderBy(desc(documents.createdAt))
+      .limit(50),
+    db
+      .select({ id: workflows.id, name: workflows.name })
+      .from(workflows)
+      .where(eq(workflows.userId, session.user.id))
+      .orderBy(asc(workflows.name)),
   ]);
 
   return (
@@ -55,6 +72,13 @@ export default async function AppLayout({
       <main className="flex-1 min-w-0 min-h-0 overflow-y-auto">
         {children}
       </main>
+      <CommandPalette
+        conversations={convList.map((c) => ({ id: c.id, label: c.title }))}
+        projects={projectList.map((p) => ({ id: p.id, label: p.name }))}
+        documents={docList.map((d) => ({ id: d.id, label: d.filename }))}
+        workflows={workflowList.map((w) => ({ id: w.id, label: w.name }))}
+        isAdmin={session.user.role === "admin"}
+      />
     </div>
   );
 }
