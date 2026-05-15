@@ -13,6 +13,13 @@ Une plateforme d'intelligence artificielle open-source pour les professions juri
 Pensée pour les cabinets d'avocats, les directions juridiques, et les juristes
 qui veulent garder **leurs clés, leurs données, et leur infrastructure**.
 
+**La réponse française à [Mike OSS](https://github.com/willchen96/mike)**
+— même philosophie open-source, même richesse fonctionnelle (chat,
+DocPanel side-by-side, projets, analyses tabulaires, workflows), avec en
+plus : connecteurs juridiques français (Légifrance, Judilibre, Pappers),
+providers souverains (Mistral, Scaleway, OVH, Albert / Etalab), **suivi
+des coûts**, et hébergement 100 % chez vous.
+
 </div>
 
 ---
@@ -58,32 +65,59 @@ juridiques. Le secret professionnel n'est plus négociable.
 
 ## Fonctionnalités
 
-### Disponible (v0.1 — alpha)
+### Disponible (pré-launch publique)
 
-- 🔐 **Authentification** NextAuth v5 (Credentials, sessions JWT)
-- 🔑 **Page Providers IA** — BYOK pour Mistral, Scaleway, OVH, Albert
-  (Etalab), Anthropic, OpenAI, et tout endpoint OpenAI-compatible (Ollama,
-  vLLM, llama.cpp). Clés chiffrées AES-256-GCM avant stockage. Test de
-  connexion intégré. Badges FR / UE / US.
-- 🔌 **Page Connecteurs** — PISTE (Légifrance, Judilibre, JADE, INPI,
-  BODACC) et Pappers. Credentials chiffrées en blob JSON.
-- 💬 **Chat streaming** — multi-tour, sélecteur de provider par
-  conversation, persistance auto, system prompt FR anti-hallucination.
-- 🐳 **Docker Compose** : Postgres + pgvector, Redis, MinIO en une commande.
+**Chat & raisonnement**
+- 💬 **Chat streaming** multi-tour, multi-provider, persistance auto
+- 🛠️ **Tool calling** : Légifrance / Judilibre / Pappers en tant qu'outils,
+  recherche sémantique dans vos documents (RAG pgvector)
+- 📑 **DocPanel side-by-side** — preview PDF natif, citations cliquables
+  avec surlignage de la cible
+- 📌 **Épingler les conversations** + recherche locale dans la sidebar
+- ⌘ **Cmd+K** — palette de commandes globale (conversations, projets,
+  documents, workflows, navigation)
+- 📤 **Export Markdown** ou **PDF** (impression navigateur) d'une conversation
 
-### En cours (v0.2)
+**Documents**
+- 📄 **Upload PDF / DOCX / texte** jusqu'à 25 Mo, extraction texte serveur,
+  cap à 500 k caractères
+- 🧠 **RAG** : chunking + embeddings Mistral + recherche vectorielle pgvector
+- 🗂️ **Hiérarchie de dossiers** (sous-dossiers illimités, breadcrumb)
+- 🕰️ **Versioning** v1 / v2 / v3 — historique repliable, le projet est
+  conservé d'une version à l'autre
+- 🗃️ **Projets** : conteneurs dossier client, move-to-project depuis chat,
+  conversation et document
 
-- 🛠️ **Tool calling** — utiliser PISTE/Pappers comme outils dans le chat
-- 📁 **Documents + RAG** — upload, indexation pgvector, citations sourcées
-- 🧠 **MCP-native** — chaque cabinet peut ajouter ses propres MCP servers
+**Productivité avocat**
+- 📊 **Analyses tabulaires** style Excel : N colonnes prompts × M documents,
+  extraction structurée via `generateObject` + Zod, traitement async avec
+  concurrency
+- 📚 **Workflows** : bibliothèque de prompts cabinet réutilisables
+- 💰 **Suivi des coûts** par modèle (€ / $), mensuel + all-time
 
-### Planifié (v0.3+)
+**Providers & connecteurs (BYOK)**
+- 🔑 **Providers IA** : Mistral, Scaleway, OVH, Albert (Etalab),
+  Anthropic, OpenAI, et tout endpoint OpenAI-compatible (Ollama, vLLM,
+  llama.cpp). Clés chiffrées AES-256-GCM. Badges souveraineté FR / UE / US
+- 🔌 **Connecteurs juridiques** : PISTE (Légifrance / Judilibre / JADE /
+  INPI / BODACC) et Pappers
+- 🧩 **MCP-native** : connectez vos propres serveurs MCP par utilisateur
 
-- 🧠 **MCP-native** — chaque cabinet peut ajouter ses propres MCP servers
-  (l'écosystème Model Context Protocol comme protocole de connecteur standard)
+**Multi-utilisateur**
+- 🔐 NextAuth v5 (Credentials, JWT) + RBAC admin / member
+- 👥 Page admin : création, désactivation, changement de rôle, suppression
+
+**Infrastructure**
+- 🐳 **Docker Compose** : Postgres + pgvector, Redis, MinIO en une commande
+- 🛡️ **Robustesse** : enveloppe `ToolResult` uniforme, jobs async via
+  `next/server::after()`, smoke tests E2E Playwright
+
+### Planifié
+
+- 👥 **Project sharing** par email entre membres du cabinet
+- ✍️ **EditCard accept/reject** sur suggestions d'édition
+- 🌐 **i18n** anglais
 - 🔍 **Veille juridique automatisée** — surveillance Légifrance / JADE / BODACC
-- 👥 **Multi-utilisateur + RBAC** — rôles avocat / collaborateur / paralégal
-- 📊 **Suivi coûts par provider** — facture mensuelle agrégée
 - 🇪🇺 **Mode SecNumCloud-ready** — checklist et configuration documentée
 
 ---

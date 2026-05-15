@@ -5,7 +5,53 @@ Toutes les évolutions notables sont documentées ici.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement : [SemVer](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [Non publié] — Pré-launch publique
+
+### Ajouté — Sprint « launch vs Mike OSS »
+
+**Killer feature : suivi de coûts**
+- Catalogue des tarifs publics par modèle (`src/lib/providers/pricing.ts`)
+  avec séparation EUR / USD (pas de conversion automatique)
+- Page `/usage` : coût mensuel, tokens entrée / sortie, messages, détail
+  par modèle trié par coût desc, total all-time
+- Pill « coût estimé » dans le header du chat, à côté des tokens
+- Modèles auto-hébergés (Albert, openai-compatible) à 0 — vous payez
+  l'infra ailleurs
+
+**Polish / complétude**
+- Recherche globale **Cmd+K** : palette de commandes cmdk avec
+  Conversations / Projets / Documents / Workflows / Navigation /
+  Administration (admin-only)
+- **Épingler les conversations** : tri pinned d'abord dans la sidebar,
+  icône Pin filled dédiée
+- **Export Markdown** d'une conversation (téléchargement Blob côté
+  client)
+- **Export PDF** via impression navigateur (`/print/chat/[id]` hors
+  layout app, prose A4 imprimable, auto-`window.print()`)
+- **Versioning des documents** : colonnes `parent_document_id` +
+  `version`, item « Uploader nouvelle version » sur chaque ligne, vue
+  groupée par famille avec historique repliable
+- **Hiérarchie de dossiers** : table `document_folders` self-référencée,
+  page `/documents?folder=<id>` avec breadcrumb, sous-menu « Déplacer
+  vers (dossier) »
+
+**Robustesse / qualité**
+- Enveloppe **`ToolResult` uniforme** pour tous les outils IA (PISTE,
+  Pappers, search_documents) — fini les `throw` opaques, le modèle
+  reçoit `{ ok, reason, error }` et relaie un message actionnable :
+  clé manquante, OAuth expiré, rate limit 429, timeout, 5xx, etc.
+  Cache token PISTE invalidé sur 401 pour profiter d'un renouvellement
+  silencieux
+- **Tabular reviews async** : `runTabularReview` marque les lignes en
+  « running » et schedule le traitement via `next/server::after()` —
+  fenêtre coulissante de 3 workers concurrents, `<AutoRefresh>` côté
+  client poll `router.refresh()` toutes les 2.5s tant qu'il y a du
+  travail en vol. Un review de 50 docs ne timeout plus
+- **Smoke tests E2E Playwright** : 11 routes principales × titre,
+  Cmd+K, composer chat, login / mauvais mdp. Scripts `npm run test:e2e`
+  et `test:e2e:ui`
+
+## [Non publié] — Fondations
 
 ### Ajouté
 
@@ -49,15 +95,33 @@ Versionnement : [SemVer](https://semver.org/lang/fr/).
 - **Tool calling** : Pappers (search + get) et Légifrance via PISTE
   (OAuth2 client_credentials + cache de token in-memory)
 - UI tool parts compacts avec spinner / icône / résumé d'input
+- **DocPanel side-by-side** : preview PDF natif via react-pdf,
+  citations cliquables avec quote highlighting
+- **Workflows** : bibliothèque de prompts cabinet + picker dans le composer
+- **Projets** : conteneurs dossier client, move-to-project depuis
+  Conversation et Document
+- **Mentions de documents** dans les réponses cliquables (restent
+  cliquables après reload)
+- Mobile drawer hamburger
 
 **Documents (`/documents`)**
 - Upload PDF / DOCX / texte jusqu'à 25 Mo
-- Stockage S3-compatible (MinIO en dev, Scaleway/OVH/AWS en prod)
-- Extraction texte serveur : pdf-parse v2 + mammoth
+- Stockage S3-compatible (MinIO en dev, Scaleway / OVH / AWS en prod)
+- Extraction texte serveur : pdf-parse v1 (bundlé, sans worker) + mammoth
 - Cap à 500 000 caractères avec badge "tronqué"
+- RAG : chunking + embeddings Mistral + recherche vectorielle pgvector
 - Liste avec icônes par type, taille formatée, état d'extraction
 
-**Paramètres (`/settings`)**
+**Analyses tabulaires (`/tabular-reviews`)**
+- Excel-style : sélection de N documents, définition de colonnes prompts,
+  extraction structurée via `generateObject` + Zod
+- Statut par ligne (pending / running / ok / error) avec relance ciblée
+
+**Multi-utilisateur (`/admin`)**
+- RBAC admin / member, page admin/users (create / toggle / role / delete)
+- Pages `/profile` (informations + change password)
+
+**Paramètres**
 - Affichage email / dernière connexion / date de création
 - Changement de nom affiché
 - Changement de mot de passe (bcrypt.compare + bcrypt.hash 12 rounds,
@@ -68,12 +132,3 @@ Versionnement : [SemVer](https://semver.org/lang/fr/).
 - CONTRIBUTING.md, SECURITY.md, CHANGELOG.md, .nvmrc (Node 24)
 - Issue templates (bug.yml, feature.yml, config.yml) et PR template
 - README marketing avec badges, manifeste, roadmap publique
-
-### À venir (v0.2+)
-- RAG (chunking + embeddings + pgvector) pour documents volumineux
-- Connecteurs supplémentaires (Judilibre direct, JADE direct, BODACC, INPI)
-- Support MCP-native — chaque cabinet plug ses propres MCP servers
-- Multi-utilisateur + RBAC (rôles avocat / collaborateur / paralégal)
-- Suivi de coûts par provider
-- Mobile responsive (sidebar drawer)
-- Mode SecNumCloud-ready
