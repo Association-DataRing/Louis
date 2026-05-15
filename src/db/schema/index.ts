@@ -8,3 +8,4 @@ export * from "./documents";
 export * from "./document-chunks";
 export * from "./mcp-servers";
 export * from "./tabular-reviews";
+export * from "./workflows";

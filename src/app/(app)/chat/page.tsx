@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { conversations, documents, messages, projects, providerKeys } from "@/db/schema";
+import {
+  conversations,
+  documents,
+  messages,
+  projects,
+  providerKeys,
+  workflows,
+} from "@/db/schema";
 import { ChatShell } from "./chat-shell";
 
 type Search = { id?: string; project?: string };
@@ -63,6 +70,17 @@ export default async function ChatPage({
     .where(and(eq(documents.userId, userId), isNotNull(documents.extractedText)))
     .orderBy(desc(documents.createdAt))
     .limit(50);
+
+  const workflowList = await db
+    .select({
+      id: workflows.id,
+      name: workflows.name,
+      description: workflows.description,
+      prompt: workflows.prompt,
+    })
+    .from(workflows)
+    .where(eq(workflows.userId, userId))
+    .orderBy(asc(workflows.name));
 
   let initialMessages: { id: string; role: string; content: string }[] = [];
   let initialProviderKeyId = activeKeys[0].id;
@@ -131,6 +149,7 @@ export default async function ChatPage({
       projectContext={conversationProjectContext}
       initialMessages={initialMessages}
       availableDocuments={docList}
+      workflows={workflowList}
       initialUsage={{
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,

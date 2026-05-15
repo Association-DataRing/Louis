@@ -16,6 +16,8 @@ import {
   IconTool,
   IconPlayerStop,
   IconFileText,
+  IconSparkles,
+  IconLibrary,
 } from "@tabler/icons-react";
 import {
   Select,
@@ -57,6 +59,13 @@ type Usage = {
   outputTokens: number;
 };
 
+type WorkflowOption = {
+  id: string;
+  name: string;
+  description: string | null;
+  prompt: string;
+};
+
 type Props = {
   providerKeys: KeyOption[];
   initialProviderKeyId: string;
@@ -66,6 +75,7 @@ type Props = {
   projectContext: { id: string; name: string } | null;
   initialMessages: { id: string; role: string; content: string }[];
   availableDocuments: DocumentOption[];
+  workflows: WorkflowOption[];
   initialUsage: Usage;
   userName: string;
 };
@@ -210,6 +220,61 @@ function ToolPart({
   );
 }
 
+function WorkflowPickerContent({
+  workflows,
+  onPick,
+}: {
+  workflows: WorkflowOption[];
+  onPick: (prompt: string) => void;
+}) {
+  if (workflows.length === 0) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          Aucun workflow pour l&apos;instant.
+        </p>
+        <Link
+          href="/workflows"
+          className="mt-2 inline-block text-xs text-primary hover:underline underline-offset-2"
+        >
+          Créer un workflow →
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <div className="max-h-96 overflow-y-auto py-1">
+      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+        <IconLibrary className="size-3.5 text-muted-foreground" />
+        <p className="text-xs font-medium">Workflows</p>
+        <Link
+          href="/workflows"
+          className="ml-auto text-[10px] text-primary hover:underline underline-offset-2"
+        >
+          Gérer
+        </Link>
+      </div>
+      <div className="divide-y divide-border">
+        {workflows.map((w) => (
+          <button
+            key={w.id}
+            type="button"
+            onClick={() => onPick(w.prompt)}
+            className="w-full text-left px-3 py-2 hover:bg-accent transition-colors flex flex-col gap-0.5"
+          >
+            <span className="text-sm font-medium">{w.name}</span>
+            {w.description && (
+              <span className="text-[11px] text-muted-foreground truncate">
+                {w.description}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DocPickerContent({
   documents,
   selected,
@@ -270,6 +335,7 @@ export function ChatShell({
   projectContext,
   initialMessages,
   availableDocuments,
+  workflows,
   initialUsage,
   userName,
 }: Props) {
@@ -286,6 +352,7 @@ export function ChatShell({
   );
   const [attachedDocIds, setAttachedDocIds] = useState<string[]>([]);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
+  const [workflowPickerOpen, setWorkflowPickerOpen] = useState(false);
   // Panneau document à droite (citation cliquée dans search_documents)
   const [openDoc, setOpenDoc] = useState<{
     documentId: string;
@@ -602,6 +669,36 @@ export function ChatShell({
                           : [...ids, id]
                       )
                     }
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <Popover
+                open={workflowPickerOpen}
+                onOpenChange={setWorkflowPickerOpen}
+              >
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isBusy}
+                    className="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
+                    aria-label="Insérer un workflow"
+                    title="Workflows"
+                  >
+                    <IconSparkles className="size-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="top"
+                  align="start"
+                  className="w-96 p-0"
+                >
+                  <WorkflowPickerContent
+                    workflows={workflows}
+                    onPick={(prompt) => {
+                      setInput(prompt);
+                      setWorkflowPickerOpen(false);
+                    }}
                   />
                 </PopoverContent>
               </Popover>
