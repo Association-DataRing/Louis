@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { IconLibrary, IconSparkles } from "@tabler/icons-react";
+import { IconSparkles } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { workflows } from "@/db/schema";
@@ -18,14 +18,20 @@ export default async function WorkflowsPage() {
     .orderBy(desc(workflows.updatedAt));
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-8 md:px-8 md:py-10">
-      <header className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-heading text-3xl tracking-tight">Workflows</h1>
-          <p className="mt-2 text-muted-foreground max-w-2xl">
-            Bibliothèque de prompts réutilisables — résumé d&apos;arrêt,
-            analyse de clause, due diligence… Insérez-les d&apos;un clic
-            dans une conversation.
+    <main className="mx-auto w-full max-w-5xl px-6 py-10 md:px-8 md:py-14">
+      <header className="mb-10 flex items-end justify-between gap-4 flex-wrap">
+        <div className="max-w-2xl">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">
+            Bibliothèque cabinet
+          </p>
+          <h1 className="mt-2 font-heading text-4xl tracking-tight">
+            Workflows.
+          </h1>
+          <p className="mt-3 text-muted-foreground">
+            Prompts réutilisables — résumé d&apos;arrêt, analyse de clause,
+            due diligence. Insérez-les d&apos;un clic dans une conversation
+            via l&apos;icône{" "}
+            <IconSparkles className="inline size-3.5 align-text-bottom" />.
           </p>
         </div>
         <AddWorkflowDialog />
@@ -34,33 +40,27 @@ export default async function WorkflowsPage() {
       {list.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ul className="divide-y divide-border border-y border-border">
           {list.map((w) => (
             <WorkflowCard key={w.id} workflow={w} />
           ))}
-        </div>
+        </ul>
       )}
-
-      <aside className="mt-12 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-        <strong className="text-foreground">Astuce :</strong>{" "}
-        Depuis n&apos;importe quelle conversation, cliquez sur l&apos;icône{" "}
-        <IconSparkles className="inline size-3.5 align-text-bottom" /> dans le
-        composer pour piquer un workflow et pré-remplir votre prompt.
-      </aside>
     </main>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="border border-dashed border-border rounded-lg p-10 text-center">
-      <IconLibrary className="size-8 text-muted-foreground mx-auto mb-3" />
-      <h2 className="font-heading text-lg">Aucun workflow pour l&apos;instant</h2>
-      <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-        Commencez par importer la bibliothèque suggérée (5 templates
-        juridiques courants) ou créez votre propre prompt depuis zéro.
+    <div className="py-16 border-y border-dashed border-border">
+      <p className="font-heading text-2xl tracking-tight">
+        Pas encore de workflow.
       </p>
-      <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+      <p className="mt-3 text-sm text-muted-foreground max-w-md">
+        Importez la bibliothèque par défaut (5 templates juridiques
+        courants) pour démarrer, ou créez votre propre prompt depuis zéro.
+      </p>
+      <div className="mt-6">
         <ImportDefaultsButton />
       </div>
     </div>

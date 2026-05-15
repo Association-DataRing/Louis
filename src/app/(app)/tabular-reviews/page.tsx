@@ -1,10 +1,6 @@
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
-import {
-  IconTable,
-  IconArrowRight,
-  IconPlus,
-} from "@tabler/icons-react";
+import { IconArrowUpRight, IconPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -31,16 +27,18 @@ export default async function TabularReviewsPage() {
     .orderBy(desc(tabularReviews.updatedAt));
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-8 md:px-8 md:py-10">
-      <header className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-heading text-3xl tracking-tight">
-            Analyses tabulaires
+    <main className="mx-auto w-full max-w-5xl px-6 py-10 md:px-8 md:py-14">
+      <header className="mb-10 flex items-end justify-between gap-4 flex-wrap">
+        <div className="max-w-2xl">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">
+            Excel-style sur N documents
+          </p>
+          <h1 className="mt-2 font-heading text-4xl tracking-tight">
+            Analyses tabulaires.
           </h1>
-          <p className="mt-2 text-muted-foreground max-w-2xl">
-            Extrayez des informations structurées d&apos;un lot de documents en
-            définissant les colonnes à remplir. Idéal pour comparer des
-            contrats, mémos ou décisions sur des critères uniformes.
+          <p className="mt-3 text-muted-foreground">
+            Définissez vos colonnes (durée, montant, juridiction, clauses…),
+            sélectionnez un lot de documents, obtenez un tableau structuré.
           </p>
         </div>
         <Link href="/tabular-reviews/new">
@@ -54,46 +52,37 @@ export default async function TabularReviewsPage() {
       {list.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ul className="divide-y divide-border border-y border-border">
           {list.map((r) => (
-            <Link
-              key={r.id}
-              href={`/tabular-reviews/${r.id}`}
-              className="border border-border rounded-lg p-5 bg-card hover:border-primary/50 transition-colors flex flex-col gap-3 group"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="size-10 shrink-0 rounded-md bg-muted flex items-center justify-center">
-                  <IconTable className="size-5 text-primary" />
-                </div>
-                <IconArrowRight className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <h3 className="font-heading text-base tracking-tight truncate">
-                {r.name}
-              </h3>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-auto">
-                <span>
+            <li key={r.id}>
+              <Link
+                href={`/tabular-reviews/${r.id}`}
+                className="group grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto] gap-x-6 items-baseline py-5 hover:text-primary transition-colors"
+              >
+                <p className="font-heading text-lg tracking-tight truncate">
+                  {r.name}
+                </p>
+                <span className="hidden sm:inline-block text-xs text-muted-foreground tabular-nums">
                   {r.columnsCount} colonne{r.columnsCount > 1 ? "s" : ""}
                 </span>
-                <span>·</span>
-                <span>
-                  {r.rowsCount} document{r.rowsCount > 1 ? "s" : ""}
+                <span className="hidden sm:inline-block text-xs text-muted-foreground tabular-nums">
+                  {r.rowsCount} doc{r.rowsCount > 1 ? "s" : ""}
                 </span>
-                <span className="ml-auto">
+                <span className="text-xs text-muted-foreground tabular-nums sm:w-20 sm:text-right inline-flex items-center gap-1 justify-end">
                   {new Date(r.updatedAt).toLocaleDateString("fr-FR")}
+                  <IconArrowUpRight className="size-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </span>
-              </div>
-            </Link>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      <aside className="mt-12 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-        <strong className="text-foreground">Cas d&apos;usage typique :</strong>{" "}
-        importez 30 contrats fournisseurs, définissez les colonnes (durée,
-        montant, juridiction, clause de résiliation, clause RGPD…), lancez
-        l&apos;extraction et obtenez un tableau Excel-style pour comparaison.
-        Les valeurs extraites peuvent être réutilisées dans une conversation
-        de chat.
+      <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-sm text-muted-foreground">
+        <strong className="text-foreground">Cas d&apos;usage type :</strong>{" "}
+        30 contrats fournisseurs, colonnes durée / montant / juridiction /
+        clause de résiliation / clause RGPD, extraction en lot, tableau
+        comparable. Les valeurs sont réutilisables ensuite dans le chat.
       </aside>
     </main>
   );
@@ -101,16 +90,17 @@ export default async function TabularReviewsPage() {
 
 function EmptyState() {
   return (
-    <div className="border border-dashed border-border rounded-lg p-10 text-center">
-      <IconTable className="size-8 text-muted-foreground mx-auto mb-3" />
-      <h2 className="font-heading text-lg">Aucune analyse pour l&apos;instant</h2>
-      <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-        Créez votre première analyse tabulaire. Vous définirez les colonnes,
-        choisirez vos documents, et lancerez l&apos;extraction.
+    <div className="py-16 border-y border-dashed border-border">
+      <p className="font-heading text-2xl tracking-tight">
+        Pas encore d&apos;analyse.
+      </p>
+      <p className="mt-3 text-sm text-muted-foreground max-w-md">
+        Vous définirez les colonnes, choisirez vos documents, et lancerez
+        l&apos;extraction. L&apos;IA remplit le tableau ligne par ligne.
       </p>
       <Link
         href="/tabular-reviews/new"
-        className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+        className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
       >
         <IconPlus className="size-4" />
         Créer une analyse

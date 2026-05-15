@@ -1,10 +1,4 @@
 import { and, eq, gte, sql } from "drizzle-orm";
-import {
-  IconCash,
-  IconCalendar,
-  IconInfoCircle,
-  IconCpu,
-} from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { conversations, messages } from "@/db/schema";
@@ -19,7 +13,6 @@ export default async function UsagePage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  // Période : début du mois courant
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthLabel = now.toLocaleDateString("fr-FR", {
@@ -27,7 +20,6 @@ export default async function UsagePage() {
     year: "numeric",
   });
 
-  // Tous les messages assistant du mois — on agrège côté serveur après
   const rowsThisMonth = await db
     .select({
       modelId: messages.modelId,
@@ -44,7 +36,6 @@ export default async function UsagePage() {
       )
     );
 
-  // Stats globales du mois
   const totalsMonth = aggregateCosts(rowsThisMonth);
   const totalInputTokens = rowsThisMonth.reduce(
     (n, r) => n + (r.inputTokens ?? 0),
@@ -56,7 +47,6 @@ export default async function UsagePage() {
   );
   const messageCount = rowsThisMonth.length;
 
-  // Agrégation par modèle pour le tableau détaillé
   const perModel = new Map<
     string,
     { count: number; input: number; output: number }
@@ -78,14 +68,12 @@ export default async function UsagePage() {
       cost: computeCost(modelId, v.input, v.output),
     }))
     .sort((a, b) => {
-      // Tri par coût desc puis par messages desc
       const ca = a.cost?.amount ?? 0;
       const cb = b.cost?.amount ?? 0;
       if (cb !== ca) return cb - ca;
       return b.messages - a.messages;
     });
 
-  // Totaux all-time
   const rowsAllTime = await db
     .select({
       modelId: messages.modelId,
@@ -106,168 +94,120 @@ export default async function UsagePage() {
     .then((r) => r[0].n);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-8 md:px-8 md:py-10">
-      <header className="mb-8">
-        <h1 className="font-heading text-3xl tracking-tight">Coûts & usage</h1>
-        <p className="mt-2 text-muted-foreground max-w-2xl">
-          Estimation de votre consommation selon les tarifs publics des
-          providers. Les valeurs réelles peuvent varier (remises négociées,
-          changements de tarification).
+    <main className="mx-auto w-full max-w-5xl px-6 py-10 md:px-8 md:py-14">
+      <header className="mb-12">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">
+          {capitalize(monthLabel)}
+        </p>
+        <h1 className="mt-2 font-heading text-4xl tracking-tight">
+          Coûts &amp; usage.
+        </h1>
+        <p className="mt-3 text-muted-foreground max-w-2xl">
+          Estimation selon les tarifs publics. Les valeurs réelles peuvent
+          varier (remises négociées, changements de tarification).
         </p>
       </header>
 
-      {/* Stats du mois */}
-      <section className="mb-10">
-        <h2 className="font-heading text-lg tracking-tight mb-3 inline-flex items-center gap-2">
-          <IconCalendar className="size-4 text-muted-foreground" />
-          {capitalize(monthLabel)}
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            icon={IconCash}
-            label="Coût estimé"
-            value={formatTotals(totalsMonth)}
-            highlight
-          />
-          <StatCard
-            icon={IconCpu}
+      {/* Coût du mois — typographie large, asymétrique, pas une carte */}
+      <section className="mb-14 grid lg:grid-cols-[2fr_3fr] gap-x-12 gap-y-6 items-end border-b border-border pb-12">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">
+            Coût estimé ce mois
+          </p>
+          <p className="mt-3 font-heading text-6xl md:text-7xl tracking-tight tabular-nums">
+            {formatTotals(totalsMonth)}
+          </p>
+        </div>
+        <dl className="grid grid-cols-3 gap-x-6 gap-y-2">
+          <Metric
             label="Tokens entrée"
             value={totalInputTokens.toLocaleString("fr-FR")}
           />
-          <StatCard
-            icon={IconCpu}
+          <Metric
             label="Tokens sortie"
             value={totalOutputTokens.toLocaleString("fr-FR")}
           />
-          <StatCard
-            icon={IconInfoCircle}
-            label="Messages IA"
-            value={messageCount.toString()}
-          />
+          <Metric label="Messages IA" value={messageCount.toString()} />
+        </dl>
+      </section>
+
+      <section className="mb-14">
+        <div className="grid lg:grid-cols-[280px_1fr] gap-x-12 gap-y-6">
+          <h2 className="font-heading text-2xl tracking-tight">
+            Détail par modèle.
+          </h2>
+          <div>
+            {modelRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 border-y border-dashed border-border">
+                Aucun message IA ce mois-ci.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border border-y border-border">
+                {modelRows.map((r) => (
+                  <li key={r.modelId} className="py-3 grid grid-cols-[1fr_auto_auto_auto] gap-x-6 items-baseline">
+                    <span className="font-mono text-xs truncate">
+                      {r.modelId}
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums hidden sm:inline">
+                      {r.messages} msg
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums hidden sm:inline">
+                      {r.input.toLocaleString("fr-FR")}/{r.output.toLocaleString("fr-FR")}
+                    </span>
+                    <span className="font-heading tabular-nums">
+                      {r.cost ? formatCost(r.cost) : "—"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Détail par modèle */}
-      <section className="mb-10">
-        <h2 className="font-heading text-lg tracking-tight mb-3">
-          Détail par modèle
+      <section className="mb-14 grid lg:grid-cols-[280px_1fr] gap-x-12">
+        <h2 className="font-heading text-2xl tracking-tight">
+          Depuis votre inscription.
         </h2>
-        {modelRows.length === 0 ? (
-          <div className="border border-dashed border-border rounded-lg p-10 text-center text-sm text-muted-foreground">
-            Aucun message IA ce mois-ci.
+        <div className="flex items-baseline gap-x-8 gap-y-2 flex-wrap">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">
+              Total estimé
+            </p>
+            <p className="mt-2 font-heading text-4xl tracking-tight tabular-nums">
+              {formatTotals(totalsAllTime)}
+            </p>
           </div>
-        ) : (
-          <div className="border border-border rounded-lg overflow-hidden bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs text-muted-foreground uppercase tracking-wider">
-                  <tr>
-                    <th className="text-left font-medium px-4 py-2.5 border-b border-border">
-                      Modèle
-                    </th>
-                    <th className="text-right font-medium px-4 py-2.5 border-b border-border">
-                      Messages
-                    </th>
-                    <th className="text-right font-medium px-4 py-2.5 border-b border-border">
-                      Tokens entrée
-                    </th>
-                    <th className="text-right font-medium px-4 py-2.5 border-b border-border">
-                      Tokens sortie
-                    </th>
-                    <th className="text-right font-medium px-4 py-2.5 border-b border-border">
-                      Coût estimé
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {modelRows.map((r) => (
-                    <tr
-                      key={r.modelId}
-                      className="border-b border-border last:border-0 hover:bg-accent/20"
-                    >
-                      <td className="px-4 py-2.5 font-mono text-xs truncate max-w-[280px]">
-                        {r.modelId}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">
-                        {r.messages}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">
-                        {r.input.toLocaleString("fr-FR")}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">
-                        {r.output.toLocaleString("fr-FR")}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                        {r.cost ? formatCost(r.cost) : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">
+              Messages
+            </p>
+            <p className="mt-2 font-heading text-4xl tracking-tight tabular-nums">
+              {allTimeMessages.toLocaleString("fr-FR")}
+            </p>
           </div>
-        )}
-      </section>
-
-      {/* Total all-time */}
-      <section className="mb-10">
-        <h2 className="font-heading text-lg tracking-tight mb-3">
-          Depuis votre inscription
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <StatCard
-            icon={IconCash}
-            label="Total estimé"
-            value={formatTotals(totalsAllTime)}
-            highlight
-          />
-          <StatCard
-            icon={IconInfoCircle}
-            label="Total messages"
-            value={allTimeMessages.toString()}
-          />
         </div>
       </section>
 
-      <aside className="mt-12 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-        <strong className="text-foreground">À noter :</strong> les coûts sont
-        calculés à partir des grilles publiques des providers (mai 2026). Pour
-        les modèles auto-hébergés (Ollama, vLLM, Albert d&apos;Etalab pour le
-        secteur public), le coût affiché est <strong>0</strong> — vous payez
-        l&apos;infrastructure ailleurs.
+      <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-sm text-muted-foreground">
+        Les coûts utilisent les grilles publiques des providers (mai 2026).
+        Pour les modèles auto-hébergés (Ollama, vLLM, Albert d&apos;Etalab),
+        le coût affiché est <strong className="text-foreground">0</strong>{" "}
+        — vous payez l&apos;infrastructure ailleurs.
       </aside>
     </main>
   );
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  highlight,
-}: {
-  icon: typeof IconCash;
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className={`border border-border rounded-lg p-4 ${
-        highlight ? "bg-primary/5 border-primary/20" : "bg-card"
-      }`}
-    >
-      <div className="flex items-center gap-2 text-muted-foreground text-xs">
-        <Icon className="size-3.5" />
+    <div>
+      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
         {label}
-      </div>
-      <div
-        className={`font-heading tracking-tight mt-1 tabular-nums ${
-          highlight ? "text-2xl text-foreground" : "text-xl"
-        }`}
-      >
+      </dt>
+      <dd className="mt-1 font-heading text-xl tracking-tight tabular-nums">
         {value}
-      </div>
+      </dd>
     </div>
   );
 }
