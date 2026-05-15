@@ -131,14 +131,16 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
         )}
         {!loading && !error && doc && isPdf && (
           <iframe
-            src={`/api/documents/${documentId}/file`}
+            // `#toolbar=0` masque la barre d'outils PDF du navigateur
+            // (Chrome/Edge/Safari). FitH = ajuste la largeur de la page.
+            src={`/api/documents/${documentId}/file#toolbar=0&navpanes=0&view=FitH`}
             title={doc.filename}
             className="w-full h-full border-0 bg-background"
           />
         )}
         {!loading && !error && doc && !isPdf && doc.hasPdfPreview && (
           <iframe
-            src={`/api/documents/${documentId}/preview-pdf`}
+            src={`/api/documents/${documentId}/preview-pdf#toolbar=0&navpanes=0&view=FitH`}
             title={doc.filename}
             className="w-full h-full border-0 bg-background"
           />
