@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { Spinner } from "@/components/ui/spinner";
 
 // Worker servi localement par /api/pdf-worker (pas de CDN tiers).
@@ -20,7 +19,6 @@ type Props = {
 
 export function PdfView({ fileUrl, targetText }: Props) {
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [width, setWidth] = useState(380);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,13 +70,13 @@ export function PdfView({ fileUrl, targetText }: Props) {
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [needle, currentPage, numPages]);
+  }, [needle, numPages]);
 
   return (
     <div className="flex flex-col h-full">
       <div
         ref={containerRef}
-        className="flex-1 overflow-y-auto bg-muted/30 p-2 flex justify-center"
+        className="flex-1 overflow-y-auto bg-muted/30 px-2 py-3 flex flex-col items-center gap-3"
       >
         <Document
           file={fileUrl}
@@ -95,43 +93,19 @@ export function PdfView({ fileUrl, targetText }: Props) {
             </div>
           }
         >
-          {numPages && (
-            <Page
-              pageNumber={currentPage}
-              width={width}
-              customTextRenderer={textRenderer}
-              renderAnnotationLayer={false}
-              className="shadow-sm"
-            />
-          )}
+          {numPages !== null &&
+            Array.from({ length: numPages }, (_, i) => (
+              <Page
+                key={i + 1}
+                pageNumber={i + 1}
+                width={width}
+                customTextRenderer={textRenderer}
+                renderAnnotationLayer={false}
+                className="shadow-sm bg-white mb-3 last:mb-0"
+              />
+            ))}
         </Document>
       </div>
-
-      {numPages && numPages > 1 && (
-        <div className="border-t border-border px-3 py-1.5 flex items-center justify-center gap-2 text-xs shrink-0">
-          <button
-            type="button"
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            className="size-7 inline-flex items-center justify-center rounded-md hover:bg-accent disabled:opacity-40 transition-colors"
-            aria-label="Page précédente"
-          >
-            <IconChevronLeft className="size-4" />
-          </button>
-          <span className="tabular-nums text-muted-foreground">
-            {currentPage} / {numPages}
-          </span>
-          <button
-            type="button"
-            disabled={currentPage >= numPages}
-            onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
-            className="size-7 inline-flex items-center justify-center rounded-md hover:bg-accent disabled:opacity-40 transition-colors"
-            aria-label="Page suivante"
-          >
-            <IconChevronRight className="size-4" />
-          </button>
-        </div>
-      )}
 
       {error && (
         <div className="border-t border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
