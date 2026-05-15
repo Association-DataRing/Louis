@@ -4,14 +4,20 @@ import { pappersSearch, pappersGet } from "./pappers";
 import { legifranceSearch } from "./piste";
 import { listActiveConnectorTypes } from "./runtime";
 import { ragSearch } from "@/lib/rag/search";
+import { NoEmbeddingProviderError } from "@/lib/rag/embed";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { documentChunks, providerKeys } from "@/db/schema";
+import { runTool, toolError, toolOk } from "@/lib/tools/result";
 
 /**
  * Build the set of AI SDK tools available for `userId`, based on which
  * connectors they have active. Returns an empty object when no connector
  * is configured — streamText() then runs without tool calling.
+ *
+ * Tool executions never throw: they return a `{ ok, ... }` envelope so the
+ * model can relay a precise error message to the user instead of choking on
+ * an opaque "tool execution failed".
  */
 export async function buildToolsForUser(userId: string): Promise<ToolSet> {
   const active = await listActiveConnectorTypes(userId);
@@ -32,8 +38,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
     .limit(1);
 
   if (hasMistral.length > 0) {
-    const chunkCount = await db
-      .$count(documentChunks);
+    const chunkCount = await db.$count(documentChunks);
     if (chunkCount > 0) {
       tools.search_documents = tool({
         description:
@@ -46,15 +51,28 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
               "Question ou termes-clés. Sera traduite en embedding vectoriel."
             ),
         }),
-        execute: async ({ query }) => {
-          const hits = await ragSearch(userId, query);
-          return hits.map((h) => ({
-            filename: h.filename,
-            chunk: h.chunkIndex,
-            content: h.content,
-            similarity: Math.round(h.similarity * 100) / 100,
-          }));
-        },
+        execute: async ({ query }) =>
+          runTool(async () => {
+            try {
+              const hits = await ragSearch(userId, query);
+              return toolOk(
+                hits.map((h) => ({
+                  filename: h.filename,
+                  chunk: h.chunkIndex,
+                  content: h.content,
+                  similarity: Math.round(h.similarity * 100) / 100,
+                }))
+              );
+            } catch (err) {
+              if (err instanceof NoEmbeddingProviderError) {
+                return toolError(
+                  "config",
+                  "La recherche documentaire nécessite une clé Mistral active. Activez-la dans /providers."
+                );
+              }
+              throw err;
+            }
+          }),
       });
     }
   }
@@ -77,9 +95,8 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
             "Domaine de recherche : ALL (tout), CODE_DATE (codes consolidés), JURI (jurisprudence). Par défaut ALL."
           ),
       }),
-      execute: async ({ query, fond }) => {
-        return legifranceSearch(userId, query, fond ?? "ALL");
-      },
+      execute: async ({ query, fond }) =>
+        legifranceSearch(userId, query, fond ?? "ALL"),
     });
   }
 
@@ -93,9 +110,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
           .min(2)
           .describe("Nom ou raison sociale de l'entreprise à rechercher"),
       }),
-      execute: async ({ query }) => {
-        return pappersSearch(userId, query);
-      },
+      execute: async ({ query }) => pappersSearch(userId, query),
     });
 
     tools.pappers_get = tool({
@@ -107,9 +122,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
           .regex(/^\d{9}$/, "Le SIREN doit faire exactement 9 chiffres")
           .describe("Numéro SIREN à 9 chiffres"),
       }),
-      execute: async ({ siren }) => {
-        return pappersGet(userId, siren);
-      },
+      execute: async ({ siren }) => pappersGet(userId, siren),
     });
   }
 

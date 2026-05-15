@@ -1,4 +1,11 @@
 import { loadConnectorCredentials } from "./runtime";
+import {
+  httpReason,
+  runTool,
+  toolError,
+  toolOk,
+  type ToolResult,
+} from "@/lib/tools/result";
 
 const BASE = "https://api.pappers.fr/v2";
 const TIMEOUT_MS = 12_000;
@@ -47,11 +54,12 @@ async function pappersFetch<T>(
   userId: string,
   path: string,
   params: Record<string, string>
-): Promise<T> {
+): Promise<ToolResult<T>> {
   const creds = await loadConnectorCredentials<PappersCreds>(userId, "pappers");
   if (!creds) {
-    throw new Error(
-      "Pappers n'est pas configuré ou est désactivé. Configurez-le dans /connectors."
+    return toolError(
+      "config",
+      "Pappers n'est pas configuré ou est désactivé. Allez sur /connectors pour ajouter une clé."
     );
   }
 
@@ -69,9 +77,9 @@ async function pappersFetch<T>(
       signal: controller.signal,
     });
     if (!res.ok) {
-      throw new Error(`Pappers ${res.status} : ${res.statusText}`);
+      return { ok: false, ...httpReason("Pappers", res.status) };
     }
-    return (await res.json()) as T;
+    return toolOk((await res.json()) as T);
   } finally {
     clearTimeout(timer);
   }
@@ -80,28 +88,33 @@ async function pappersFetch<T>(
 export async function pappersSearch(
   userId: string,
   query: string
-): Promise<PappersSearchResponse> {
-  type Raw = {
-    total?: number;
-    resultats?: PappersSearchResult[];
-  };
-  const data = await pappersFetch<Raw>(userId, "/recherche", {
-    q: query,
-    precision: "standard",
-    par_page: "5",
+): Promise<ToolResult<PappersSearchResponse>> {
+  return runTool(async () => {
+    type Raw = {
+      total?: number;
+      resultats?: PappersSearchResult[];
+    };
+    const r = await pappersFetch<Raw>(userId, "/recherche", {
+      q: query,
+      precision: "standard",
+      par_page: "5",
+    });
+    if (!r.ok) return r;
+    return toolOk({
+      query,
+      total: r.data.total ?? 0,
+      results: (r.data.resultats ?? []).slice(0, 5),
+    });
   });
-  return {
-    query,
-    total: data.total ?? 0,
-    results: (data.resultats ?? []).slice(0, 5),
-  };
 }
 
 export async function pappersGet(
   userId: string,
   siren: string
-): Promise<PappersCompanyDetails> {
-  return pappersFetch<PappersCompanyDetails>(userId, "/entreprise", {
-    siren: siren.replace(/\s/g, ""),
-  });
+): Promise<ToolResult<PappersCompanyDetails>> {
+  return runTool(() =>
+    pappersFetch<PappersCompanyDetails>(userId, "/entreprise", {
+      siren: siren.replace(/\s/g, ""),
+    })
+  );
 }

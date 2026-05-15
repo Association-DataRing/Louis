@@ -1,4 +1,11 @@
 import { loadConnectorCredentials } from "./runtime";
+import {
+  httpReason,
+  runTool,
+  toolError,
+  toolOk,
+  type ToolResult,
+} from "@/lib/tools/result";
 
 const OAUTH_URL = "https://oauth.piste.gouv.fr/api/oauth/token";
 const API_BASE = "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app";
@@ -9,16 +16,17 @@ type PisteCreds = { client_id: string; client_secret: string };
 type CachedToken = { token: string; expiresAt: number };
 const tokenCache = new Map<string, CachedToken>();
 
-async function getToken(userId: string): Promise<string> {
+async function getToken(userId: string): Promise<ToolResult<string>> {
   const cached = tokenCache.get(userId);
   if (cached && cached.expiresAt > Date.now()) {
-    return cached.token;
+    return toolOk(cached.token);
   }
 
   const creds = await loadConnectorCredentials<PisteCreds>(userId, "piste");
   if (!creds) {
-    throw new Error(
-      "PISTE n'est pas configuré ou est désactivé. Ajoutez-le dans /connectors."
+    return toolError(
+      "config",
+      "PISTE n'est pas configuré ou est désactivé. Ajoutez vos identifiants dans /connectors."
     );
   }
 
@@ -34,7 +42,15 @@ async function getToken(userId: string): Promise<string> {
   });
 
   if (!res.ok) {
-    throw new Error(`OAuth PISTE échoué (${res.status})`);
+    if (res.status === 401 || res.status === 403) {
+      // Wipe the cache so a renewed key is picked up on next call.
+      tokenCache.delete(userId);
+      return toolError(
+        "auth",
+        "Les identifiants PISTE ont été refusés (OAuth 401/403). Renouvelez-les dans /connectors."
+      );
+    }
+    return { ok: false, ...httpReason("PISTE OAuth", res.status) };
   }
 
   const data = (await res.json()) as {
@@ -42,28 +58,29 @@ async function getToken(userId: string): Promise<string> {
     expires_in: number;
   };
 
-  // Renew a minute before expiry so we never serve a stale token.
   tokenCache.set(userId, {
     token: data.access_token,
     expiresAt: Date.now() + Math.max(60, data.expires_in - 60) * 1000,
   });
 
-  return data.access_token;
+  return toolOk(data.access_token);
 }
 
 async function pisteRequest<T>(
   userId: string,
   path: string,
   body: unknown
-): Promise<T> {
-  const token = await getToken(userId);
+): Promise<ToolResult<T>> {
+  const tok = await getToken(userId);
+  if (!tok.ok) return tok;
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${tok.data}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -71,12 +88,11 @@ async function pisteRequest<T>(
       signal: controller.signal,
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(
-        `Légifrance ${res.status} : ${text.slice(0, 200) || res.statusText}`
-      );
+      // Invalidate the cached token on 401 so the next call refreshes it.
+      if (res.status === 401) tokenCache.delete(userId);
+      return { ok: false, ...httpReason("Légifrance", res.status) };
     }
-    return (await res.json()) as T;
+    return toolOk((await res.json()) as T);
   } finally {
     clearTimeout(timer);
   }
@@ -93,48 +109,54 @@ export async function legifranceSearch(
   userId: string,
   query: string,
   fond: "ALL" | "CODE_DATE" | "JURI" = "ALL"
-): Promise<{ query: string; hits: LegifranceHit[] }> {
-  type Raw = {
-    results?: Array<{
-      id?: string;
-      titles?: Array<{ title?: string; cid?: string }>;
-      sections?: Array<{ extracts?: Array<{ values?: string[] }> }>;
-      texte?: string;
-    }>;
-  };
+): Promise<ToolResult<{ query: string; hits: LegifranceHit[] }>> {
+  return runTool(async () => {
+    type Raw = {
+      results?: Array<{
+        id?: string;
+        titles?: Array<{ title?: string; cid?: string }>;
+        sections?: Array<{ extracts?: Array<{ values?: string[] }> }>;
+        texte?: string;
+      }>;
+    };
 
-  const data = await pisteRequest<Raw>(userId, "/search", {
-    recherche: {
-      champs: [
-        {
-          typeChamp: "ALL",
-          criteres: [{ typeRecherche: "EXACTE", valeur: query }],
-        },
-      ],
-      pageNumber: 1,
-      pageSize: 5,
-      typePagination: "DEFAUT",
-      sort: "PERTINENCE",
-      fond,
-    },
-  });
-
-  const hits: LegifranceHit[] = (data.results ?? [])
-    .slice(0, 5)
-    .map((r) => {
-      const id = r.id ?? r.titles?.[0]?.cid ?? "";
-      const title = r.titles?.[0]?.title ?? id ?? "Résultat sans titre";
-      const excerpt =
-        r.texte ?? r.sections?.[0]?.extracts?.[0]?.values?.[0] ?? undefined;
-      return {
-        id,
-        title,
-        url: id
-          ? `https://www.legifrance.gouv.fr/codes/article_lc/${id}`
-          : "https://www.legifrance.gouv.fr/",
-        excerpt: excerpt?.slice(0, 280),
-      };
+    const r = await pisteRequest<Raw>(userId, "/search", {
+      recherche: {
+        champs: [
+          {
+            typeChamp: "ALL",
+            criteres: [{ typeRecherche: "EXACTE", valeur: query }],
+          },
+        ],
+        pageNumber: 1,
+        pageSize: 5,
+        typePagination: "DEFAUT",
+        sort: "PERTINENCE",
+        fond,
+      },
     });
+    if (!r.ok) return r;
 
-  return { query, hits };
+    const hits: LegifranceHit[] = (r.data.results ?? [])
+      .slice(0, 5)
+      .map((row) => {
+        const id = row.id ?? row.titles?.[0]?.cid ?? "";
+        const title =
+          row.titles?.[0]?.title ?? id ?? "Résultat sans titre";
+        const excerpt =
+          row.texte ??
+          row.sections?.[0]?.extracts?.[0]?.values?.[0] ??
+          undefined;
+        return {
+          id,
+          title,
+          url: id
+            ? `https://www.legifrance.gouv.fr/codes/article_lc/${id}`
+            : "https://www.legifrance.gouv.fr/",
+          excerpt: excerpt?.slice(0, 280),
+        };
+      });
+
+    return toolOk({ query, hits });
+  });
 }
