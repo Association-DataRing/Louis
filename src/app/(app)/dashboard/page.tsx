@@ -121,7 +121,7 @@ export default async function DashboardPage() {
         <Stat
           label="Providers actifs"
           value={activeKeys.length.toString()}
-          href="/providers"
+          href="/settings/providers"
         />
       </section>
 
@@ -186,7 +186,7 @@ function SetupBanner() {
           Mistral, Scaleway, OVH, Albert, ou tout autre endpoint compatible.
         </p>
         <Link
-          href="/providers"
+          href="/settings/providers"
           className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline underline-offset-2"
         >
           Ouvrir Providers
@@ -205,7 +205,7 @@ function FirstSteps({ hasProvider }: { hasProvider: boolean }) {
           <span className="font-heading text-muted-foreground tabular-nums shrink-0 w-6">
             01
           </span>
-          <Link href="/providers" className="hover:text-primary">
+          <Link href="/settings/providers" className="hover:text-primary">
             Configurer un provider IA
             <span className="ml-1 text-muted-foreground">→ /providers</span>
           </Link>

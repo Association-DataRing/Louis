@@ -64,7 +64,7 @@ export async function createProviderKey(
     return { ok: false, error: "Impossible de créer la clé." };
   }
 
-  revalidatePath("/providers");
+  revalidatePath("/settings/providers");
   return { ok: true };
 }
 
@@ -73,7 +73,7 @@ export async function deleteProviderKey(id: string): Promise<void> {
   await db
     .delete(providerKeys)
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
-  revalidatePath("/providers");
+  revalidatePath("/settings/providers");
 }
 
 export async function toggleProviderKeyActive(id: string): Promise<void> {
@@ -88,7 +88,7 @@ export async function toggleProviderKeyActive(id: string): Promise<void> {
     .update(providerKeys)
     .set({ isActive: !current.isActive })
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
-  revalidatePath("/providers");
+  revalidatePath("/settings/providers");
 }
 
 export async function setProviderKeyDefault(id: string): Promise<void> {
@@ -109,7 +109,7 @@ export async function setProviderKeyDefault(id: string): Promise<void> {
     .update(providerKeys)
     .set({ isDefault: true })
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
-  revalidatePath("/providers");
+  revalidatePath("/settings/providers");
 }
 
 const updateSchema = z.object({
@@ -169,7 +169,7 @@ export async function updateProviderKey(
     return { ok: false, error: "Impossible de modifier la clé." };
   }
 
-  revalidatePath("/providers");
+  revalidatePath("/settings/providers");
   return { ok: true };
 }
 
@@ -195,5 +195,5 @@ export async function testProviderKey(id: string): Promise<void> {
     .set({ lastTestedAt: new Date(), lastTestStatus: status })
     .where(eq(providerKeys.id, id));
 
-  revalidatePath("/providers");
+  revalidatePath("/settings/providers");
 }

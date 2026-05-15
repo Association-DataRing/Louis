@@ -65,7 +65,7 @@ export async function createConnectorKey(
     return { ok: false, error: "Impossible de créer le connecteur." };
   }
 
-  revalidatePath("/connectors");
+  revalidatePath("/settings/connectors");
   return { ok: true };
 }
 
@@ -74,7 +74,7 @@ export async function deleteConnectorKey(id: string): Promise<void> {
   await db
     .delete(connectorKeys)
     .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)));
-  revalidatePath("/connectors");
+  revalidatePath("/settings/connectors");
 }
 
 export async function updateConnectorKey(
@@ -153,7 +153,7 @@ export async function updateConnectorKey(
     return { ok: false, error: "Impossible de modifier le connecteur." };
   }
 
-  revalidatePath("/connectors");
+  revalidatePath("/settings/connectors");
   return { ok: true };
 }
 
@@ -169,5 +169,5 @@ export async function toggleConnectorKeyActive(id: string): Promise<void> {
     .update(connectorKeys)
     .set({ isActive: !current.isActive })
     .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)));
-  revalidatePath("/connectors");
+  revalidatePath("/settings/connectors");
 }

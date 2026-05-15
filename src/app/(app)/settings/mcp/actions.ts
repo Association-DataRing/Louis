@@ -96,7 +96,7 @@ export async function createMcpServer(
     return { ok: false, error: "Impossible de créer le serveur MCP." };
   }
 
-  revalidatePath("/mcp");
+  revalidatePath("/settings/mcp");
   return { ok: true };
 }
 
@@ -105,7 +105,7 @@ export async function deleteMcpServer(id: string): Promise<void> {
   await db
     .delete(mcpServers)
     .where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId)));
-  revalidatePath("/mcp");
+  revalidatePath("/settings/mcp");
 }
 
 export async function toggleMcpServerActive(id: string): Promise<void> {
@@ -120,7 +120,7 @@ export async function toggleMcpServerActive(id: string): Promise<void> {
     .update(mcpServers)
     .set({ isActive: !current.isActive })
     .where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId)));
-  revalidatePath("/mcp");
+  revalidatePath("/settings/mcp");
 }
 
 export async function syncMcpServer(id: string): Promise<void> {
@@ -153,6 +153,6 @@ export async function syncMcpServer(id: string): Promise<void> {
       .where(eq(mcpServers.id, id));
   }
 
-  revalidatePath("/mcp");
+  revalidatePath("/settings/mcp");
   revalidatePath("/chat");
 }

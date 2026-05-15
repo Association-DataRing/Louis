@@ -45,11 +45,12 @@ const PAGES = [
   { href: "/documents", label: "Documents", icon: IconFileText },
   { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
   { href: "/workflows", label: "Workflows", icon: IconLibrary },
-  { href: "/usage", label: "Coûts & usage", icon: IconCash },
-  { href: "/providers", label: "Providers IA", icon: IconKey },
-  { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected },
-  { href: "/mcp", label: "Serveurs MCP", icon: IconBolt },
-  { href: "/profile", label: "Mon profil", icon: IconSettings },
+  { href: "/settings/general", label: "Paramètres", icon: IconSettings },
+  { href: "/settings/profile", label: "Profil", icon: IconSettings },
+  { href: "/settings/usage", label: "Coûts & usage", icon: IconCash },
+  { href: "/settings/providers", label: "Providers IA", icon: IconKey },
+  { href: "/settings/connectors", label: "Connecteurs", icon: IconPlugConnected },
+  { href: "/settings/mcp", label: "Serveurs MCP", icon: IconBolt },
 ] as const;
 
 const ACTIONS = [

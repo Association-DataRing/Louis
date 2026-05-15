@@ -5,12 +5,9 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   IconLayoutDashboard,
-  IconKey,
-  IconPlugConnected,
   IconMessageCircle,
   IconFolder,
   IconLogout,
-  IconBolt,
   IconShieldLock,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
@@ -19,7 +16,7 @@ import {
   IconFolders,
   IconTable,
   IconLibrary,
-  IconCash,
+  IconSettings,
 } from "@tabler/icons-react";
 import { signOutAction } from "@/auth/actions";
 import { LouisLogo } from "@/components/louis-logo";
@@ -33,11 +30,13 @@ const navItems = [
   { href: "/documents", label: "Documents", icon: IconFolder },
   { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
   { href: "/workflows", label: "Workflows", icon: IconLibrary },
-  { href: "/usage", label: "Coûts & usage", icon: IconCash },
-  { href: "/providers", label: "Providers IA", icon: IconKey },
-  { href: "/connectors", label: "Connecteurs", icon: IconPlugConnected },
-  { href: "/mcp", label: "Serveurs MCP", icon: IconBolt },
 ];
+
+const settingsNav = {
+  href: "/settings",
+  label: "Paramètres",
+  icon: IconSettings,
+};
 
 type Conversation = {
   id: string;
@@ -170,12 +169,26 @@ export function SidebarContent({
             );
           })}
 
+          <Link
+            href={settingsNav.href}
+            onClick={onNavigate}
+            title={!open ? settingsNav.label : undefined}
+            className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors mt-3 ${
+              pathname.startsWith("/settings")
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "hover:bg-sidebar-accent"
+            }`}
+          >
+            <IconSettings className="size-4 shrink-0" />
+            {open && <span className="truncate">{settingsNav.label}</span>}
+          </Link>
+
           {user.role === "admin" && (
             <Link
               href="/admin/users"
               onClick={onNavigate}
               title={!open ? "Administration" : undefined}
-              className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors mt-3 ${
+              className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors ${
                 pathname.startsWith("/admin")
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "hover:bg-sidebar-accent"
@@ -252,10 +265,10 @@ export function SidebarContent({
         {open ? (
           <div className="flex items-center gap-1">
             <Link
-              href="/profile"
+              href="/settings/profile"
               onClick={onNavigate}
               className={`flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors min-w-0 ${
-                pathname.startsWith("/profile")
+                pathname.startsWith("/settings/profile")
                   ? "bg-sidebar-accent"
                   : "hover:bg-sidebar-accent"
               }`}
@@ -286,7 +299,7 @@ export function SidebarContent({
         ) : (
           <div className="flex flex-col items-center gap-1">
             <Link
-              href="/profile"
+              href="/settings/profile"
               onClick={onNavigate}
               title="Mon profil"
               className="size-9 inline-flex items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors"
