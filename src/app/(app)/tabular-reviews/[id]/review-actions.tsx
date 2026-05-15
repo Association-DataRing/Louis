@@ -31,6 +31,9 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
 
   function run() {
     startTransition(async () => {
+      // L'action retourne dès que les lignes sont marquées "running" — le
+      // traitement IA continue en arrière-plan. <AutoRefresh> rafraîchira
+      // la page tant que des lignes seront en "running".
       await runTabularReview(reviewId);
       router.refresh();
     });
@@ -58,7 +61,7 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
           <IconPlayerPlay className="size-4" />
         )}
         {pending
-          ? "Extraction…"
+          ? "Démarrage…"
           : pendingCount > 0
             ? `Lancer (${pendingCount})`
             : "Tout est traité"}

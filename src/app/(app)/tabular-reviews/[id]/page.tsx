@@ -16,6 +16,7 @@ import {
 } from "@/db/schema";
 import { ReviewGrid } from "./review-grid";
 import { ReviewActions } from "./review-actions";
+import { AutoRefresh } from "./auto-refresh";
 
 type Params = { id: string };
 
@@ -65,6 +66,7 @@ export default async function TabularReviewDetailPage({
   const pendingCount = rows.filter(
     (r) => r.status === "pending" || r.status === "error"
   ).length;
+  const runningCount = rows.filter((r) => r.status === "running").length;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-8 md:px-8 md:py-10">
@@ -94,6 +96,12 @@ export default async function TabularReviewDetailPage({
                   · <span className="text-foreground">{pendingCount} à traiter</span>
                 </>
               )}
+              {runningCount > 0 && (
+                <>
+                  {" "}
+                  · <span className="text-primary">{runningCount} en cours</span>
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -105,6 +113,7 @@ export default async function TabularReviewDetailPage({
       </header>
 
       <ReviewGrid columns={columns} rows={rows} />
+      <AutoRefresh hasRunning={runningCount > 0} />
     </main>
   );
 }
