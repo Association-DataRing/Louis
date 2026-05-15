@@ -38,7 +38,12 @@ const navItems = [
   { href: "/mcp", label: "Serveurs MCP", icon: IconBolt },
 ];
 
-type Conversation = { id: string; title: string; projectId: string | null };
+type Conversation = {
+  id: string;
+  title: string;
+  projectId: string | null;
+  pinnedAt?: Date | null;
+};
 type ProjectOption = { id: string; name: string };
 
 type Props = {
@@ -230,6 +235,7 @@ export function SidebarContent({
                     id={c.id}
                     title={c.title}
                     isCurrent={c.id === currentConvId}
+                    isPinned={Boolean(c.pinnedAt)}
                     currentProjectId={c.projectId}
                     projects={projects}
                   />

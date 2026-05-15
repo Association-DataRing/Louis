@@ -9,7 +9,12 @@ import { SidebarContent } from "./sidebar-content";
 
 type Props = {
   user: { name: string; email: string; role: string };
-  conversations: { id: string; title: string; projectId: string | null }[];
+  conversations: {
+    id: string;
+    title: string;
+    projectId: string | null;
+    pinnedAt?: Date | null;
+  }[];
   projects: { id: string; name: string }[];
 };
 

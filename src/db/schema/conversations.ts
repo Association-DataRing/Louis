@@ -16,6 +16,7 @@ export const conversations = pgTable("conversations", {
   }),
   title: text("title").notNull().default("Nouvelle conversation"),
   modelId: text("model_id"),
+  pinnedAt: timestamp("pinned_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

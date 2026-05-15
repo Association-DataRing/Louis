@@ -11,6 +11,9 @@ import {
   IconFolders,
   IconFolderOff,
   IconCheck,
+  IconPin,
+  IconPinFilled,
+  IconDownload,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -22,13 +25,19 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { renameConversation, deleteConversation } from "./actions";
+import {
+  renameConversation,
+  deleteConversation,
+  togglePinConversation,
+  exportConversationMarkdown,
+} from "./actions";
 import { moveConversationToProject } from "../projects/actions";
 
 type Props = {
   id: string;
   title: string;
   isCurrent: boolean;
+  isPinned?: boolean;
   currentProjectId?: string | null;
   projects?: { id: string; name: string }[];
 };
@@ -37,6 +46,7 @@ export function ConversationItem({
   id,
   title,
   isCurrent,
+  isPinned = false,
   currentProjectId,
   projects = [],
 }: Props) {
@@ -73,6 +83,29 @@ export function ConversationItem({
     });
   }
 
+  function handleTogglePin() {
+    startTransition(async () => {
+      await togglePinConversation(id);
+      router.refresh();
+    });
+  }
+
+  function handleExport() {
+    startTransition(async () => {
+      const result = await exportConversationMarkdown(id);
+      if (!result.ok) return;
+      const blob = new Blob([result.markdown], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+  }
+
   if (editing) {
     return (
       <div className="px-2.5 py-1 rounded-md bg-accent">
@@ -105,7 +138,11 @@ export function ConversationItem({
         href={`/chat?id=${id}`}
         className="flex-1 flex items-center gap-2 px-2.5 py-2 min-w-0"
       >
-        <IconMessageCircle className="size-3.5 shrink-0 opacity-60" />
+        {isPinned ? (
+          <IconPinFilled className="size-3.5 shrink-0 text-primary" />
+        ) : (
+          <IconMessageCircle className="size-3.5 shrink-0 opacity-60" />
+        )}
         <span className="truncate">{title}</span>
       </Link>
       <DropdownMenu>
@@ -116,6 +153,19 @@ export function ConversationItem({
           <IconDots className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={handleTogglePin}>
+            {isPinned ? (
+              <>
+                <IconPin className="size-4" />
+                Détacher
+              </>
+            ) : (
+              <>
+                <IconPinFilled className="size-4" />
+                Épingler
+              </>
+            )}
+          </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
               setDraft(title);
@@ -125,6 +175,10 @@ export function ConversationItem({
           >
             <IconPencil className="size-4" />
             Renommer
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleExport}>
+            <IconDownload className="size-4" />
+            Exporter en Markdown
           </DropdownMenuItem>
 
           {projects.length > 0 && (

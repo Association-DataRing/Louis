@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -32,10 +32,14 @@ export default async function AppLayout({
         id: conversations.id,
         title: conversations.title,
         projectId: conversations.projectId,
+        pinnedAt: conversations.pinnedAt,
       })
       .from(conversations)
       .where(eq(conversations.userId, session.user.id))
-      .orderBy(desc(conversations.updatedAt))
+      .orderBy(
+        sql`${conversations.pinnedAt} desc nulls last`,
+        desc(conversations.updatedAt)
+      )
       .limit(50),
     db
       .select({ id: projects.id, name: projects.name })
