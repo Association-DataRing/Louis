@@ -67,8 +67,8 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
       ? IconFileText
       : IconFile;
 
-  return (
-    <aside className="hidden md:flex w-[440px] lg:w-[480px] shrink-0 border-l border-border bg-card/40 flex-col h-full">
+  const body = (
+    <>
       <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="size-4 text-muted-foreground shrink-0" />
@@ -78,10 +78,10 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
         </div>
         <button
           onClick={onClose}
-          className="size-7 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors"
+          className="size-10 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors"
           aria-label="Fermer le document"
         >
-          <IconX className="size-4" />
+          <IconX className="size-5" />
         </button>
       </header>
 
@@ -110,7 +110,25 @@ export function DocPanel({ documentId, targetText, onClose }: Props) {
         Texte extrait côté serveur. La mise en forme originale du document
         n&apos;est pas restituée.
       </footer>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop : panneau side-by-side ancré à droite */}
+      <aside className="hidden md:flex w-[440px] lg:w-[480px] shrink-0 border-l border-border bg-card/40 flex-col h-full">
+        {body}
+      </aside>
+      {/* Mobile : overlay plein écran qui glisse depuis la droite */}
+      <div
+        className="md:hidden fixed inset-0 z-50 flex flex-col bg-background animate-in slide-in-from-right duration-200"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Aperçu du document"
+      >
+        {body}
+      </div>
+    </>
   );
 }
 

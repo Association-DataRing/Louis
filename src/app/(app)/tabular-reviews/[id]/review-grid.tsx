@@ -32,37 +32,96 @@ export function ReviewGrid({ columns, rows }: Props) {
   }
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden bg-card">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40">
-            <tr>
-              <th className="text-left font-medium px-4 py-2.5 border-b border-border sticky left-0 bg-muted/40 min-w-[200px]">
-                Document
-              </th>
-              <th className="text-center font-medium px-3 py-2.5 border-b border-border w-[80px]">
-                Statut
-              </th>
-              {columns.map((c) => (
-                <th
-                  key={c.id}
-                  className="text-left font-medium px-4 py-2.5 border-b border-border min-w-[200px]"
-                  title={c.prompt}
-                >
-                  {c.label}
+    <>
+      {/* Desktop : grille type Excel — colonnes = champs extraits */}
+      <div className="hidden md:block border border-border rounded-lg overflow-hidden bg-card">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40">
+              <tr>
+                <th className="text-left font-medium px-4 py-2.5 border-b border-border sticky left-0 bg-muted/40 min-w-[200px]">
+                  Document
                 </th>
+                <th className="text-center font-medium px-3 py-2.5 border-b border-border w-[80px]">
+                  Statut
+                </th>
+                {columns.map((c) => (
+                  <th
+                    key={c.id}
+                    className="text-left font-medium px-4 py-2.5 border-b border-border min-w-[200px]"
+                    title={c.prompt}
+                  >
+                    {c.label}
+                  </th>
+                ))}
+                <th className="w-[40px] border-b border-border"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <RowItem key={r.id} columns={columns} row={r} />
               ))}
-              <th className="w-[40px] border-b border-border"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <RowItem key={r.id} columns={columns} row={r} />
-            ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {/* Mobile : cards empilées — un document par carte, champs en
+          définition list. Pas de scroll horizontal. */}
+      <div className="md:hidden space-y-3">
+        {rows.map((r) => (
+          <RowCard key={r.id} columns={columns} row={r} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <article className="border border-border rounded-lg bg-card overflow-hidden">
+      <header className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">{row.filename}</p>
+          <div className="mt-1">
+            <StatusBadge status={row.status} error={row.error} />
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (confirm(`Retirer "${row.filename}" de l'analyse ?`)) {
+              startTransition(() => deleteReviewRow(row.id));
+            }
+          }}
+          className="size-10 shrink-0 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          aria-label="Retirer"
+        >
+          <IconTrash className="size-4" />
+        </button>
+      </header>
+      <dl className="px-4 py-3 space-y-2.5">
+        {columns.map((c) => {
+          const value = row.values?.[c.id];
+          return (
+            <div key={c.id}>
+              <dt className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                {c.label}
+              </dt>
+              <dd className="mt-0.5 text-xs leading-relaxed">
+                {value ? (
+                  <span>{value}</span>
+                ) : (
+                  <span className="text-muted-foreground italic">—</span>
+                )}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </article>
   );
 }
 

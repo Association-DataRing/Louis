@@ -697,7 +697,7 @@ export function ChatShell({
                   <button
                     type="button"
                     disabled={isBusy}
-                    className="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
+                    className="inline-flex items-center justify-center size-10 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
                     aria-label="Joindre des documents"
                   >
                     <IconPaperclip className="size-4" />
@@ -730,7 +730,7 @@ export function ChatShell({
                   <button
                     type="button"
                     disabled={isBusy}
-                    className="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
+                    className="inline-flex items-center justify-center size-10 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
                     aria-label="Insérer un workflow"
                     title="Workflows"
                   >
@@ -808,19 +808,19 @@ export function ChatShell({
                   <button
                     type="button"
                     onClick={() => stop()}
-                    className="inline-flex items-center justify-center size-8 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
+                    className="inline-flex items-center justify-center size-11 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
                     aria-label="Arrêter"
                   >
-                    <IconPlayerStop className="size-3.5" />
+                    <IconPlayerStop className="size-4" />
                   </button>
                 ) : (
                   <button
                     type="submit"
                     disabled={!input.trim()}
-                    className="inline-flex items-center justify-center size-8 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                    className="inline-flex items-center justify-center size-11 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
                     aria-label="Envoyer"
                   >
-                    <IconArrowUp className="size-4" />
+                    <IconArrowUp className="size-5" />
                   </button>
                 )}
               </div>
