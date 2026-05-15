@@ -1,6 +1,7 @@
 import { generateDocx } from "./docx";
 import { generatePdf } from "./pdf";
 import { putExport } from "./store";
+import type { DocumentSpec } from "./types";
 
 export type DocFormat = "docx" | "pdf";
 
@@ -10,27 +11,25 @@ const CONTENT_TYPES: Record<DocFormat, string> = {
 };
 
 /**
- * Pipeline complet : titre + markdown -> Buffer -> stocké -> URL.
- * Le tool IA `generate_document` retourne juste cette URL au modèle, qui
- * la relaie en lien dans la conversation.
+ * Pipeline complet : DocumentSpec structuré -> Buffer -> store TTL -> URL.
+ * Utilisé par le tool IA generate_document et par edit_document (pour le
+ * download du DOCX modifié).
  */
 export async function generateAndStore({
   format,
-  title,
-  contentMarkdown,
+  spec,
   userId,
+  filenameOverride,
 }: {
   format: DocFormat;
-  title: string;
-  contentMarkdown: string;
+  spec: DocumentSpec;
   userId: string;
+  filenameOverride?: string;
 }): Promise<{ url: string; filename: string }> {
   const buffer =
-    format === "docx"
-      ? await generateDocx(title, contentMarkdown)
-      : await generatePdf(title, contentMarkdown);
+    format === "docx" ? await generateDocx(spec) : await generatePdf(spec);
 
-  const safe = title
+  const safe = (filenameOverride ?? spec.title)
     .replace(/[^a-zA-Z0-9_\- ]+/g, "")
     .replace(/\s+/g, "-")
     .slice(0, 60)
@@ -41,4 +40,24 @@ export async function generateAndStore({
   return { url: `/api/exports/${id}`, filename };
 }
 
+/**
+ * Stocke un buffer arbitraire (utilisé par edit_document après manipulation
+ * du DOCX original via tracked changes) en réutilisant le mécanisme TTL.
+ */
+export function storeBuffer({
+  buffer,
+  contentType,
+  filename,
+  userId,
+}: {
+  buffer: Buffer;
+  contentType: string;
+  filename: string;
+  userId: string;
+}): { url: string; filename: string } {
+  const id = putExport(buffer, contentType, filename, userId);
+  return { url: `/api/exports/${id}`, filename };
+}
+
 export { getExport } from "./store";
+export type { DocumentSpec, Section } from "./types";

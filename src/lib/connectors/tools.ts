@@ -101,42 +101,109 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
     });
   }
 
-  // Génération de documents — toujours disponible, indépendant de tout
-  // connecteur externe. Utilise des libs pure-JS côté serveur Louis.
+  // Génération de documents — toujours disponible, indépendant des
+  // connecteurs externes. Pure-JS côté serveur Louis (docx + pdfkit), pas
+  // de dépendance LibreOffice ni d'envoi vers un service tiers.
+  const sectionSchema = z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("heading"),
+      level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+      text: z.string().min(1),
+      align: z.enum(["left", "center", "right", "justify"]).optional(),
+    }),
+    z.object({
+      kind: z.literal("paragraph"),
+      content: z
+        .string()
+        .min(1)
+        .describe(
+          "Texte du paragraphe. Peut contenir **gras** et _italique_ inline. Pas de \\n internes — utilisez plusieurs sections paragraph pour les sauts."
+        ),
+      align: z.enum(["left", "center", "right", "justify"]).optional(),
+      bold: z.boolean().optional(),
+      italic: z.boolean().optional(),
+    }),
+    z.object({
+      kind: z.literal("list"),
+      ordered: z.boolean(),
+      items: z.array(z.string().min(1)).min(1),
+    }),
+    z.object({
+      kind: z.literal("blockquote"),
+      content: z.string().min(1),
+    }),
+    z.object({
+      kind: z.literal("table"),
+      headers: z.array(z.string()).min(1),
+      rows: z.array(z.array(z.string())).min(1),
+      caption: z.string().optional(),
+    }),
+    z.object({
+      kind: z.literal("pageBreak"),
+    }),
+    z.object({
+      kind: z.literal("hr"),
+    }),
+    z.object({
+      kind: z.literal("spacer"),
+      lines: z.number().int().min(1).max(10).optional(),
+    }),
+  ]);
+
   tools.generate_document = tool({
     description:
-      "Génère un document téléchargeable au format DOCX (Word) ou PDF à partir d'un titre et d'un contenu Markdown. Utilisez ce tool dès que l'utilisateur demande explicitement un fichier .docx ou .pdf — par exemple « rédige une mise en demeure et exporte en docx », « fais-moi un mémo PDF »… Renvoie une URL de téléchargement valable 10 minutes. Présentez ensuite le lien à l'utilisateur sous forme cliquable en Markdown standard, par exemple : « [Télécharger le document](URL) ».",
+      "Génère un document téléchargeable .docx (Word, modifiable) ou .pdf (diffusion finale) à partir d'une structure typée. Utilisez ce tool dès que l'utilisateur demande explicitement un fichier — « rédige une mise en demeure et exporte en docx », « fais-moi un mémo PDF de 3 pages », « génère un tableau comparatif de ces clauses en docx ». Le schéma sections supporte titres (level 1-4), paragraphes (avec alignement justify par défaut, standard juridique), listes ordonnées/à puces, blockquotes, tableaux avec en-têtes, sauts de page (pour pages signature contrat), séparateurs horizontaux. Footer auto avec « Page X / Y ». Renvoie une URL valable 10 minutes — présentez-la à l'utilisateur sous forme « [Télécharger le document](URL) ».",
     inputSchema: z.object({
       format: z
         .enum(["docx", "pdf"])
-        .describe(
-          "Format du document. docx pour Word/Pages (modifiable), pdf pour la diffusion finale."
-        ),
-      title: z
+        .describe("docx : modifiable dans Word/Pages. pdf : version finale."),
+      title: z.string().min(1).max(200),
+      subtitle: z
         .string()
-        .min(1)
         .max(200)
+        .optional()
         .describe(
-          "Titre du document, affiché en grand en première page et utilisé comme nom de fichier."
+          "Sous-titre optionnel sous le titre principal (ex: référence dossier, date)."
         ),
-      content_markdown: z
+      footer: z
         .string()
+        .max(120)
+        .optional()
+        .describe(
+          "Texte custom à gauche du footer (ex: « Cabinet Altij · Confidentiel »). La numérotation Page X/Y est ajoutée automatiquement à droite."
+        ),
+      pageNumbers: z
+        .boolean()
+        .optional()
+        .describe("Afficher Page X/Y. Défaut true."),
+      landscape: z
+        .boolean()
+        .optional()
+        .describe(
+          "Orientation paysage. Utile pour les tableaux larges. Défaut portrait."
+        ),
+      fontFamily: z
+        .enum(["serif", "sans"])
+        .optional()
+        .describe(
+          "serif (Cambria/Times) pour ton juridique classique, sans (Calibri/Helvetica) pour ton moderne. Défaut serif."
+        ),
+      sections: z
+        .array(sectionSchema)
         .min(1)
         .describe(
-          "Corps du document en Markdown — # ## ### pour les titres, **gras** _italique_, listes -/1., > blockquote, --- pour séparateur. Pas de tables ni de code fences. Utilisez du français impeccable, pas de phrases bâteau."
+          "Liste ordonnée de sections typées. Construisez le document section par section."
         ),
     }),
-    execute: async ({ format, title, content_markdown }) =>
+    execute: async ({ format, sections, ...rest }) =>
       runTool(async () => {
-        const { url, filename } = await generateAndStore({
+        const result = await generateAndStore({
           format,
-          title,
-          contentMarkdown: content_markdown,
+          spec: { ...rest, sections },
           userId,
         });
         return toolOk({
-          url,
-          filename,
+          ...result,
           format,
           ttl_minutes: 10,
         });

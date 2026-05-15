@@ -33,6 +33,8 @@
     "cmdk": "^1.1.1",
     "docx": "^9.6.1",
     "drizzle-orm": "^0.45.2",
+    "fast-xml-parser": "^5.8.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
     "mammoth": "^1.12.0",
     "next": "16.2.3",
