@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -136,27 +136,4 @@ export async function moveDocumentToFolder(
 
   revalidatePath("/documents");
   return { ok: true };
-}
-
-/**
- * Helper utilisé par la page documents pour construire la liste des dossiers
- * d'un parent donné (NULL = racine).
- */
-export async function listFoldersForUser(userId: string) {
-  return db
-    .select()
-    .from(documentFolders)
-    .where(eq(documentFolders.userId, userId));
-}
-
-export async function listRootFolders(userId: string) {
-  return db
-    .select()
-    .from(documentFolders)
-    .where(
-      and(
-        eq(documentFolders.userId, userId),
-        isNull(documentFolders.parentFolderId)
-      )
-    );
 }

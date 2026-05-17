@@ -71,6 +71,3 @@ export async function getObjectBytes(key: string): Promise<Uint8Array> {
   return res.Body.transformToByteArray();
 }
 
-export function bucketName(): string {
-  return bucket;
-}

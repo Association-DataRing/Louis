@@ -6,7 +6,6 @@ import type { LanguageModel } from "ai";
 import { db } from "@/db";
 import { providerKeys, type ProviderKey } from "@/db/schema";
 import { decrypt } from "@/lib/crypto";
-import { PROVIDER_CATALOG } from "./catalog";
 import { DEFAULT_MODEL } from "./models";
 
 export async function loadProviderKey(
@@ -79,8 +78,4 @@ export function modelFromKey(
       throw new Error(`Unsupported provider type: ${exhaustive}`);
     }
   }
-}
-
-export function providerLabel(type: ProviderKey["type"]): string {
-  return PROVIDER_CATALOG[type].label;
 }

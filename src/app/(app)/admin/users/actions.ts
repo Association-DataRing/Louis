@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/db";
@@ -124,10 +124,4 @@ export async function resetUserPassword(
     target: target?.email ?? id,
   });
   return { ok: true };
-}
-
-// Re-export needed in components for safe equality check without leaking adminId.
-export async function listOtherUsers(): Promise<typeof users.$inferSelect[]> {
-  const { userId: adminId } = await requireAdmin();
-  return db.select().from(users).where(ne(users.id, adminId));
 }

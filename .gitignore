@@ -49,7 +49,14 @@ next-env.d.ts
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json.example
+.cursor/
+.zed/
 
 # Docker volumes (si bind mount local)
 /data
-/.aidesigner/
+
+# Outils IA locaux (sortie générée, état de session, caches)
+.aidesigner/
+.claude/
+.claude-mem/
+.cursor/
