@@ -20,11 +20,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "video:preview": "remotion preview remotion/index.ts",
-    "video:render": "remotion render remotion/index.ts LouisDemo public/hero-demo.mp4 --codec=h264 --crf=23",
-    "video:poster": "remotion still remotion/index.ts LouisDemo public/hero-poster.jpg --frame=380 --image-format=jpeg --jpeg-quality=85",
-    "video:og": "remotion still remotion/index.ts LouisOg public/og-image.png --frame=0 --image-format=png"
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.77",
@@ -67,10 +63,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "@remotion/bundler": "^4.0.462",
-    "@remotion/cli": "^4.0.462",
-    "@remotion/google-fonts": "^4.0.462",
-    "@remotion/renderer": "^4.0.462",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^22",
@@ -84,7 +76,6 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "remotion": "^4.0.462",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",

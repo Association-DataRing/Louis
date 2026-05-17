@@ -7,6 +7,24 @@ Versionnement : [SemVer](https://semver.org/lang/fr/).
 
 ## [Non publié] — Pré-launch publique
 
+### 2026-05-17 — Extraction de la landing publique
+
+- **Landing + Remotion + page Mentions légales déplacés vers un repo
+  séparé** (`louis-landing`, déployable indépendamment sur Vercel pour
+  `louis.data-ring.net`). Le repo `louis` ne contient désormais que le
+  code de l'application elle-même.
+- `src/app/page.tsx` est désormais une simple redirection :
+  `/dashboard` si session active, `/login` sinon.
+- `src/app/layout.tsx` repassé en metadata minimaliste sans Open Graph
+  marketing (`robots: noindex, nofollow`).
+- Suppressions : `src/app/legal/`, `remotion/`, `remotion.config.ts`,
+  `public/hero-demo.mp4`, `public/hero-poster.jpg`, `public/og-image.png`.
+- devDeps retirées : `remotion`, `@remotion/bundler`, `@remotion/cli`,
+  `@remotion/google-fonts`, `@remotion/renderer`. Scripts npm
+  `video:*` supprimés.
+- Bénéfice : ~600 lignes en moins, ~2 Mo d'assets binaires retirés du
+  tracking, deploy de la landing découplé du cycle release de l'app.
+
 ### Sprint « publication open-source DataRing » — 2026-05-16
 
 **Phase 0 — Audit de réalité features**
