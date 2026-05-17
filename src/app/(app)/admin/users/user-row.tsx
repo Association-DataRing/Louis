@@ -99,7 +99,7 @@ export function UserRow({
             : " · jamais connecté"}
         </div>
         {feedback && (
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+          <div className="text-xs text-success mt-1">
             {feedback}
           </div>
         )}

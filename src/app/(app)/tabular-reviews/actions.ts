@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { generateObject } from "ai";
+import { generateText, Output, type LanguageModel } from "ai";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -15,6 +15,7 @@ import {
   type ReviewColumn,
 } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
+import { log } from "@/lib/log";
 import { nanoid } from "nanoid";
 
 const EXTRACTION_CONCURRENCY = 3;
@@ -36,10 +37,10 @@ const columnSchema = z.object({
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  providerKeyId: z.string().uuid(),
+  providerKeyId: z.uuid(),
   modelId: z.string().min(1),
   columns: z.array(columnSchema).min(1).max(20),
-  documentIds: z.array(z.string().uuid()).min(0).max(200),
+  documentIds: z.array(z.uuid()).min(0).max(200),
 });
 
 export async function createTabularReview(
@@ -184,7 +185,9 @@ export async function runTabularReview(reviewId: string): Promise<void> {
         rows: rowsToProcess,
       });
     } catch (err) {
-      console.error("[tabular-reviews] background job failed", err);
+      log.error("tabular-reviews", "background job failed", {
+        error: err instanceof Error ? err.message : err,
+      });
     }
   });
 }
@@ -242,9 +245,7 @@ async function extractRow({
   row,
 }: {
   userId: string;
-  // ai SDK's LanguageModel is intentionally loose — we only use it via
-  // generateObject which validates the contract for us.
-  model: Parameters<typeof generateObject>[0]["model"];
+  model: LanguageModel;
   valuesSchema: z.ZodObject<Record<string, z.ZodString>>;
   row: { id: string; documentId: string };
 }): Promise<void> {
@@ -272,9 +273,9 @@ async function extractRow({
   const promptDoc = doc.extractedText.slice(0, 80_000); // garde-fou contexte
 
   try {
-    const result = await generateObject({
+    const result = await generateText({
       model,
-      schema: valuesSchema,
+      output: Output.object({ schema: valuesSchema }),
       system:
         "Tu es un analyste juridique. Pour chaque colonne, extrais la valeur depuis le document fourni. Si l'information est absente, réponds par la chaîne \"non spécifié\". Sois bref : 1 à 2 phrases max par valeur.",
       prompt: `Document : "${doc.filename}"\n\n${promptDoc}\n\nExtrais les valeurs demandées par les descriptions des champs.`,
@@ -283,7 +284,7 @@ async function extractRow({
     await db
       .update(tabularReviewRows)
       .set({
-        values: result.object as Record<string, string>,
+        values: result.output as Record<string, string>,
         status: "ok",
         error: null,
         updatedAt: new Date(),

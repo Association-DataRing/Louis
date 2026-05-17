@@ -6,6 +6,7 @@ import { uploadObject, deleteObject } from "@/lib/storage";
 import { extractText, isSupportedContentType } from "@/lib/extract";
 import { chunkText } from "@/lib/rag/chunk";
 import { embedTexts, NoEmbeddingProviderError } from "@/lib/rag/embed";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { nanoid } from "nanoid";
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
@@ -16,6 +17,9 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   const userId = session.user.id;
+
+  const rl = await rateLimit("upload", userId);
+  if (!rl.allowed) return tooManyRequests(rl);
 
   let formData: FormData;
   try {
@@ -98,7 +102,12 @@ export async function POST(req: Request) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const storageKey = `${userId}/${nanoid()}-${file.name}`;
+  // Sanitize filename avant interpolation dans la storage key. Garde les
+  // alphanumériques + . _ - tirets, tout le reste devient `_`. Coupe à 120
+  // chars pour rester sous les limites usuelles des backends S3.
+  const safeFilename =
+    file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "file";
+  const storageKey = `${userId}/${nanoid()}-${safeFilename}`;
 
   try {
     await uploadObject(storageKey, buffer, file.type);

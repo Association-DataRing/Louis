@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { cabinetSettings } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/permissions";
+import { recordAudit } from "@/lib/audit";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -21,7 +22,7 @@ export async function updateCabinetSettings(
   _prev: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
-  await requireAdmin();
+  const { userId } = await requireAdmin();
   const parsed = schema.safeParse({
     name: formData.get("name"),
     footerText: formData.get("footerText"),
@@ -34,6 +35,10 @@ export async function updateCabinetSettings(
     .update(cabinetSettings)
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(cabinetSettings.id, 1));
+  await recordAudit({
+    userId,
+    action: "cabinet.update",
+  });
   revalidatePath("/admin/cabinet");
   return { ok: true };
 }

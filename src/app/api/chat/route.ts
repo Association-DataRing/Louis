@@ -11,6 +11,7 @@ import { conversations, documents, messages } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { buildToolsForUser } from "@/lib/connectors/tools";
 import { buildMcpToolsForUser } from "@/lib/mcp/tools";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 const SYSTEM_PROMPT_FR = `Tu es Louis, un assistant IA juridique francophone, conçu pour les professions du droit en France.
 
@@ -50,6 +51,12 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   const userId = session.user.id;
+
+  // Rate-limit par utilisateur authentifié — protège contre une boucle
+  // accidentelle côté client ou un user qui voudrait faire exploser ses
+  // coûts provider intentionnellement / par script.
+  const rl = await rateLimit("chat", userId);
+  if (!rl.allowed) return tooManyRequests(rl);
 
   const body = (await req.json()) as Body;
   const {

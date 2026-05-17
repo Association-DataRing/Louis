@@ -59,7 +59,7 @@ export function McpRow({ entry }: { entry: McpServer }) {
             </span>
           )}
           {!entry.lastSyncError && entry.lastSyncedAt && toolCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1 text-[10px] text-success">
               <IconCheck className="size-3" />
               synchronisé
             </span>

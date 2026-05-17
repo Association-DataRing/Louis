@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { recordAudit } from "@/lib/audit";
 
 const loginSchema = z.object({
   email: z.email(),
@@ -36,15 +37,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .where(eq(users.email, email))
           .limit(1);
 
-        if (!user || !user.isActive) return null;
+        if (!user || !user.isActive) {
+          // Log failed attempt sans userId (utilisateur inconnu ou désactivé)
+          await recordAudit({
+            userId: null,
+            action: "auth.login.failed",
+            target: email,
+            meta: { reason: user ? "inactive" : "unknown" },
+          });
+          return null;
+        }
 
         const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-        if (!passwordMatch) return null;
+        if (!passwordMatch) {
+          await recordAudit({
+            userId: user.id,
+            action: "auth.login.failed",
+            target: email,
+            meta: { reason: "bad_password" },
+          });
+          return null;
+        }
 
         await db
           .update(users)
           .set({ lastLogin: new Date() })
           .where(eq(users.id, user.id));
+
+        await recordAudit({
+          userId: user.id,
+          action: "auth.login",
+          target: email,
+        });
 
         return {
           id: user.id,

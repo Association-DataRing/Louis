@@ -9,6 +9,13 @@ const ALGO = "aes-256-gcm";
 const IV_LEN = 12;
 const SALT = "louis:provider-key:v1";
 
+// scrypt est coûteux (~10-100ms par appel selon les params). On le dérive UNE
+// fois au premier accès puis on cache la clé pour toute la durée du process.
+// La sécurité réelle dépend de l'entropie d'ENCRYPTION_KEY (`openssl rand
+// -base64 32`) — voir SECURITY.md.
+let cachedKey: Buffer | null = null;
+let cachedKeySource: string | null = null;
+
 function getKey(): Buffer {
   const secret = process.env.ENCRYPTION_KEY;
   if (!secret || secret.length < 16) {
@@ -16,7 +23,13 @@ function getKey(): Buffer {
       "ENCRYPTION_KEY is missing or too short. Generate one with: openssl rand -base64 32"
     );
   }
-  return scryptSync(secret, SALT, 32);
+  // Si l'ENCRYPTION_KEY change en cours de vie du process (hot reload dev,
+  // rotation prod sans restart), on re-dérive. En prod normale, scrypt n'est
+  // jamais ré-exécuté après le tout premier appel.
+  if (cachedKey && cachedKeySource === secret) return cachedKey;
+  cachedKey = scryptSync(secret, SALT, 32);
+  cachedKeySource = secret;
+  return cachedKey;
 }
 
 export type EncryptedBlob = {

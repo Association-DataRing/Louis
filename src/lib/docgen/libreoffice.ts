@@ -19,6 +19,7 @@
  * retombe sur la preview HTML mammoth (lisible mais moins fidèle).
  */
 import { promisify } from "util";
+import { log } from "@/lib/log";
 
 type LibreModule = {
   convert: (
@@ -87,9 +88,10 @@ export async function docxToPdf(buffer: Buffer): Promise<Buffer | null> {
     try {
       return await convertViaGotenberg(buffer);
     } catch (err) {
-      console.warn(
-        "[docgen] Gotenberg a échoué, tentative LibreOffice local :",
-        err instanceof Error ? err.message : err
+      log.warn(
+        "docgen",
+        "Gotenberg a échoué, tentative LibreOffice local",
+        { error: err instanceof Error ? err.message : err }
       );
     }
   }
@@ -98,13 +100,10 @@ export async function docxToPdf(buffer: Buffer): Promise<Buffer | null> {
   try {
     return await convertLocally(buffer);
   } catch (err) {
-    console.warn(
-      "[docgen] LibreOffice local indisponible — preview HTML fallback.\n" +
-        "  → macOS : brew install --cask libreoffice\n" +
-        "  → Debian/Ubuntu : apt install libreoffice\n" +
-        "  → Ou activer Gotenberg : GOTENBERG_URL=http://localhost:3001\n" +
-        "  Détail erreur :",
-      err instanceof Error ? err.message : err
+    log.warn(
+      "docgen",
+      "LibreOffice local indisponible — preview HTML fallback. Installez LibreOffice (brew install --cask libreoffice / apt install libreoffice) ou activez Gotenberg via GOTENBERG_URL.",
+      { error: err instanceof Error ? err.message : err }
     );
     return null;
   }

@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentFolders } from "@/db/schema";
 import { deleteObject } from "@/lib/storage";
+import { recordAudit } from "@/lib/audit";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -18,7 +19,7 @@ export async function deleteDocument(id: string): Promise<void> {
   const userId = await requireUserId();
 
   const [doc] = await db
-    .select({ storageKey: documents.storageKey })
+    .select({ storageKey: documents.storageKey, filename: documents.filename })
     .from(documents)
     .where(and(eq(documents.id, id), eq(documents.userId, userId)))
     .limit(1);
@@ -31,6 +32,12 @@ export async function deleteDocument(id: string): Promise<void> {
 
   await deleteObject(doc.storageKey).catch(() => {
     // Object may already be gone — DB delete is the source of truth.
+  });
+
+  await recordAudit({
+    userId,
+    action: "doc.delete",
+    target: doc.filename,
   });
 
   revalidatePath("/documents");

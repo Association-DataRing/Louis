@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
@@ -726,22 +726,23 @@ export function ChatShell({
       return null;
     }
   });
-  const setOpenDoc = (
-    next: { documentId: string; targetText: string } | null
-  ) => {
-    setOpenDocState(next);
-    if (typeof window === "undefined") return;
-    try {
-      if (next) {
-        window.sessionStorage.setItem(
-          "louis:openDoc",
-          JSON.stringify({ ...next, conversationId: initialConversationId })
-        );
-      } else {
-        window.sessionStorage.removeItem("louis:openDoc");
-      }
-    } catch {}
-  };
+  const setOpenDoc = useCallback(
+    (next: { documentId: string; targetText: string } | null) => {
+      setOpenDocState(next);
+      if (typeof window === "undefined") return;
+      try {
+        if (next) {
+          window.sessionStorage.setItem(
+            "louis:openDoc",
+            JSON.stringify({ ...next, conversationId: initialConversationId })
+          );
+        } else {
+          window.sessionStorage.removeItem("louis:openDoc");
+        }
+      } catch {}
+    },
+    [initialConversationId]
+  );
   // Tracking des document_id déjà auto-ouverts dans le DocPanel pour ne
   // pas réouvrir à chaque re-render. Survit au remount qui se produit
   // quand l'URL passe de /chat à /chat?id=xxx via sessionStorage.
@@ -848,7 +849,7 @@ export function ChatShell({
       setOpenDoc({ documentId: d.document_id, targetText: "" });
       return;
     }
-  }, [messages]);
+  }, [messages, setOpenDoc]);
 
   return (
     <div className="flex-1 flex h-full min-w-0 w-full">

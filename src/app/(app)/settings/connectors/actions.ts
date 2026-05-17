@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { connectorKeys } from "@/db/schema";
 import { encrypt } from "@/lib/crypto";
 import { CONNECTOR_CATALOG, CONNECTOR_TYPES } from "@/lib/connectors/catalog";
+import { recordAudit } from "@/lib/audit";
 
 const baseSchema = z.object({
   type: z.enum(CONNECTOR_TYPES as [string, ...string[]]),
@@ -65,15 +66,33 @@ export async function createConnectorKey(
     return { ok: false, error: "Impossible de créer le connecteur." };
   }
 
+  await recordAudit({
+    userId,
+    action: "connector.add",
+    target: `${base.data.type}:${base.data.label}`,
+  });
+
   revalidatePath("/settings/connectors");
   return { ok: true };
 }
 
 export async function deleteConnectorKey(id: string): Promise<void> {
   const userId = await requireUserId();
+  const [target] = await db
+    .select({ type: connectorKeys.type, label: connectorKeys.label })
+    .from(connectorKeys)
+    .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)))
+    .limit(1);
   await db
     .delete(connectorKeys)
     .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)));
+  if (target) {
+    await recordAudit({
+      userId,
+      action: "connector.delete",
+      target: `${target.type}:${target.label}`,
+    });
+  }
   revalidatePath("/settings/connectors");
 }
 

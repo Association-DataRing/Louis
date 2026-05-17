@@ -175,7 +175,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
         .max(120)
         .optional()
         .describe(
-          "Texte custom à gauche du footer (ex: « Cabinet Altij · Confidentiel »). La numérotation Page X/Y est ajoutée automatiquement à droite."
+          "Texte custom à gauche du footer (ex: « Cabinet X · Confidentiel »). La numérotation Page X/Y est ajoutée automatiquement à droite."
         ),
       pageNumbers: z
         .boolean()
@@ -264,7 +264,6 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
       "Lit le contenu textuel d'un document de l'utilisateur (PDF, DOCX, texte). Renvoie le texte concaténé, paragraphes séparés par \\n. Utilisez ce tool quand vous avez besoin du texte EXACT (rédaction d'avenant, citation d'article, comparaison clause). Pour une recherche sémantique large, préférez search_documents.",
     inputSchema: z.object({
       document_id: z
-        .string()
         .uuid()
         .describe("UUID du document — récupéré via list_documents."),
       max_chars: z
@@ -332,7 +331,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
     description:
       "Cherche une chaîne exacte dans un document de l'utilisateur. Renvoie jusqu'à 10 occurrences avec un contexte de ±60 caractères. Utilisez ce tool en préparation d'un edit_document pour vérifier que le texte cible existe et collecter le bon context_before / context_after.",
     inputSchema: z.object({
-      document_id: z.string().uuid(),
+      document_id: z.uuid(),
       needle: z.string().min(2).describe("Chaîne exacte à chercher."),
     }),
     execute: async ({ document_id, needle }) =>
@@ -399,7 +398,6 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
       "Propose des éditions sur un fichier .docx de l'utilisateur en TRACKED CHANGES Word natifs (insertions/suppressions visibles dans l'onglet Révision de Word/Pages/LibreOffice). Chaque édit est une substitution précise — gardez `find` aussi court que possible (les mots/caractères réellement modifiés, pas un paragraphe entier) et fournissez context_before/context_after (~40 caractères) pour ancrer le match sans ambiguïté. Utilisez read_document ou find_in_document avant pour vérifier le texte exact. Le document édité apparaît comme carte cliquable dans le chat (aperçu + bouton télécharger), avec le détail des édits appliqués / en erreur — pas besoin de lien markdown.",
     inputSchema: z.object({
       document_id: z
-        .string()
         .uuid()
         .describe("UUID du DOCX à éditer (autres formats refusés)."),
       edits: z

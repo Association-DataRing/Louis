@@ -47,13 +47,19 @@ export async function GET(
     return new Response("Storage error", { status: 500 });
   }
 
-  const safeName = doc.filename.replace(/"/g, "");
+  // Strict sanitization du filename ASCII de fallback : retire tout caractère
+  // qui pourrait briser le header HTTP (CR/LF/quote/backslash) ou être
+  // ambigu pour un browser. Le vrai nom UTF-8 est dans filename*= qui supporte
+  // tout via percent-encoding.
+  const asciiSafeName = doc.filename
+    .replace(/[^A-Za-z0-9._-]/g, "_")
+    .slice(0, 120) || "file";
   const disposition = forceDownload ? "attachment" : "inline";
 
   return new Response(bytes as BodyInit, {
     headers: {
       "Content-Type": doc.contentType,
-      "Content-Disposition": `${disposition}; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(doc.filename)}`,
+      "Content-Disposition": `${disposition}; filename="${asciiSafeName}"; filename*=UTF-8''${encodeURIComponent(doc.filename)}`,
       "Cache-Control": "private, max-age=60",
     },
   });

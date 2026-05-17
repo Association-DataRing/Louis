@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { documents } from "@/db/schema";
 import { uploadObject } from "@/lib/storage";
 import { extractText } from "@/lib/extract";
+import { log } from "@/lib/log";
 import type { DocumentSpec } from "./types";
 
 export type DocFormat = "docx" | "pdf";
@@ -102,7 +103,9 @@ export async function storeBuffer({
       try {
         await uploadObject(previewStorageKey, pdfBuffer, CONTENT_TYPES.pdf);
       } catch (err) {
-        console.warn("[docgen] preview PDF upload failed:", err);
+        log.warn("docgen", "preview PDF upload failed", {
+          error: err instanceof Error ? err.message : err,
+        });
         previewStorageKey = null;
       }
     }

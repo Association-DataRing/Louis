@@ -14,7 +14,7 @@ const TRANSPORTS = ["sse", "http"] as const;
 const createSchema = z.object({
   label: z.string().trim().min(1).max(80),
   transport: z.enum(TRANSPORTS),
-  url: z.string().trim().url(),
+  url: z.url(),
   headers: z.string().optional().or(z.literal("")),
 });
 

@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { auditLog } from "@/db/schema";
+import { log } from "@/lib/log";
 
 /**
  * Helper d'append au journal d'audit. Best-effort : si l'INSERT échoue
@@ -33,7 +34,7 @@ export async function recordAudit({
       meta: meta ?? null,
     });
   } catch (err) {
-    console.warn("[audit] insert failed", {
+    log.warn("audit", "insert failed", {
       action,
       target,
       error: err instanceof Error ? err.message : err,

@@ -30,7 +30,7 @@ export function CabinetForm({
           required
           maxLength={120}
           defaultValue={initial?.name ?? "Cabinet"}
-          placeholder="Altij Avocats"
+          placeholder="Votre cabinet"
         />
         <p className="text-xs text-muted-foreground">
           Affiché dans l&apos;UI et utilisé par défaut dans le footer des
@@ -46,7 +46,7 @@ export function CabinetForm({
           name="footerText"
           maxLength={200}
           defaultValue={initial?.footerText ?? ""}
-          placeholder="Altij Avocats · Confidentiel"
+          placeholder="Votre cabinet · Confidentiel"
         />
         <p className="text-xs text-muted-foreground">
           Apparaît en pied de chaque page des DOCX/PDF générés, à gauche

@@ -9,12 +9,13 @@ import { providerKeys } from "@/db/schema";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { PROVIDER_TYPES } from "@/lib/providers/catalog";
 import { testProvider } from "@/lib/providers/test";
+import { recordAudit } from "@/lib/audit";
 
 const createSchema = z.object({
   type: z.enum(PROVIDER_TYPES as [string, ...string[]]),
   label: z.string().trim().min(1).max(80),
   apiKey: z.string().trim().min(1),
-  baseUrl: z.string().trim().url().optional().or(z.literal("")),
+  baseUrl: z.url().optional().or(z.literal("")),
 });
 
 async function requireUserId(): Promise<string> {
@@ -64,22 +65,44 @@ export async function createProviderKey(
     return { ok: false, error: "Impossible de créer la clé." };
   }
 
+  await recordAudit({
+    userId,
+    action: "provider.add",
+    target: `${type}:${label}`,
+  });
+
   revalidatePath("/settings/providers");
   return { ok: true };
 }
 
 export async function deleteProviderKey(id: string): Promise<void> {
   const userId = await requireUserId();
+  const [target] = await db
+    .select({ type: providerKeys.type, label: providerKeys.label })
+    .from(providerKeys)
+    .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)))
+    .limit(1);
   await db
     .delete(providerKeys)
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
+  if (target) {
+    await recordAudit({
+      userId,
+      action: "provider.delete",
+      target: `${target.type}:${target.label}`,
+    });
+  }
   revalidatePath("/settings/providers");
 }
 
 export async function toggleProviderKeyActive(id: string): Promise<void> {
   const userId = await requireUserId();
   const [current] = await db
-    .select({ isActive: providerKeys.isActive })
+    .select({
+      isActive: providerKeys.isActive,
+      type: providerKeys.type,
+      label: providerKeys.label,
+    })
     .from(providerKeys)
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)))
     .limit(1);
@@ -88,6 +111,12 @@ export async function toggleProviderKeyActive(id: string): Promise<void> {
     .update(providerKeys)
     .set({ isActive: !current.isActive })
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
+  await recordAudit({
+    userId,
+    action: "provider.toggle",
+    target: `${current.type}:${current.label}`,
+    meta: { newState: !current.isActive ? "active" : "inactive" },
+  });
   revalidatePath("/settings/providers");
 }
 
@@ -113,10 +142,10 @@ export async function setProviderKeyDefault(id: string): Promise<void> {
 }
 
 const updateSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   label: z.string().trim().min(1).max(80).optional(),
   apiKey: z.string().trim().min(1).optional(),
-  baseUrl: z.string().trim().url().optional().or(z.literal("")),
+  baseUrl: z.url().optional().or(z.literal("")),
 });
 
 export async function updateProviderKey(

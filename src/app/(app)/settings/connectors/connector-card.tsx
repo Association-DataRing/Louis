@@ -148,7 +148,7 @@ export function ConnectorCard({ type, keys }: Props) {
       <div className="flex items-center gap-2 flex-wrap text-[10px]">
         {isConfigured ? (
           <>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success px-2 py-0.5">
               <IconCheck className="size-2.5" />
               Configuré
             </span>
