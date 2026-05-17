@@ -64,6 +64,20 @@ ouvert. Inutile de les suivre tant que l'invitation officielle n'a pas
 - Pas de migration Drizzle dans une PR fonctionnelle : les migrations sont
   validées séparément.
 
+### Lockfile
+
+Si vous modifiez les dépendances, **toujours** régénérer le lockfile avec
+les variantes cross-platform pour ne pas casser la CI Linux :
+
+```bash
+rm -rf node_modules package-lock.json
+npm install --include=optional
+```
+
+Sinon `npm ci` échoue côté Linux avec
+`EUSAGE Missing: @emnapi/runtime@x.y.z` (deps optionnelles platform-specific
+référencées par Vitest / Rolldown mais non matérialisées dans le lockfile).
+
 ### Messages de commit
 
 Convention : `<type>(<scope>): <description>` en minuscules.
