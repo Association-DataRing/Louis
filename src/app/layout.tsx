@@ -31,19 +31,31 @@ export const metadata: Metadata = {
     "Légifrance",
     "Pappers",
   ],
-  authors: [{ name: "Altij Avocats", url: "https://altij.com" }],
+  authors: [{ name: "Association DataRing", url: "https://louis.data-ring.net" }],
+  metadataBase: new URL("https://louis.data-ring.net"),
   openGraph: {
     title: "Louis — L'IA juridique souveraine",
     description:
       "Plateforme IA open-source pour les professions juridiques. Vos clés, vos données, votre infrastructure.",
     locale: "fr_FR",
     type: "website",
+    url: "https://louis.data-ring.net",
+    siteName: "Louis",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Louis — L'IA juridique souveraine. BYOK, AGPL-3.0, auto-hébergée.",
+      },
+    ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Louis — L'IA juridique souveraine",
     description:
       "Plateforme IA open-source pour les professions juridiques. AGPL-3.0, auto-hébergeable.",
+    images: ["/og-image.png"],
   },
 };
 

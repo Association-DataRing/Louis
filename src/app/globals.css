@@ -11,6 +11,8 @@
   --color-foreground: var(--foreground);
   --color-highlight: var(--highlight);
   --color-highlight-foreground: var(--highlight-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --font-sans: var(--font-sans), "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono), "Geist Mono", ui-monospace, monospace;
   --font-heading: var(--font-heading), "EB Garamond", ui-serif, Georgia, serif;
@@ -80,6 +82,9 @@
   /* Citation / quote highlight (remplace bg-yellow-200 hardcodé) */
   --highlight: oklch(0.94 0.12 90);
   --highlight-foreground: oklch(0.2 0.05 90);
+  /* Success badge / état actif — vert sobre. Lisible sur bg-success/10. */
+  --success: oklch(0.55 0.13 160);
+  --success-foreground: oklch(0.98 0.01 160);
 }
 
 .dark {
@@ -113,6 +118,8 @@
   --sidebar-ring: oklch(0.68 0.16 265);
   --highlight: oklch(0.42 0.14 90);
   --highlight-foreground: oklch(0.95 0.04 90);
+  --success: oklch(0.7 0.14 160);
+  --success-foreground: oklch(0.18 0.02 160);
 }
 
 /* Shimmer pendant l'exécution d'un tool / la réflexion IA — bande

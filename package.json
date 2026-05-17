@@ -15,8 +15,16 @@
     "db:setup": "tsx scripts/setup-db.ts && drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
+    "demo": "tsx scripts/seed-demo.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "video:preview": "remotion preview remotion/index.ts",
+    "video:render": "remotion render remotion/index.ts LouisDemo public/hero-demo.mp4 --codec=h264 --crf=23",
+    "video:poster": "remotion still remotion/index.ts LouisDemo public/hero-poster.jpg --frame=380 --image-format=jpeg --jpeg-quality=85",
+    "video:og": "remotion still remotion/index.ts LouisOg public/og-image.png --frame=0 --image-format=png"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.77",
@@ -35,11 +43,13 @@
     "docx-preview": "^0.3.7",
     "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^5.8.0",
+    "ioredis": "^5.10.1",
     "jszip": "^3.10.1",
     "libreoffice-convert": "^1.8.1",
     "lucide-react": "^1.8.0",
     "mammoth": "^1.12.0",
-    "next": "16.2.3",
+    "nanoid": "^5.1.11",
+    "next": "16.2.6",
     "next-auth": "^5.0.0-beta.31",
     "next-themes": "^0.4.6",
     "pdf-parse": "^1.1.1",
@@ -60,6 +70,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@remotion/bundler": "^4.0.462",
+    "@remotion/cli": "^4.0.462",
+    "@remotion/google-fonts": "^4.0.462",
+    "@remotion/renderer": "^4.0.462",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
     "@types/bcryptjs": "^2.4.6",
@@ -68,13 +82,16 @@
     "@types/pdfkit": "^0.17.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.6",
     "babel-plugin-react-compiler": "^1.0.0",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "16.2.3",
+    "eslint-config-next": "16.2.6",
+    "remotion": "^4.0.462",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.6"
   }
 }
