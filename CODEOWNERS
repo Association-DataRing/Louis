@@ -1,0 +1,9 @@
+# Code owners — Louis
+#
+# Le mainteneur listé ci-dessous est automatiquement assigné en review sur
+# toute PR qui modifie les paths concernés. Voir GOVERNANCE.md pour le
+# processus de décision.
+#
+# Statut alpha : un seul mainteneur. La liste s'étoffera à partir de v0.2.
+
+* @D4kooo

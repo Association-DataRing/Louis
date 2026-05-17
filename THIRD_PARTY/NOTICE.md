@@ -39,8 +39,9 @@ Quelques dépendances notables :
 
 ## Polices
 
-- **Geist** (Vercel) — SIL Open Font License 1.1
-- **Inter** (Rasmus Andersson) — SIL Open Font License 1.1
+- **Geist Sans / Geist Mono** (Vercel) — SIL Open Font License 1.1
+- **EB Garamond** (Georg Mayr-Duffner, sur dessins de Claude Garamont) —
+  SIL Open Font License 1.1
 
 ## Données et référentiels juridiques
 
