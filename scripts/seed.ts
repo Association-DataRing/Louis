@@ -1,10 +1,13 @@
 /**
  * Seed initial admin user.
  *
- * Usage:
- *   ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=changeme npm run db:seed
+ * Usage (generate a strong random password):
+ *   ADMIN_EMAIL=you@example.com ADMIN_PASSWORD="$(openssl rand -base64 16)" npm run db:seed
  *
  * Requires DATABASE_URL in .env. Idempotent: upserts on email conflict.
+ *
+ * SECURITY: never deploy with a hard-coded password. The seed accepts any
+ * value but you are responsible for choosing one with sufficient entropy.
  */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
@@ -19,8 +22,16 @@ async function main() {
 
   if (!password) {
     console.error(
-      "ADMIN_PASSWORD is required. Example:\n" +
-        "  ADMIN_EMAIL=admin@louis.local ADMIN_PASSWORD=changeme npm run db:seed"
+      "ADMIN_PASSWORD is required. Generate a strong one with:\n" +
+        '  ADMIN_PASSWORD="$(openssl rand -base64 16)" npm run db:seed'
+    );
+    process.exit(1);
+  }
+
+  if (password.length < 12) {
+    console.error(
+      "ADMIN_PASSWORD must be at least 12 characters. Generate a strong one with:\n" +
+        '  ADMIN_PASSWORD="$(openssl rand -base64 16)" npm run db:seed'
     );
     process.exit(1);
   }

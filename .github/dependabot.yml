@@ -1,0 +1,76 @@
+version: 2
+updates:
+  # npm dependencies — hebdomadaire, regroupement par type
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 10
+    groups:
+      next:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+          - "@next/*"
+      ai-sdk:
+        patterns:
+          - "@ai-sdk/*"
+          - "ai"
+      drizzle:
+        patterns:
+          - "drizzle-orm"
+          - "drizzle-kit"
+      radix-shadcn:
+        patterns:
+          - "@radix-ui/*"
+          - "radix-ui"
+          - "shadcn"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "tw-animate-css"
+      types:
+        patterns:
+          - "@types/*"
+      tests:
+        patterns:
+          - "@playwright/*"
+          - "playwright"
+    labels:
+      - "dependencies"
+      - "automerge-candidate"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # GitHub Actions — mensuel
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
+
+  # Docker base image — mensuel (futur Dockerfile Phase 4)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
