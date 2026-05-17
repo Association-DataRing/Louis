@@ -146,7 +146,7 @@ Versionnement : [SemVer](https://semver.org/lang/fr/).
   EB Garamond
 - `SECURITY.md` : adresse `security@data-ring.net`
 
-### Ajouté — Sprint « launch vs Mike OSS »
+### Ajouté — Sprint « productivité cabinet »
 
 **Killer feature : suivi de coûts**
 - Catalogue des tarifs publics par modèle (`src/lib/providers/pricing.ts`)

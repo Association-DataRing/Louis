@@ -121,17 +121,16 @@ Oui — voir [`../CONTRIBUTING.md`](../CONTRIBUTING.md). Les contributions
 externes seront formellement ouvertes autour de v0.2. D'ici là, les
 **issues** (bugs, idées de connecteurs, cas d'usage) sont les bienvenues.
 
-### Quelle est la différence avec Mike OSS ?
+### Comment Louis se positionne face aux solutions SaaS du marché ?
 
-Mike (https://github.com/willchen96/mike) est un projet open-source
-similaire, également AGPL-3.0. Louis :
+Là où les plateformes IA juridiques SaaS centralisent les pièces des
+clients sur leur propre infrastructure, Louis fait l'inverse : c'est
+**l'IA qui vient à vos données**, pas vos données qui partent chez l'IA.
+Concrètement :
 
-- est en français, conçu pour le droit français
-- bundle les connecteurs français (PISTE, Pappers)
-- met en avant la souveraineté (badges FR/UE/US par provider)
-- est sur stack Next.js 16 + Server Components (Mike est sur une autre
-  stack)
-- est porté par l'association DataRing
+- Les clés API restent sur **votre** PostgreSQL, chiffrées AES-256-GCM
+- Les documents restent sur **votre** stockage S3
+- Les embeddings RAG restent sur **votre** pgvector
+- L'audit log est sur **votre** machine, append-only, consultable
 
-Cf. [`../THIRD_PARTY/NOTICE.md`](../THIRD_PARTY/NOTICE.md) pour les
-crédits.
+Le secret professionnel n'est plus négociable contre une fonctionnalité.

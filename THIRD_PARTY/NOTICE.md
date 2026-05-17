@@ -1,20 +1,7 @@
 # Third-Party Notices
 
-Ce fichier liste les projets et ressources tierces qui ont influencé Louis,
+Ce fichier liste les projets et ressources tierces utilisés par Louis,
 ainsi que leurs licences respectives.
-
-## Inspirations UX et conceptuelles
-
-### Mike — OSS AI Legal Platform
-
-- **Repo** : https://github.com/willchen96/mike
-- **Licence** : AGPL-3.0
-- **Usage** : Louis s'inspire de **l'approche UX** de Mike (chat sur documents
-  juridiques, organisation par projets, flux d'upload) mais réécrit son code
-  intégralement sur une stack Next.js 16 + Server Components. Aucun code source
-  de Mike n'est repris verbatim dans Louis.
-- **Remerciements** : merci à l'auteur de Mike d'avoir prouvé qu'une plateforme
-  IA juridique open-source était viable et désirable.
 
 ## Dépendances majeures
 

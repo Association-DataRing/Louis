@@ -8,10 +8,9 @@ import { Spinner } from "@/components/ui/spinner";
  * DOCX et le rend en DOM avec préservation des titres, listes, tables,
  * tracked changes (renderChanges: true), inline formatting.
  *
- * Approche identique à celle de Mike OSS : on fetch les bytes, on
- * appelle renderAsync, et on applique un zoom CSS adaptatif pour que
- * la page Word (largeur native ~816px) tienne dans un panel plus
- * étroit sans débordement horizontal.
+ * Approche : on fetch les bytes, on appelle renderAsync, et on applique
+ * un zoom CSS adaptatif pour que la page Word (largeur native ~816px)
+ * tienne dans un panel plus étroit sans débordement horizontal.
  *
  * Pas de dépendance serveur (LibreOffice/Gotenberg) — tout se passe
  * dans le navigateur de l'utilisateur.
@@ -157,7 +156,7 @@ export function DocxView({
 /**
  * Localise le texte de citation dans le DOM rendu (whitespace tolérant)
  * et le wrap dans un <mark.louis-quote-mark> pour highlight, puis scroll
- * en vue. Approche style highlightDocxQuote chez Mike, version minimale.
+ * en vue. Version minimale, tolérante aux variantes de whitespace.
  */
 function highlightAndScroll(
   container: HTMLElement,

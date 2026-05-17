@@ -6,11 +6,9 @@
  * s'ouvre dans Word/Pages/LibreOffice avec les marques de révision visibles —
  * Accept/Reject natif depuis l'onglet Révision.
  *
- * Compatibilité approchée avec Mike (`backend/src/lib/docxTrackedChanges.ts`)
- * mais en version plus compacte : on couvre le 80% utile (substitutions
- * intra-paragraphe avec context_before/after) sans la logique poussée de
- * gestion des tracked-changes pré-existants ni les insertions multi-runs
- * dispersés.
+ * Version compacte qui couvre le 80% utile (substitutions intra-paragraphe
+ * avec context_before/after). Ne gère pas les tracked-changes pré-existants
+ * ni les insertions multi-runs dispersés.
  */
 
 import JSZip from "jszip";

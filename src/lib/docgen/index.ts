@@ -22,7 +22,7 @@ const CONTENT_TYPES: Record<DocFormat, string> = {
  * avec extracted_text calculé. Le document devient un citoyen de plein
  * droit (visible dans /documents, attachable au chat, indexable RAG…).
  *
- * Approche Mike-style : pas de "fichiers éphémères" séparés, tout passe
+ * Approche unifiée : pas de "fichiers éphémères" séparés, tout passe
  * par la même table — un avocat retrouvera la mise en demeure d'hier
  * dans son dossier client.
  */

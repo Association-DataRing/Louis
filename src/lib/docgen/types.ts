@@ -1,7 +1,8 @@
 /**
  * Schéma structuré pour la génération de documents juridiques.
  *
- * Inspiré du schéma Mike (sections + table + pageBreak), enrichi avec :
+ * Couvre :
+ * - sections + table + pageBreak
  * - alignement par paragraphe (justified par défaut, standard juridique)
  * - footer/header configurable + numérotation auto Page X/Y
  * - marges configurables
