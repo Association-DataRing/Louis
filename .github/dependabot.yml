@@ -15,6 +15,16 @@ updates:
           - "next"
           - "eslint-config-next"
           - "@next/*"
+      react:
+        # react et react-dom doivent IMPÉRATIVEMENT être bumpés ensemble :
+        # react-dom déclare `peer react@"^X.Y.Z"` exact, donc bumper
+        # uniquement react-dom casse `npm ci` avec ERESOLVE.
+        # Les types React sont inclus pour cohérence.
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
       ai-sdk:
         patterns:
           - "@ai-sdk/*"
@@ -34,12 +44,31 @@ updates:
           - "@tailwindcss/*"
           - "tw-animate-css"
       types:
+        # Tous les @types/* SAUF react/react-dom (gérés par le group `react`).
         patterns:
           - "@types/*"
+        exclude-patterns:
+          - "@types/react"
+          - "@types/react-dom"
       tests:
         patterns:
           - "@playwright/*"
           - "playwright"
+    ignore:
+      # Majors gérés manuellement — chacune de ces librairies a un coût
+      # de migration significatif qui mérite une PR humaine dédiée.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "pdf-parse"
+        update-types: ["version-update:semver-major"]
+      # React / React-DOM majors aussi gérés manuellement — concertation
+      # avec next majors via le group `next` au cas par cas.
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
     labels:
       - "dependencies"
       - "automerge-candidate"
