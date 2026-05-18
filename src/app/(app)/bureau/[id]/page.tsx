@@ -8,6 +8,7 @@ import { providerKeys } from "@/db/schema";
 import { getPipeline } from "../actions";
 import { PipelineActionsMenu } from "../pipeline-actions-menu";
 import { PipelineWorkflow } from "./pipeline-workflow";
+import { CloneToEditButton } from "./clone-to-edit-button";
 
 export default async function PipelineEditorPage({
   params,
@@ -61,9 +62,32 @@ export default async function PipelineEditorPage({
               </p>
             )}
           </div>
-          <PipelineActionsMenu pipeline={data.pipeline} />
+          <div className="flex items-center gap-2">
+            {data.pipeline.isPreset && (
+              <CloneToEditButton pipelineId={data.pipeline.id} />
+            )}
+            <PipelineActionsMenu pipeline={data.pipeline} />
+          </div>
         </div>
       </header>
+
+      {data.pipeline.isPreset && (
+        <div className="mb-6 rounded-lg border border-dashed border-border/80 bg-muted/20 p-4 flex items-start gap-3">
+          <div className="size-8 rounded-md grid place-items-center bg-foreground/5 shrink-0">
+            <span className="text-xs font-mono">i</span>
+          </div>
+          <div className="text-sm">
+            <p className="font-medium">
+              Cette pipeline est un preset système — lecture seule.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Pour personnaliser ses agents (modèle, prompt, outils),
+              clonez-la d&apos;un clic. Votre copie sera modifiable et
+              utilisable immédiatement dans le chat.
+            </p>
+          </div>
+        </div>
+      )}
 
       <PipelineWorkflow
         pipeline={data.pipeline}

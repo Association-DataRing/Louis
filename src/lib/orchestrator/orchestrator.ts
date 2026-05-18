@@ -214,7 +214,6 @@ export class Orchestrator {
       args.writer.write({
         type: "data-final-text",
         data: { text: result.text },
-        transient: false,
       });
 
       await this.emit(args, args.writer, {
@@ -236,10 +235,13 @@ export class Orchestrator {
     writer: OrchestratorWriter,
     event: OrchestratorEvent
   ): Promise<void> {
+    // NOT transient : on veut que ces parts atterrissent dans
+    // message.parts côté client pour piloter le LiveWorkflowPanel. La
+    // persistance DB côté serveur (route onFinish) ignore les parts
+    // data-* donc rien ne pollue la conversation à long terme.
     writer.write({
       type: "data-agent-event",
       data: event,
-      transient: true,
     });
     if (args.onEvent) {
       await args.onEvent(event);
