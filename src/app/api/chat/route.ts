@@ -138,7 +138,7 @@ export async function POST(req: Request) {
   // onEvent (audit trail multi-agent dans agent_runs).
   const savedParts: SavedPart[] = [];
   let finalText = "";
-  let finalUsage: { inputTokens?: number; outputTokens?: number } = {};
+  const finalUsage: { inputTokens?: number; outputTokens?: number } = {};
   const agentStarts = new Map<string, number>();
 
   const orchestrator = new Orchestrator(pipelineConfig);

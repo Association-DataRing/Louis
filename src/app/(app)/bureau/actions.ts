@@ -41,7 +41,7 @@ const pipelineMetaSchema = z.object({
 
 const agentUpdateSchema = z.object({
   label: z.string().trim().min(1).max(80).optional(),
-  providerKeyId: z.string().uuid().nullable().optional(),
+  providerKeyId: z.uuid().nullable().optional(),
   modelOverride: z.string().trim().max(120).nullable().optional(),
   systemPrompt: z.string().max(8000).nullable().optional(),
   toolAllowlist: z.array(z.string()).nullable().optional(),
@@ -50,7 +50,7 @@ const agentUpdateSchema = z.object({
 const agentInsertSchema = z.object({
   role: z.enum(AGENT_ROLE_VALUES),
   label: z.string().trim().min(1).max(80),
-  providerKeyId: z.string().uuid().nullable().optional(),
+  providerKeyId: z.uuid().nullable().optional(),
   modelOverride: z.string().trim().max(120).nullable().optional(),
   systemPrompt: z.string().max(8000).nullable().optional(),
   toolAllowlist: z.array(z.string()).nullable().optional(),
