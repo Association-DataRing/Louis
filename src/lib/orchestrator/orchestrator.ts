@@ -147,6 +147,12 @@ export class Orchestrator {
     let outputTokens: number | undefined;
 
     if (result.kind === "stream") {
+      // Crucial : les streams AI SDK v6 sont pull-based. Si on n'attache
+      // pas activement un consommateur, le stream ne tourne pas — et le
+      // Promise `.text` ne résout jamais. Pour les agents intermédiaires
+      // dont la sortie ne va pas à l'UI, on consomme explicitement avant
+      // de lire .text / .usage. Sinon la pipeline pend indéfiniment.
+      await result.stream.consumeStream();
       text = await result.stream.text;
       const usage = await result.stream.usage;
       inputTokens = usage?.inputTokens ?? undefined;

@@ -1,27 +1,23 @@
+import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
-import { IconBuildingBank } from "@tabler/icons-react";
+import { IconArrowRight, IconBuildingBank } from "@tabler/icons-react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { providerKeys } from "@/db/schema";
 import { listPipelines } from "./actions";
-import { PipelineBoard } from "./pipeline-board";
+import { roleMeta } from "./agent-role-meta";
 import { PipelineActionsMenu } from "./pipeline-actions-menu";
 
 export default async function BureauPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-
   const userId = session.user.id;
 
   const [list, keys] = await Promise.all([
     listPipelines(),
     db
-      .select({
-        id: providerKeys.id,
-        label: providerKeys.label,
-        type: providerKeys.type,
-      })
+      .select({ id: providerKeys.id })
       .from(providerKeys)
       .where(eq(providerKeys.userId, userId))
       .orderBy(asc(providerKeys.label)),
@@ -38,9 +34,9 @@ export default async function BureauPage() {
             Votre cabinet d&apos;IA.
           </h1>
           <p className="mt-3 text-muted-foreground">
-            Chaque pipeline est une équipe d&apos;agents que vous composez :
-            recherche, vérification, relecture, rédaction. Chaque agent tourne
-            sur la clé et le modèle de votre choix.
+            Chaque pipeline est une équipe d&apos;agents. Ouvrez-la pour voir
+            son organigramme, modifier chaque rôle, choisir le modèle et le
+            prompt système.
           </p>
         </div>
       </header>
@@ -50,47 +46,69 @@ export default async function BureauPage() {
       ) : list.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="space-y-10">
+        <div className="grid gap-4 sm:grid-cols-2">
           {list.map(({ pipeline, agents }) => (
-            <section
+            <Link
               key={pipeline.id}
-              className="rounded-2xl border border-border bg-card/50 p-6 md:p-8"
+              href={`/bureau/${pipeline.id}`}
+              className="group block rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-foreground/20 transition-colors p-5"
             >
-              <div className="mb-6 flex items-start justify-between gap-4">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
-                    {pipeline.isPreset ? "Preset système" : "Pipeline cabinet"}
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+                    {pipeline.isPreset ? "Preset" : "Cabinet"}
                     <span>·</span>
                     <span className="font-mono normal-case tracking-normal">
                       {pipeline.slug}
                     </span>
                   </div>
-                  <h2 className="mt-1 font-heading text-2xl tracking-tight">
+                  <h2 className="mt-1 font-heading text-xl tracking-tight">
                     {pipeline.name}
                   </h2>
-                  {pipeline.description && (
-                    <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-                      {pipeline.description}
-                    </p>
-                  )}
                 </div>
-                <PipelineActionsMenu pipeline={pipeline} />
+                <div onClick={(e) => e.preventDefault()}>
+                  <PipelineActionsMenu pipeline={pipeline} />
+                </div>
               </div>
 
-              <PipelineBoard
-                pipeline={pipeline}
-                agents={agents}
-                providerKeys={keys}
-              />
-
-              {pipeline.isPreset && (
-                <p className="mt-6 text-xs text-muted-foreground border-t border-border/50 pt-4">
-                  Cette pipeline est livrée avec Louis (preset système). Pour
-                  la modifier, clonez-la depuis le menu •••, puis éditez la
-                  copie.
+              {pipeline.description && (
+                <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                  {pipeline.description}
                 </p>
               )}
-            </section>
+
+              <div className="mt-4 flex items-center gap-1.5 flex-wrap">
+                {agents.map((a, i) => {
+                  const meta = roleMeta(a.role);
+                  const Icon = meta.icon;
+                  const isFinal = i === agents.length - 1;
+                  return (
+                    <div
+                      key={a.id}
+                      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] ${
+                        isFinal
+                          ? "border-foreground/30 bg-foreground/5"
+                          : "border-border bg-background"
+                      }`}
+                      title={a.label}
+                    >
+                      <Icon className="size-3" />
+                      <span className="truncate max-w-[70px]">{a.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {agents.length} agent{agents.length > 1 ? "s" : ""}
+                </span>
+                <span className="inline-flex items-center gap-1 text-foreground group-hover:gap-2 transition-all">
+                  Ouvrir
+                  <IconArrowRight className="size-3.5" />
+                </span>
+              </div>
+            </Link>
           ))}
         </div>
       )}
@@ -123,12 +141,12 @@ function EmptyKeysState() {
         <p className="mt-2 text-sm text-muted-foreground max-w-md">
           Le bureau orchestre des agents qui appellent des modèles via vos
           clés. Rendez-vous dans{" "}
-          <a
+          <Link
             href="/settings/providers"
             className="underline underline-offset-2"
           >
             Réglages › Providers
-          </a>{" "}
+          </Link>{" "}
           pour en ajouter une.
         </p>
       </div>

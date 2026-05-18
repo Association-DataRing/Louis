@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { AgentEventBadge, type AgentEventData } from "./agent-event-badge";
+import {
+  LiveWorkflowPanel,
+  type LiveAgentState,
+} from "./live-workflow-panel";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -76,6 +80,12 @@ type WorkflowOption = {
   prompt: string;
 };
 
+type PipelineAgentOption = {
+  id: string;
+  role: string;
+  label: string;
+};
+
 type PipelineOption = {
   id: string;
   slug: string;
@@ -83,6 +93,7 @@ type PipelineOption = {
   description: string | null;
   isPreset: boolean;
   agentCount: number;
+  agents: PipelineAgentOption[];
 };
 
 type Props = {
@@ -847,6 +858,71 @@ export function ChatShell({
 
   const isEmpty = messages.length === 0;
 
+  // Pipeline sélectionnée + ses agents, pour piloter le LiveWorkflowPanel.
+  const selectedPipeline = pipelines.find((p) => p.id === pipelineId);
+  const isMultiAgent = (selectedPipeline?.agentCount ?? 0) > 1;
+
+  // Calcule l'état de chaque agent du pipeline en cours en repassant sur
+  // les data-agent-event du dernier message assistant. C'est piloté par
+  // useChat (messages se met à jour à chaque chunk SSE) donc l'UI s'anime
+  // en temps réel sans state custom.
+  const liveAgents: LiveAgentState[] = useMemo(() => {
+    if (!selectedPipeline) return [];
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    const baseStates = selectedPipeline.agents.map<LiveAgentState>((a) => ({
+      id: a.id,
+      role: a.role,
+      label: a.label,
+      state: "idle",
+    }));
+    if (!lastAssistant?.parts) return baseStates;
+
+    for (const part of lastAssistant.parts) {
+      if (part.type !== "data-agent-event") continue;
+      const data = (part as { data?: AgentEventData }).data;
+      if (!data?.agentId) continue;
+      const idx = baseStates.findIndex((s) => s.id === data.agentId);
+      if (idx < 0) continue;
+      if (data.type === "agent_start") {
+        baseStates[idx] = { ...baseStates[idx], state: "active" };
+      } else if (data.type === "agent_finish") {
+        baseStates[idx] = {
+          ...baseStates[idx],
+          state: "done",
+          latencyMs: data.latencyMs,
+        };
+      } else if (data.type === "agent_error") {
+        baseStates[idx] = {
+          ...baseStates[idx],
+          state: "error",
+          error: data.error,
+        };
+      }
+    }
+    return baseStates;
+  }, [messages, selectedPipeline]);
+
+  // Dérivation pure : le panneau live s'affiche dès qu'au moins un agent
+  // est actif/done/error dans la pipeline multi-agent en cours. Pas d'effet
+  // à gérer — l'UI réagit naturellement aux nouveaux events.
+  const someAgentActive = liveAgents.some((a) => a.state === "active");
+  const someAgentDone = liveAgents.some(
+    (a) => a.state === "done" || a.state === "error"
+  );
+  const [manuallyClosed, setManuallyClosed] = useState(false);
+  // Reset du manual-close quand un nouveau run démarre (transition idle →
+  // active). Pattern « update state based on prior state during render »
+  // recommandé en React 19 (pas d'effet, donc pas de double render visible).
+  const [prevActiveKey, setPrevActiveKey] = useState(false);
+  if (someAgentActive !== prevActiveKey) {
+    setPrevActiveKey(someAgentActive);
+    if (someAgentActive) setManuallyClosed(false);
+  }
+  const livePanelOpen =
+    isMultiAgent &&
+    !manuallyClosed &&
+    (someAgentActive || someAgentDone);
+
   // Auto-ouverture du DocPanel dès qu'un tool generate_document /
   // edit_document termine avec un document_id. On scanne les parts du
   // dernier message assistant et on prend le plus récent non vu.
@@ -1128,6 +1204,17 @@ export function ChatShell({
                   </Badge>
                 );
               })}
+            </div>
+          )}
+
+          {selectedPipeline && (
+            <div className="mb-3 flex justify-center">
+              <LiveWorkflowPanel
+                open={livePanelOpen}
+                pipelineName={selectedPipeline.name}
+                agents={liveAgents}
+                onClose={() => setManuallyClosed(true)}
+              />
             </div>
           )}
 

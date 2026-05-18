@@ -32,6 +32,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@tabler/icons-react": "^3.41.1",
+    "@xyflow/react": "^12.10.2",
     "ai": "^6.0.180",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

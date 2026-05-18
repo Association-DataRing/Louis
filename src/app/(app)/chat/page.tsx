@@ -65,40 +65,48 @@ export default async function ChatPage({
 
   // Garantit que l'utilisateur dispose au moins des pipelines presets,
   // semés à la volée si c'est sa première visite sur /chat ou /bureau.
-  let pipelineList = await db
-    .select({
-      id: pipelines.id,
-      slug: pipelines.slug,
-      name: pipelines.name,
-      description: pipelines.description,
-      isPreset: pipelines.isPreset,
-      agentCount: db.$count(
-        pipelineAgents,
-        eq(pipelineAgents.pipelineId, pipelines.id)
-      ),
-    })
+  let pipelineRows = await db
+    .select()
     .from(pipelines)
     .where(eq(pipelines.userId, userId))
     .orderBy(asc(pipelines.isPreset), asc(pipelines.name));
 
-  if (pipelineList.length === 0) {
+  if (pipelineRows.length === 0) {
     await seedPresetsForUser(userId);
-    pipelineList = await db
-      .select({
-        id: pipelines.id,
-        slug: pipelines.slug,
-        name: pipelines.name,
-        description: pipelines.description,
-        isPreset: pipelines.isPreset,
-        agentCount: db.$count(
-          pipelineAgents,
-          eq(pipelineAgents.pipelineId, pipelines.id)
-        ),
-      })
+    pipelineRows = await db
+      .select()
       .from(pipelines)
       .where(eq(pipelines.userId, userId))
       .orderBy(asc(pipelines.isPreset), asc(pipelines.name));
   }
+
+  // Charge tous les agents en une requête puis regroupe — utile car la
+  // panel live a besoin de connaître les agents de la pipeline sélectionnée
+  // sans round-trip au moment du clic.
+  const allAgents =
+    pipelineRows.length > 0
+      ? await db
+          .select()
+          .from(pipelineAgents)
+          .orderBy(asc(pipelineAgents.position))
+      : [];
+
+  const pipelineList = pipelineRows.map((p) => {
+    const agents = allAgents.filter((a) => a.pipelineId === p.id);
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      isPreset: p.isPreset,
+      agentCount: agents.length,
+      agents: agents.map((a) => ({
+        id: a.id,
+        role: a.role,
+        label: a.label,
+      })),
+    };
+  });
 
   const docList = await db
     .select({
