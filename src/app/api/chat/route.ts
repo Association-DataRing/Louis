@@ -1,11 +1,26 @@
-import { type UIMessage } from "ai";
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  type UIMessage,
+} from "ai";
 import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { conversations, documents, messages } from "@/db/schema";
+import {
+  agentRuns,
+  conversations,
+  documents,
+  messages,
+  type SavedPart,
+} from "@/db/schema";
 import { loadProviderKey } from "@/lib/providers/factory";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
-import { Orchestrator, chatSimplePipeline } from "@/lib/orchestrator";
+import {
+  Orchestrator,
+  chatSimplePipeline,
+  type OrchestratorEvent,
+} from "@/lib/orchestrator";
+import { loadPipelineForUser } from "@/lib/orchestrator/repository";
 
 type Body = {
   messages: UIMessage[];
@@ -14,6 +29,8 @@ type Body = {
   modelOverride?: string | null;
   documentIds?: string[];
   projectId?: string | null;
+  /** Pipeline orchestrateur à utiliser. null/undefined → chat-simple. */
+  pipelineId?: string | null;
 };
 
 export async function POST(req: Request) {
@@ -23,9 +40,6 @@ export async function POST(req: Request) {
   }
   const userId = session.user.id;
 
-  // Rate-limit par utilisateur authentifié — protège contre une boucle
-  // accidentelle côté client ou un user qui voudrait faire exploser ses
-  // coûts provider intentionnellement / par script.
   const rl = await rateLimit("chat", userId);
   if (!rl.allowed) return tooManyRequests(rl);
 
@@ -36,6 +50,7 @@ export async function POST(req: Request) {
     modelOverride,
     documentIds,
     projectId: projectIdFromBody,
+    pipelineId,
   } = body;
   let conversationId = body.conversationId ?? null;
 
@@ -48,6 +63,20 @@ export async function POST(req: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Provider error";
     return new Response(msg, { status: 400 });
+  }
+
+  // Résout la pipeline : soit celle pointée par pipelineId (et l'on vérifie
+  // qu'elle appartient bien à l'utilisateur), soit le preset mono-agent
+  // chat-simple par défaut.
+  const pipelineConfig = pipelineId
+    ? await loadPipelineForUser(userId, pipelineId, {
+        providerKeyId,
+        modelOverride,
+      })
+    : chatSimplePipeline({ providerKeyId, modelOverride });
+
+  if (!pipelineConfig) {
+    return new Response("Pipeline introuvable", { status: 404 });
   }
 
   if (!conversationId) {
@@ -66,21 +95,20 @@ export async function POST(req: Request) {
     conversationId = created.id;
   }
 
+  const finalConversationId = conversationId;
+
   const lastUser = uiMessages.at(-1);
   if (lastUser?.role === "user") {
     const text = extractTextPreview(lastUser);
     if (text) {
       await db.insert(messages).values({
-        conversationId,
+        conversationId: finalConversationId,
         role: "user",
         content: text,
       });
     }
   }
 
-  // Charge les pièces jointes éventuelles et les injecte comme rallonge du
-  // system prompt. L'Orchestrator/Agent reste agnostique : il ne sait pas
-  // qu'il s'agit de documents, il reçoit simplement du contexte additionnel.
   let systemPromptExtras: string | undefined;
   if (documentIds && documentIds.length > 0) {
     const docs = await db
@@ -105,72 +133,132 @@ export async function POST(req: Request) {
     }
   }
 
-  const orchestrator = new Orchestrator(
-    chatSimplePipeline({ providerKeyId, modelOverride })
-  );
+  // États mutables capturés par les callbacks de streamText (savedParts du
+  // message final pour ré-hydrater les tool calls au reload) et par
+  // onEvent (audit trail multi-agent dans agent_runs).
+  const savedParts: SavedPart[] = [];
+  let finalText = "";
+  let finalUsage: { inputTokens?: number; outputTokens?: number } = {};
+  const agentStarts = new Map<string, number>();
 
-  const finalConversationId = conversationId;
+  const orchestrator = new Orchestrator(pipelineConfig);
 
-  const { stream } = await orchestrator.run({
-    userId,
-    conversationId: finalConversationId,
-    messages: uiMessages,
-    documentIds,
-    systemPromptExtras,
-    onFinish: async ({ text, usage, response }) => {
-      if (!finalConversationId || !text) return;
-
-      // Extrait les parts brutes des messages assistants — texte +
-      // tool-calls + tool-results en format normalisé pour re-render
-      // les pills cliquables au reload de la conversation.
-      type SavedPart =
-        | { type: "text"; text: string }
-        | {
-            type: "tool-call";
-            toolCallId: string;
-            toolName: string;
-            input: unknown;
+  const stream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      await orchestrator.run({
+        ctx: {
+          userId,
+          conversationId: finalConversationId,
+          messages: uiMessages,
+          documentIds,
+          systemPromptExtras,
+        },
+        writer: {
+          write: (part) => writer.write(part as never),
+          merge: (s) => writer.merge(s as never),
+        },
+        onEvent: async (event: OrchestratorEvent) => {
+          if (event.type === "agent_start") {
+            agentStarts.set(event.agentId, Date.now());
+            return;
           }
-        | {
-            type: "tool-result";
-            toolCallId: string;
-            toolName: string;
-            output: unknown;
-          };
 
-      const savedParts: SavedPart[] = [];
-      for (const m of response.messages) {
-        if (m.role !== "assistant" && m.role !== "tool") continue;
-        const content = m.content;
-        if (typeof content === "string") continue;
-        for (const c of content) {
-          if (c.type === "text" && c.text) {
-            savedParts.push({ type: "text", text: c.text });
-          } else if (c.type === "tool-call") {
-            savedParts.push({
-              type: "tool-call",
-              toolCallId: c.toolCallId,
-              toolName: c.toolName,
-              input: c.input,
+          if (event.type === "agent_finish") {
+            const startedAt = agentStarts.get(event.agentId) ?? Date.now();
+            const startedDate = new Date(startedAt);
+            await db.insert(agentRuns).values({
+              conversationId: finalConversationId,
+              pipelineId: pipelineConfig.id ?? null,
+              pipelineAgentId: isUuid(event.agentId) ? event.agentId : null,
+              role: event.role,
+              label: event.label,
+              modelId: modelOverride ?? null,
+              providerType: null,
+              status: "success",
+              inputTokens: event.inputTokens ?? null,
+              outputTokens: event.outputTokens ?? null,
+              latencyMs: event.latencyMs,
+              output: event.preview ?? null,
+              startedAt: startedDate,
+              finishedAt: new Date(),
             });
-          } else if (c.type === "tool-result") {
-            savedParts.push({
-              type: "tool-result",
-              toolCallId: c.toolCallId,
-              toolName: c.toolName,
-              output: c.output,
+            return;
+          }
+
+          if (event.type === "agent_error") {
+            const startedAt = agentStarts.get(event.agentId) ?? Date.now();
+            await db.insert(agentRuns).values({
+              conversationId: finalConversationId,
+              pipelineId: pipelineConfig.id ?? null,
+              pipelineAgentId: isUuid(event.agentId) ? event.agentId : null,
+              role: event.role,
+              label: event.label,
+              modelId: modelOverride ?? null,
+              status: "error",
+              latencyMs: Date.now() - startedAt,
+              error: event.error,
+              startedAt: new Date(startedAt),
+              finishedAt: new Date(),
             });
+          }
+        },
+      });
+    },
+    onFinish: async ({ messages: streamMessages }) => {
+      // Reconstitue les parts brutes du dernier message assistant (le
+      // texte final + les tool calls/results) pour les re-render au load.
+      for (const m of streamMessages) {
+        if (m.role !== "assistant") continue;
+        for (const part of m.parts) {
+          if (part.type === "text" && part.text) {
+            savedParts.push({ type: "text", text: part.text });
+            finalText += part.text;
+          } else if (
+            part.type.startsWith("tool-") &&
+            "toolCallId" in part &&
+            "state" in part
+          ) {
+            const toolPart = part as {
+              type: string;
+              toolCallId: string;
+              state: string;
+              input?: unknown;
+              output?: unknown;
+            };
+            const toolName = toolPart.type.replace(/^tool-/, "");
+            if (toolPart.state === "input-available" && "input" in toolPart) {
+              savedParts.push({
+                type: "tool-call",
+                toolCallId: toolPart.toolCallId,
+                toolName,
+                input: toolPart.input,
+              });
+            }
+            if (
+              (toolPart.state === "output-available" ||
+                toolPart.state === "output-error") &&
+              "output" in toolPart
+            ) {
+              savedParts.push({
+                type: "tool-result",
+                toolCallId: toolPart.toolCallId,
+                toolName,
+                output: toolPart.output,
+              });
+            }
           }
         }
       }
 
+      if (!finalText) return;
+
       await db.insert(messages).values({
         conversationId: finalConversationId,
         role: "assistant",
-        content: text,
+        content: finalText,
         parts: savedParts.length > 0 ? savedParts : null,
-        inputTokens: usage?.inputTokens ?? null,
-        outputTokens: usage?.outputTokens ?? null,
+        inputTokens: finalUsage.inputTokens ?? null,
+        outputTokens: finalUsage.outputTokens ?? null,
         modelId: modelOverride ?? null,
       });
       await db
@@ -180,22 +268,10 @@ export async function POST(req: Request) {
     },
   });
 
-  return stream.toUIMessageStreamResponse({
+  return createUIMessageStreamResponse({
+    stream,
     headers: {
       "x-conversation-id": finalConversationId,
-    },
-    messageMetadata: ({ part }) => {
-      if (part.type === "start") {
-        return { conversationId: finalConversationId };
-      }
-      if (part.type === "finish") {
-        return {
-          usage: {
-            inputTokens: part.totalUsage?.inputTokens ?? 0,
-            outputTokens: part.totalUsage?.outputTokens ?? 0,
-          },
-        };
-      }
     },
   });
 }
@@ -207,4 +283,10 @@ function extractTextPreview(msg: UIMessage | undefined): string {
     .map((p) => p.text)
     .join(" ")
     .trim();
+}
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(value: string): boolean {
+  return UUID_REGEX.test(value);
 }

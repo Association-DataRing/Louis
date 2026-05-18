@@ -12,3 +12,4 @@ export * from "./tabular-reviews";
 export * from "./workflows";
 export * from "./cabinet-settings";
 export * from "./audit-log";
+export * from "./pipelines";

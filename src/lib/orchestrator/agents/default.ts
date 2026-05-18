@@ -1,4 +1,9 @@
-import { streamText, stepCountIs, convertToModelMessages, type ToolSet } from "ai";
+import {
+  streamText,
+  stepCountIs,
+  convertToModelMessages,
+  type ToolSet,
+} from "ai";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { buildToolsForUser } from "@/lib/connectors/tools";
 import { buildMcpToolsForUser } from "@/lib/mcp/tools";
@@ -32,7 +37,10 @@ texte proposé
 
 L'interface rendra ce bloc comme une carte d'édition que l'utilisateur peut accepter ou ignorer en un clic.`;
 
-function filterTools(tools: ToolSet, allowlist: string[] | null | undefined): ToolSet {
+export function filterTools(
+  tools: ToolSet,
+  allowlist: string[] | null | undefined
+): ToolSet {
   if (!allowlist || allowlist.length === 0) return tools;
   const allowed = new Set(allowlist);
   return Object.fromEntries(
@@ -41,13 +49,35 @@ function filterTools(tools: ToolSet, allowlist: string[] | null | undefined): To
 }
 
 /**
- * DefaultAgent — v0.1 single-agent pipeline. Reproduces the historical
- * `/api/chat` behaviour (BYOK provider, full tool set, FR legal system
- * prompt), wrapped in the Agent interface so the route can route through
- * an Orchestrator without behavioural change.
- *
- * In v0.2 this agent becomes one role among many (default-chat) and the
- * Orchestrator can compose it with research / drafting / reviewer agents.
+ * Compose le system prompt final à partir du prompt « factory » du rôle,
+ * de l'override éventuel défini par l'utilisateur, et des extras de contexte
+ * (documents joints, sortie des agents précédents).
+ */
+export function composeSystem(
+  factory: string,
+  def: AgentDefinition,
+  ctx: AgentContext
+): string {
+  const base = def.systemPrompt ?? factory;
+  const parts: string[] = [base];
+  if (ctx.systemPromptExtras) parts.push(ctx.systemPromptExtras);
+  if (ctx.priorOutputs && ctx.priorOutputs.length > 0) {
+    const blocks = ctx.priorOutputs.map(
+      (o, i) =>
+        `--- Sortie de l'agent ${i + 1} (${o.label}, rôle « ${o.role} ») ---\n${o.output}\n--- Fin sortie agent ${i + 1} ---`
+    );
+    parts.push(
+      `Les agents précédents de la pipeline ont produit le travail suivant. Appuie-toi dessus pour composer ta réponse, mais ne le recopie pas verbatim si l'utilisateur ne l'a pas demandé.\n\n${blocks.join("\n\n")}`
+    );
+  }
+  return parts.join("\n\n");
+}
+
+/**
+ * DefaultAgent — rôle « default-chat ». Reproduit le comportement
+ * historique de /api/chat : système prompt FR, outils connecteurs + MCP,
+ * stopWhen multi-step. C'est l'agent par défaut du preset chat-simple
+ * et celui sur lequel retombe le pipeline mono-agent.
  */
 export class DefaultAgent implements Agent {
   constructor(public readonly definition: AgentDefinition) {}
@@ -57,10 +87,7 @@ export class DefaultAgent implements Agent {
     const model = modelFromKey(key, this.definition.modelOverride);
     const modelMessages = await convertToModelMessages(ctx.messages);
 
-    const baseSystem = this.definition.systemPrompt ?? DEFAULT_CHAT_SYSTEM_PROMPT;
-    const system = ctx.systemPromptExtras
-      ? `${baseSystem}\n\n${ctx.systemPromptExtras}`
-      : baseSystem;
+    const system = composeSystem(DEFAULT_CHAT_SYSTEM_PROMPT, this.definition, ctx);
 
     const [connectorTools, mcpTools] = await Promise.all([
       buildToolsForUser(ctx.userId),
@@ -77,9 +104,8 @@ export class DefaultAgent implements Agent {
       messages: modelMessages,
       tools,
       stopWhen: stepCountIs(5),
-      onFinish: ctx.onFinish,
     });
 
-    return { stream };
+    return { kind: "stream", stream };
   }
 }
