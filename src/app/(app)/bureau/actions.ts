@@ -37,6 +37,8 @@ const AGENT_ROLE_VALUES = [
 const pipelineMetaSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).nullable().optional(),
+  mode: z.enum(["sequential", "council", "parallel"]).optional(),
+  rounds: z.number().int().min(1).max(6).optional(),
 });
 
 const agentUpdateSchema = z.object({
@@ -192,7 +194,12 @@ export async function clonePresetBySlug(
 
 export async function updatePipelineMeta(
   id: string,
-  data: { name: string; description?: string | null }
+  data: {
+    name: string;
+    description?: string | null;
+    mode?: "sequential" | "council" | "parallel";
+    rounds?: number;
+  }
 ): Promise<ActionResult> {
   const userId = await requireUserId();
   const parsed = pipelineMetaSchema.safeParse(data);
@@ -203,11 +210,14 @@ export async function updatePipelineMeta(
     .set({
       name: parsed.data.name,
       description: parsed.data.description ?? null,
+      ...(parsed.data.mode !== undefined && { mode: parsed.data.mode }),
+      ...(parsed.data.rounds !== undefined && { rounds: parsed.data.rounds }),
       updatedAt: new Date(),
     })
     .where(and(eq(pipelines.id, id), eq(pipelines.userId, userId)));
 
   revalidatePath("/bureau");
+  revalidatePath(`/bureau/${id}`);
   revalidatePath("/chat");
   return { ok: true };
 }

@@ -40,12 +40,24 @@ export interface AgentDefinition {
   toolAllowlist?: string[] | null;
 }
 
+/**
+ * Mode d'exécution :
+ * - `sequential` : chaîne (A → B → C). Chaque agent voit les sorties précédentes.
+ * - `council`    : comité avec N tours de débat. Les N-1 premiers agents
+ *                  débattent, le dernier agent synthétise.
+ * - `parallel`   : fan-out — tous les agents non-terminaux travaillent en
+ *                  parallèle sur la même question, le terminal synthétise.
+ */
+export type PipelineMode = "sequential" | "council" | "parallel";
+
 export interface PipelineConfig {
   id?: string;
   slug: string;
   name: string;
   description?: string | null;
-  /** Agents exécutés dans l'ordre — séquentiel v0.2. */
+  mode?: PipelineMode;
+  /** Nombre de tours pour le mode council (1–4 typique). Ignoré sinon. */
+  rounds?: number;
   agents: AgentDefinition[];
 }
 
@@ -71,6 +83,8 @@ export interface AgentPriorOutput {
   role: AgentRole;
   label: string;
   output: string;
+  /** Numéro de tour pour le mode council (1, 2, …). undefined en sequential. */
+  round?: number;
 }
 
 /**
@@ -108,6 +122,7 @@ export type OrchestratorEvent =
       role: AgentRole;
       label: string;
       position: number;
+      round?: number;
     }
   | {
       type: "agent_finish";
@@ -119,6 +134,7 @@ export type OrchestratorEvent =
       inputTokens?: number;
       outputTokens?: number;
       preview?: string;
+      round?: number;
     }
   | {
       type: "agent_error";
@@ -127,6 +143,7 @@ export type OrchestratorEvent =
       role: AgentRole;
       label: string;
       error: string;
+      round?: number;
     };
 
 export type OrchestratorEventListener = (event: OrchestratorEvent) => void;

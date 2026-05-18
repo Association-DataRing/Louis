@@ -23,6 +23,15 @@ import { messages } from "./messages";
  * "chat-simple", "recherche-juridique"… — pour pouvoir les retrouver en
  * code).
  */
+/**
+ * Mode d'exécution d'une pipeline :
+ * - `sequential` : chaîne classique, chaque agent voit la sortie des précédents
+ * - `council`    : comité, N tours où tous les agents (sauf le synthétiseur)
+ *                  voient les positions des autres et révisent la leur
+ * - `parallel`   : fan-out — le synthétiseur dispatche en parallèle, agrège
+ */
+export type PipelineMode = "sequential" | "council" | "parallel";
+
 export const pipelines = pgTable(
   "pipelines",
   {
@@ -34,6 +43,8 @@ export const pipelines = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     isPreset: boolean("is_preset").notNull().default(false),
+    mode: text("mode").$type<PipelineMode>().notNull().default("sequential"),
+    rounds: integer("rounds").notNull().default(1),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

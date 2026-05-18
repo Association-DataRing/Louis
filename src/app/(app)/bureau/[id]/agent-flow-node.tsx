@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { IconPencil } from "@tabler/icons-react";
+import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import type { PipelineAgent, ProviderKey } from "@/db/schema";
 import { roleMeta } from "../agent-role-meta";
@@ -19,6 +19,7 @@ export interface AgentFlowNodeData {
   state: "idle" | "active" | "done" | "error";
   editable: boolean;
   onEdit?: () => void;
+  onDelete?: () => void;
   [key: string]: unknown;
 }
 
@@ -31,6 +32,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
     state,
     editable,
     onEdit,
+    onDelete,
   } = data as AgentFlowNodeData;
   const meta = roleMeta(agent.role);
   const Icon = meta.icon;
@@ -71,18 +73,35 @@ function AgentFlowNodeBase({ data }: NodeProps) {
             {agent.label}
           </div>
         </div>
-        {editable && onEdit && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className="size-7 grid place-items-center rounded-md hover:bg-accent transition-colors"
-            aria-label={`Modifier ${agent.label}`}
-          >
-            <IconPencil className="size-3.5" />
-          </button>
+        {editable && (
+          <div className="flex items-center gap-0.5">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="size-7 grid place-items-center rounded-md hover:bg-accent transition-colors"
+                aria-label={`Modifier ${agent.label}`}
+              >
+                <IconPencil className="size-3.5" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="size-7 grid place-items-center rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors"
+                aria-label={`Supprimer ${agent.label}`}
+              >
+                <IconTrash className="size-3.5" />
+              </button>
+            )}
+          </div>
         )}
       </div>
 

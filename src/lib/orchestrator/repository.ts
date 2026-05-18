@@ -5,7 +5,14 @@ import type {
   AgentDefinition,
   AgentRole,
   PipelineConfig,
+  PipelineMode,
 } from "./types";
+
+const KNOWN_MODES: PipelineMode[] = ["sequential", "council", "parallel"];
+
+function isPipelineMode(value: string): value is PipelineMode {
+  return (KNOWN_MODES as string[]).includes(value);
+}
 
 const KNOWN_ROLES: AgentRole[] = [
   "default-chat",
@@ -60,6 +67,8 @@ export async function loadPipelineForUser(
     slug: row.slug,
     name: row.name,
     description: row.description,
+    mode: isPipelineMode(row.mode) ? row.mode : "sequential",
+    rounds: row.rounds,
     agents,
   };
 }

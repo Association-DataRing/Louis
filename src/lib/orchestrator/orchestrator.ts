@@ -10,11 +10,6 @@ import type {
   PipelineConfig,
 } from "./types";
 
-/**
- * Writer minimal qu'attendent les méthodes de l'orchestrateur — sous-
- * ensemble du `UIMessageStreamWriter` d'AI SDK v6. On reste sur cette
- * interface réduite pour pouvoir mocker proprement en test.
- */
 export interface OrchestratorWriter {
   write: (part: unknown) => void;
   merge: (stream: unknown) => void;
@@ -23,22 +18,10 @@ export interface OrchestratorWriter {
 export interface OrchestratorRunArgs {
   ctx: AgentContext;
   writer: OrchestratorWriter;
-  /**
-   * Hook synchrone/async appelé pour chaque event émis — typiquement
-   * utilisé par la route pour persister un agent_run au moment où
-   * l'événement tombe.
-   */
   onEvent?: (event: OrchestratorEvent) => Promise<void> | void;
-  /** Permet d'injecter une factory custom (tests). */
   agentFactory?: (def: AgentDefinition) => Agent;
 }
 
-/**
- * Map AgentDefinition → instance Agent. v0.2 supporte default-chat ;
- * les rôles dédiés (research, citator, reviewer, orchestrator) sont
- * branchés au fur et à mesure de leur implémentation. Rôle inconnu →
- * DefaultAgent (dégradation gracieuse plutôt qu'erreur runtime).
- */
 export function defaultAgentFactory(def: AgentDefinition): Agent {
   const Ctor = resolveAgentConstructor(def.role);
   return Ctor ? new Ctor(def) : new DefaultAgent(def);
@@ -53,19 +36,21 @@ function preview(text: string): string {
 }
 
 /**
- * Orchestrator — exécute une pipeline d'agents séquentiellement.
+ * Orchestrator — exécute une pipeline selon son mode.
  *
- * - Agents 0..N-1 (intermédiaires) : on consomme leur stream pour en
- *   extraire le texte, qui est injecté comme `priorOutput` pour les
- *   agents suivants.
- * - Agent N (terminal) : son stream est mergé dans le writer du caller
- *   pour streamer directement la réponse à l'UI.
+ * Trois stratégies :
+ * - sequential : chaîne A → B → C. Chaque agent voit les sorties des
+ *                précédents (priorOutputs). Le terminal stream sa réponse.
+ * - council    : N tours. Aux tours 1..N-1, tous les agents non-terminaux
+ *                répondent en parallèle en voyant les positions du tour
+ *                précédent. Au tour final, le terminal synthétise toute la
+ *                délibération en streaming.
+ * - parallel   : fan-out. Tous les non-terminaux répondent en parallèle
+ *                sans se voir, le terminal synthétise.
  *
- * Chaque agent émet `agent_start` / `agent_finish` (ou `agent_error`).
- * Les events transitent à la fois comme `data-agent-event` parts dans le
- * UI message stream (l'UI les filtre pour afficher les halos « qui
- * travaille ») et via le callback `onEvent` (typiquement utilisé pour
- * persister les agent_runs côté serveur).
+ * Chaque agent émet `agent_start` / `agent_finish` / `agent_error`. Le
+ * dernier agent de la pipeline est l'agent terminal et son stream est
+ * mergé dans le writer pour atteindre l'UI directement.
  */
 export class Orchestrator {
   constructor(public readonly pipeline: PipelineConfig) {
@@ -77,6 +62,15 @@ export class Orchestrator {
   }
 
   async run(args: OrchestratorRunArgs): Promise<void> {
+    const mode = this.pipeline.mode ?? "sequential";
+    if (mode === "council") return this.runCouncil(args);
+    if (mode === "parallel") return this.runParallel(args);
+    return this.runSequential(args);
+  }
+
+  // ─── SEQUENTIAL ─────────────────────────────────────────────────────────
+
+  private async runSequential(args: OrchestratorRunArgs): Promise<void> {
     const { ctx, writer } = args;
     const factory = args.agentFactory ?? defaultAgentFactory;
     const pipelineRunId = ctx.pipelineRunId ?? nanoid();
@@ -101,7 +95,7 @@ export class Orchestrator {
         const result = await agent.run({ ...ctx, pipelineRunId, priorOutputs });
 
         if (isFinal) {
-          await this.runFinalAgent({
+          await this.streamFinal({
             args,
             def,
             pipelineRunId,
@@ -109,7 +103,7 @@ export class Orchestrator {
             startedAt,
           });
         } else {
-          await this.runIntermediateAgent({
+          await this.consumeIntermediate({
             args,
             def,
             pipelineRunId,
@@ -119,21 +113,240 @@ export class Orchestrator {
           });
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        await this.emit(args, writer, {
-          type: "agent_error",
-          pipelineRunId,
-          agentId: def.id,
-          role: def.role,
-          label: def.label,
-          error: message,
-        });
+        await this.emitError(args, writer, def, pipelineRunId, err);
         throw err;
       }
     }
   }
 
-  private async runIntermediateAgent(opts: {
+  // ─── COUNCIL ───────────────────────────────────────────────────────────
+
+  private async runCouncil(args: OrchestratorRunArgs): Promise<void> {
+    const { ctx, writer } = args;
+    const factory = args.agentFactory ?? defaultAgentFactory;
+    const pipelineRunId = ctx.pipelineRunId ?? nanoid();
+    const rounds = Math.max(1, Math.min(this.pipeline.rounds ?? 1, 6));
+    const agents = this.pipeline.agents;
+    const synthesizer = agents[agents.length - 1];
+    const debaters = agents.slice(0, -1);
+
+    // Si pas de débateurs, on retombe sur du séquentiel (un seul agent).
+    if (debaters.length === 0) return this.runSequential(args);
+
+    // priorOutputs accumule TOUTES les positions à travers TOUS les tours.
+    // Chaque debater voit ses pairs du tour précédent au tour suivant.
+    const priorOutputs: AgentPriorOutput[] = [...(ctx.priorOutputs ?? [])];
+
+    for (let round = 1; round <= rounds; round++) {
+      // À chaque tour, on lance les débateurs EN PARALLÈLE — ils ne se
+      // voient pas du tour en cours, ils voient seulement les tours
+      // précédents via priorOutputs.
+      const snapshotForRound = [...priorOutputs];
+      const results = await Promise.all(
+        debaters.map(async (def, position) => {
+          const startedAt = Date.now();
+          await this.emit(args, writer, {
+            type: "agent_start",
+            pipelineRunId,
+            agentId: def.id,
+            role: def.role,
+            label: def.label,
+            position,
+            round,
+          });
+          try {
+            const agent = factory(def);
+            const result = await agent.run({
+              ...ctx,
+              pipelineRunId,
+              priorOutputs: snapshotForRound,
+              systemPromptExtras: this.councilTurnInstructions(
+                ctx.systemPromptExtras,
+                round,
+                rounds
+              ),
+            });
+            const text = await collectText(result);
+            await this.emit(args, writer, {
+              type: "agent_finish",
+              pipelineRunId,
+              agentId: def.id,
+              role: def.role,
+              label: def.label,
+              latencyMs: Date.now() - startedAt,
+              inputTokens: text.inputTokens,
+              outputTokens: text.outputTokens,
+              preview: preview(text.value),
+              round,
+            });
+            return {
+              agentId: def.id,
+              role: def.role,
+              label: def.label,
+              output: text.value,
+              round,
+            };
+          } catch (err) {
+            await this.emitError(args, writer, def, pipelineRunId, err, round);
+            throw err;
+          }
+        })
+      );
+
+      // Fin du tour : on bascule toutes les positions dans priorOutputs
+      // pour que le tour suivant (ou le synthétiseur) les voie.
+      for (const r of results) priorOutputs.push(r);
+    }
+
+    // Synthétiseur final — voit toute la délibération.
+    const startedAt = Date.now();
+    await this.emit(args, writer, {
+      type: "agent_start",
+      pipelineRunId,
+      agentId: synthesizer.id,
+      role: synthesizer.role,
+      label: synthesizer.label,
+      position: agents.length - 1,
+    });
+
+    try {
+      const agent = factory(synthesizer);
+      const result = await agent.run({
+        ...ctx,
+        pipelineRunId,
+        priorOutputs,
+        systemPromptExtras: this.councilSynthesisInstructions(
+          ctx.systemPromptExtras,
+          rounds,
+          debaters.length
+        ),
+      });
+      await this.streamFinal({
+        args,
+        def: synthesizer,
+        pipelineRunId,
+        result,
+        startedAt,
+      });
+    } catch (err) {
+      await this.emitError(args, writer, synthesizer, pipelineRunId, err);
+      throw err;
+    }
+  }
+
+  private councilTurnInstructions(
+    base: string | undefined,
+    round: number,
+    totalRounds: number
+  ): string {
+    const tourMsg =
+      round === 1
+        ? "C'est le PREMIER TOUR du conseil. Donne ta position initiale sur la question, argumentée et sourcée. Tu n'as pas encore vu les positions des autres membres."
+        : `C'est le TOUR ${round} sur ${totalRounds} du conseil. Tu peux voir les positions des autres membres du tour précédent dans le contexte. RÉAGIS-Y : confirme, nuance, contredis, complète. Cite explicitement les positions des autres quand tu les commentes (« Membre X soutient que… or je pense que… »). Reste précis et sourcé.`;
+    return base ? `${base}\n\n${tourMsg}` : tourMsg;
+  }
+
+  private councilSynthesisInstructions(
+    base: string | undefined,
+    rounds: number,
+    debaterCount: number
+  ): string {
+    const msg = `Le conseil de ${debaterCount} membres a délibéré sur ${rounds} tour(s). Lis attentivement TOUTES les positions exprimées (incluant les contradictions et révisions au fil des tours). En tant que synthétiseur, ton rôle est de produire la décision finale qui sera servie à l'utilisateur :\n\n1. Identifie les points de CONSENSUS clairs et expose-les en premier.\n2. Identifie les points de DÉSACCORD significatifs et explique-les honnêtement (« Sur ce point, deux écoles s'affrontent… »).\n3. Tranche quand tu peux : prends position en t'appuyant sur l'argumentation la plus solide.\n4. Quand tu ne peux pas trancher, dis-le et précise quelles informations manquent.\n\nNe recopie pas les positions verbatim — synthétise.`;
+    return base ? `${base}\n\n${msg}` : msg;
+  }
+
+  // ─── PARALLEL ──────────────────────────────────────────────────────────
+
+  private async runParallel(args: OrchestratorRunArgs): Promise<void> {
+    const { ctx, writer } = args;
+    const factory = args.agentFactory ?? defaultAgentFactory;
+    const pipelineRunId = ctx.pipelineRunId ?? nanoid();
+    const agents = this.pipeline.agents;
+    const synthesizer = agents[agents.length - 1];
+    const workers = agents.slice(0, -1);
+
+    if (workers.length === 0) return this.runSequential(args);
+
+    const priorOutputs: AgentPriorOutput[] = [...(ctx.priorOutputs ?? [])];
+
+    const results = await Promise.all(
+      workers.map(async (def, position) => {
+        const startedAt = Date.now();
+        await this.emit(args, writer, {
+          type: "agent_start",
+          pipelineRunId,
+          agentId: def.id,
+          role: def.role,
+          label: def.label,
+          position,
+        });
+        try {
+          const agent = factory(def);
+          const result = await agent.run({
+            ...ctx,
+            pipelineRunId,
+            priorOutputs: [...priorOutputs],
+          });
+          const text = await collectText(result);
+          await this.emit(args, writer, {
+            type: "agent_finish",
+            pipelineRunId,
+            agentId: def.id,
+            role: def.role,
+            label: def.label,
+            latencyMs: Date.now() - startedAt,
+            inputTokens: text.inputTokens,
+            outputTokens: text.outputTokens,
+            preview: preview(text.value),
+          });
+          return {
+            agentId: def.id,
+            role: def.role,
+            label: def.label,
+            output: text.value,
+          };
+        } catch (err) {
+          await this.emitError(args, writer, def, pipelineRunId, err);
+          throw err;
+        }
+      })
+    );
+
+    for (const r of results) priorOutputs.push(r);
+
+    const startedAt = Date.now();
+    await this.emit(args, writer, {
+      type: "agent_start",
+      pipelineRunId,
+      agentId: synthesizer.id,
+      role: synthesizer.role,
+      label: synthesizer.label,
+      position: agents.length - 1,
+    });
+
+    try {
+      const agent = factory(synthesizer);
+      const result = await agent.run({
+        ...ctx,
+        pipelineRunId,
+        priorOutputs,
+      });
+      await this.streamFinal({
+        args,
+        def: synthesizer,
+        pipelineRunId,
+        result,
+        startedAt,
+      });
+    } catch (err) {
+      await this.emitError(args, writer, synthesizer, pipelineRunId, err);
+      throw err;
+    }
+  }
+
+  // ─── HELPERS ───────────────────────────────────────────────────────────
+
+  private async consumeIntermediate(opts: {
     args: OrchestratorRunArgs;
     def: AgentDefinition;
     pipelineRunId: string;
@@ -142,34 +355,13 @@ export class Orchestrator {
     startedAt: number;
   }): Promise<void> {
     const { args, def, pipelineRunId, result, priorOutputs, startedAt } = opts;
-    let text: string;
-    let inputTokens: number | undefined;
-    let outputTokens: number | undefined;
-
-    if (result.kind === "stream") {
-      // Crucial : les streams AI SDK v6 sont pull-based. Si on n'attache
-      // pas activement un consommateur, le stream ne tourne pas — et le
-      // Promise `.text` ne résout jamais. Pour les agents intermédiaires
-      // dont la sortie ne va pas à l'UI, on consomme explicitement avant
-      // de lire .text / .usage. Sinon la pipeline pend indéfiniment.
-      await result.stream.consumeStream();
-      text = await result.stream.text;
-      const usage = await result.stream.usage;
-      inputTokens = usage?.inputTokens ?? undefined;
-      outputTokens = usage?.outputTokens ?? undefined;
-    } else {
-      text = result.text;
-      inputTokens = result.inputTokens;
-      outputTokens = result.outputTokens;
-    }
-
+    const text = await collectText(result);
     priorOutputs.push({
       agentId: def.id,
       role: def.role,
       label: def.label,
-      output: text,
+      output: text.value,
     });
-
     await this.emit(args, args.writer, {
       type: "agent_finish",
       pipelineRunId,
@@ -177,13 +369,13 @@ export class Orchestrator {
       role: def.role,
       label: def.label,
       latencyMs: Date.now() - startedAt,
-      inputTokens,
-      outputTokens,
-      preview: preview(text),
+      inputTokens: text.inputTokens,
+      outputTokens: text.outputTokens,
+      preview: preview(text.value),
     });
   }
 
-  private async runFinalAgent(opts: {
+  private async streamFinal(opts: {
     args: OrchestratorRunArgs;
     def: AgentDefinition;
     pipelineRunId: string;
@@ -209,13 +401,10 @@ export class Orchestrator {
         preview: preview(finalText),
       });
     } else {
-      // Cas atypique : un agent terminal qui retourne du texte plutôt qu'un
-      // stream (rare, mais permet à un agent calculé non-LLM d'être terminal).
       args.writer.write({
         type: "data-final-text",
         data: { text: result.text },
       });
-
       await this.emit(args, args.writer, {
         type: "agent_finish",
         pipelineRunId,
@@ -230,15 +419,31 @@ export class Orchestrator {
     }
   }
 
+  private async emitError(
+    args: OrchestratorRunArgs,
+    writer: OrchestratorWriter,
+    def: AgentDefinition,
+    pipelineRunId: string,
+    err: unknown,
+    round?: number
+  ): Promise<void> {
+    const message = err instanceof Error ? err.message : String(err);
+    await this.emit(args, writer, {
+      type: "agent_error",
+      pipelineRunId,
+      agentId: def.id,
+      role: def.role,
+      label: def.label,
+      error: message,
+      round,
+    });
+  }
+
   private async emit(
     args: OrchestratorRunArgs,
     writer: OrchestratorWriter,
     event: OrchestratorEvent
   ): Promise<void> {
-    // NOT transient : on veut que ces parts atterrissent dans
-    // message.parts côté client pour piloter le LiveWorkflowPanel. La
-    // persistance DB côté serveur (route onFinish) ignore les parts
-    // data-* donc rien ne pollue la conversation à long terme.
     writer.write({
       type: "data-agent-event",
       data: event,
@@ -247,4 +452,31 @@ export class Orchestrator {
       await args.onEvent(event);
     }
   }
+}
+
+/**
+ * Collecte la sortie texte d'un AgentRunResult, qu'il s'agisse d'un stream
+ * ou d'un texte déjà résolu. Consomme explicitement le stream (crucial en
+ * AI SDK v6 pull-based) pour garantir que .text/.usage résolvent.
+ */
+async function collectText(result: AgentRunResult): Promise<{
+  value: string;
+  inputTokens?: number;
+  outputTokens?: number;
+}> {
+  if (result.kind === "stream") {
+    await result.stream.consumeStream();
+    const value = await result.stream.text;
+    const usage = await result.stream.usage;
+    return {
+      value,
+      inputTokens: usage?.inputTokens ?? undefined,
+      outputTokens: usage?.outputTokens ?? undefined,
+    };
+  }
+  return {
+    value: result.text,
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
+  };
 }

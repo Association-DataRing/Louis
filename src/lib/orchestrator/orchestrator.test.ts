@@ -330,6 +330,138 @@ describe("Orchestrator: latence + tokens", () => {
   });
 });
 
+describe("Orchestrator: mode council", () => {
+  it("exécute N tours puis le synthétiseur final", async () => {
+    const pipeline: PipelineConfig = {
+      slug: "council-test",
+      name: "Council",
+      mode: "council",
+      rounds: 2,
+      agents: [
+        makeAgentDef("d1", "default-chat", "Débateur 1"),
+        makeAgentDef("d2", "default-chat", "Débateur 2"),
+        makeAgentDef("synth", "orchestrator", "Synthétiseur"),
+      ],
+    };
+
+    const orchestrator = new Orchestrator(pipeline);
+    const { writer } = makeWriter();
+    const events: OrchestratorEvent[] = [];
+
+    await orchestrator.run({
+      ctx: makeCtx(),
+      writer,
+      onEvent: (e) => {
+        events.push(e);
+      },
+      agentFactory: (def) => new FakeAgent(def, `${def.id}-out`),
+    });
+
+    const startEvents = events.filter((e) => e.type === "agent_start");
+    const finishEvents = events.filter((e) => e.type === "agent_finish");
+
+    // 2 tours × 2 débateurs = 4 starts pour les débateurs + 1 pour le
+    // synthétiseur = 5 starts au total.
+    expect(startEvents).toHaveLength(5);
+    expect(finishEvents).toHaveLength(5);
+
+    // Le synthétiseur arrive en dernier.
+    expect(startEvents[startEvents.length - 1].agentId).toBe("synth");
+  });
+
+  it("au tour 2, les débateurs voient les positions du tour 1", async () => {
+    const observed = new Map<string, AgentContext>();
+    const pipeline: PipelineConfig = {
+      slug: "c",
+      name: "C",
+      mode: "council",
+      rounds: 2,
+      agents: [
+        makeAgentDef("d1", "default-chat", "D1"),
+        makeAgentDef("d2", "default-chat", "D2"),
+        makeAgentDef("s", "orchestrator", "S"),
+      ],
+    };
+    const orchestrator = new Orchestrator(pipeline);
+    const { writer } = makeWriter();
+
+    let callIdx = 0;
+    await orchestrator.run({
+      ctx: makeCtx(),
+      writer,
+      agentFactory: (def) =>
+        new FakeAgent(def, `out-${def.id}-${++callIdx}`, (ctx) => {
+          observed.set(`${def.id}-call-${callIdx}`, structuredClone(ctx));
+        }),
+    });
+
+    // Au tour 1, ni d1 ni d2 ne voient quelque chose (priorOutputs vide).
+    // Au tour 2, ils voient les deux sorties du tour 1.
+    const lastD1Call = [...observed.entries()]
+      .filter(([k]) => k.startsWith("d1-"))
+      .pop();
+    expect(lastD1Call?.[1].priorOutputs?.length).toBe(2);
+  });
+
+  it("tombe sur sequential si pas de débateurs (1 seul agent)", async () => {
+    const pipeline: PipelineConfig = {
+      slug: "lone",
+      name: "Solo",
+      mode: "council",
+      rounds: 3,
+      agents: [makeAgentDef("only")],
+    };
+    const orchestrator = new Orchestrator(pipeline);
+    const { writer } = makeWriter();
+    const events: OrchestratorEvent[] = [];
+
+    await orchestrator.run({
+      ctx: makeCtx(),
+      writer,
+      onEvent: (e) => {
+        events.push(e);
+      },
+      agentFactory: (def) => new FakeAgent(def, "x"),
+    });
+
+    expect(events.filter((e) => e.type === "agent_start")).toHaveLength(1);
+  });
+});
+
+describe("Orchestrator: mode parallel", () => {
+  it("exécute les workers en parallèle puis le synthétiseur", async () => {
+    const pipeline: PipelineConfig = {
+      slug: "par",
+      name: "Parallel",
+      mode: "parallel",
+      agents: [
+        makeAgentDef("w1"),
+        makeAgentDef("w2"),
+        makeAgentDef("w3"),
+        makeAgentDef("synth", "orchestrator"),
+      ],
+    };
+    const orchestrator = new Orchestrator(pipeline);
+    const { writer } = makeWriter();
+    const events: OrchestratorEvent[] = [];
+
+    await orchestrator.run({
+      ctx: makeCtx(),
+      writer,
+      onEvent: (e) => {
+        events.push(e);
+      },
+      agentFactory: (def) => new FakeAgent(def, `out-${def.id}`),
+    });
+
+    expect(events.filter((e) => e.type === "agent_start")).toHaveLength(4);
+    expect(events.filter((e) => e.type === "agent_finish")).toHaveLength(4);
+    // Le synthétiseur est toujours dernier.
+    const finishes = events.filter((e) => e.type === "agent_finish");
+    expect(finishes[finishes.length - 1].agentId).toBe("synth");
+  });
+});
+
 describe("Orchestrator: factory par défaut", () => {
   it("utilise un FakeAgent à la place sans toucher au registry réel", async () => {
     const pipeline = makePipeline([makeAgentDef("a", "research")]);

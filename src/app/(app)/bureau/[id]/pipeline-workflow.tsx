@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -16,15 +16,13 @@ import "@xyflow/react/dist/style.css";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
 import { AgentEditSheet } from "../agent-edit-sheet";
 import { AgentFlowNode, type AgentFlowNodeData } from "./agent-flow-node";
+import { removeAgentFromPipeline } from "../actions";
+import { useRouter } from "next/navigation";
 
 interface PipelineWorkflowProps {
   pipeline: Pipeline;
   agents: PipelineAgent[];
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
-  /**
-   * État d'exécution par agent (id → état). Quand on est en mode live,
-   * piloté depuis l'extérieur ; sinon vide.
-   */
   liveStates?: Record<string, "idle" | "active" | "done" | "error">;
 }
 
@@ -35,20 +33,151 @@ const nodeTypes: NodeTypes = {
 const NODE_WIDTH = 280;
 const NODE_GAP_X = 80;
 const NODE_HEIGHT = 200;
+const NODE_GAP_Y = 100;
 
 /**
- * Canvas React Flow affichant une pipeline comme un graphe horizontal,
- * style AI Elements workflow. Chaque agent = un node custom éditable,
- * edges animées entre nodes successifs.
+ * Calcule les positions de chaque node selon le mode :
+ * - sequential : grille horizontale (gauche → droite)
+ * - council    : synthétiseur centré en bas, débateurs en arc au-dessus
+ * - parallel   : synthétiseur en bas, workers étalés au-dessus
  */
+function layoutNodes(
+  agents: PipelineAgent[],
+  mode: "sequential" | "council" | "parallel"
+): Array<{ x: number; y: number }> {
+  if (agents.length === 0) return [];
+
+  if (mode === "sequential") {
+    return agents.map((_, i) => ({
+      x: i * (NODE_WIDTH + NODE_GAP_X),
+      y: 0,
+    }));
+  }
+
+  // council & parallel : workers/débateurs en ligne en haut, synth en bas
+  const synthIndex = agents.length - 1;
+  const workers = agents.slice(0, -1);
+  const totalWidth = workers.length * (NODE_WIDTH + NODE_GAP_X) - NODE_GAP_X;
+  const synthX = totalWidth / 2 - NODE_WIDTH / 2;
+
+  return agents.map((_, i) => {
+    if (i === synthIndex) {
+      return { x: synthX, y: NODE_HEIGHT + NODE_GAP_Y };
+    }
+    return {
+      x: i * (NODE_WIDTH + NODE_GAP_X),
+      y: 0,
+    };
+  });
+}
+
+/**
+ * Construit les edges selon le mode :
+ * - sequential : chaîne A → B → C
+ * - council & parallel : chaque worker pointe vers le synthétiseur ; en
+ *   council on ajoute des edges de débat (workers ↔ workers) en pointillés
+ */
+function buildEdges(
+  agents: PipelineAgent[],
+  mode: "sequential" | "council" | "parallel",
+  liveStates: Record<string, string> | undefined
+): Edge[] {
+  if (agents.length < 2) return [];
+
+  if (mode === "sequential") {
+    return agents.slice(0, -1).map((a, i) => {
+      const next = agents[i + 1];
+      const active =
+        liveStates?.[a.id] === "done" && liveStates?.[next.id] !== "idle";
+      return {
+        id: `${a.id}->${next.id}`,
+        source: a.id,
+        target: next.id,
+        type: "smoothstep",
+        animated: active || !liveStates,
+        style: {
+          stroke: "var(--color-foreground)",
+          strokeOpacity: 0.4,
+          strokeWidth: 1.5,
+        },
+      };
+    });
+  }
+
+  // council & parallel : workers → synthétiseur
+  const synth = agents[agents.length - 1];
+  const workers = agents.slice(0, -1);
+  const edges: Edge[] = workers.map((w) => {
+    const active = liveStates?.[w.id] === "done";
+    return {
+      id: `${w.id}->${synth.id}`,
+      source: w.id,
+      target: synth.id,
+      type: "smoothstep",
+      animated: active || !liveStates,
+      style: {
+        stroke: "var(--color-foreground)",
+        strokeOpacity: 0.4,
+        strokeWidth: 1.5,
+      },
+    };
+  });
+
+  // En council, on rajoute des edges de débat entre workers (en pointillés)
+  if (mode === "council" && workers.length > 1) {
+    for (let i = 0; i < workers.length - 1; i++) {
+      const a = workers[i];
+      const b = workers[i + 1];
+      edges.push({
+        id: `${a.id}<->${b.id}`,
+        source: a.id,
+        target: b.id,
+        type: "straight",
+        animated: false,
+        style: {
+          stroke: "var(--color-foreground)",
+          strokeOpacity: 0.25,
+          strokeWidth: 1,
+          strokeDasharray: "4 4",
+        },
+        sourceHandle: undefined,
+        targetHandle: undefined,
+      });
+    }
+  }
+
+  return edges;
+}
+
 function PipelineWorkflowInner({
   pipeline,
   agents,
   providerKeys,
   liveStates,
 }: PipelineWorkflowProps) {
+  const router = useRouter();
   const [editingAgent, setEditingAgent] = useState<PipelineAgent | null>(null);
-  const editable = !pipeline.isPreset;
+  const [pending, startTransition] = useTransition();
+  const editable = !pipeline.isPreset && !pending;
+  const mode = (pipeline.mode as "sequential" | "council" | "parallel") ?? "sequential";
+
+  const handleDelete = useCallback(
+    (agent: PipelineAgent) => {
+      if (
+        !confirm(
+          `Supprimer l'agent « ${agent.label} » de cette pipeline ?`
+        )
+      )
+        return;
+      startTransition(async () => {
+        await removeAgentFromPipeline(agent.id);
+        router.refresh();
+      });
+    },
+    [router]
+  );
+
+  const positions = useMemo(() => layoutNodes(agents, mode), [agents, mode]);
 
   const initialNodes: Node[] = useMemo(
     () =>
@@ -61,57 +190,33 @@ function PipelineWorkflowInner({
           state: liveStates?.[agent.id] ?? "idle",
           editable,
           onEdit: editable ? () => setEditingAgent(agent) : undefined,
+          onDelete:
+            editable && agents.length > 1
+              ? () => handleDelete(agent)
+              : undefined,
         };
         return {
           id: agent.id,
           type: "agent",
-          position: {
-            x: i * (NODE_WIDTH + NODE_GAP_X),
-            y: 0,
-          },
+          position: positions[i],
           data,
           draggable: false,
         };
       }),
-    [agents, providerKeys, liveStates, editable]
+    [agents, providerKeys, liveStates, editable, handleDelete, positions]
   );
 
-  const initialEdges: Edge[] = useMemo(
-    () =>
-      agents.slice(0, -1).map((agent, i) => {
-        const next = agents[i + 1];
-        const isActive =
-          liveStates?.[agent.id] === "done" &&
-          (liveStates?.[next.id] === "active" || liveStates?.[next.id] === "done");
-        return {
-          id: `${agent.id}->${next.id}`,
-          source: agent.id,
-          target: next.id,
-          type: "smoothstep",
-          animated: isActive || !liveStates,
-          style: {
-            stroke: "var(--color-foreground)",
-            strokeOpacity: 0.4,
-            strokeWidth: 1.5,
-          },
-        };
-      }),
-    [agents, liveStates]
+  const initialEdges = useMemo(
+    () => buildEdges(agents, mode, liveStates),
+    [agents, mode, liveStates]
   );
 
   const fitViewOptions = useMemo(
-    () => ({
-      padding: 0.2,
-      duration: 600,
-    }),
+    () => ({ padding: 0.2, duration: 600 }),
     []
   );
-
   const proOptions = useMemo(() => ({ hideAttribution: true }), []);
 
-  // React Flow demande des noeuds/edges contrôlés via useNodesState pour
-  // permettre l'édition, mais en lecture seule on peut juste passer les
-  // valeurs initiales.
   const onNodeClick = useCallback(
     (_e: React.MouseEvent, node: Node) => {
       if (!editable) return;
@@ -121,11 +226,17 @@ function PipelineWorkflowInner({
     [agents, editable]
   );
 
+  // Hauteur dynamique : sequential = 1 ligne, council/parallel = 2 lignes
+  const canvasHeight =
+    mode === "sequential"
+      ? Math.max(NODE_HEIGHT + 120, 320)
+      : Math.max(NODE_HEIGHT * 2 + NODE_GAP_Y + 120, 480);
+
   return (
     <>
       <div
         className="w-full rounded-2xl border border-border bg-muted/10 overflow-hidden"
-        style={{ height: Math.max(NODE_HEIGHT + 120, 320) }}
+        style={{ height: canvasHeight }}
       >
         <ReactFlow
           nodes={initialNodes}

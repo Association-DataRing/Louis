@@ -9,6 +9,8 @@ import { getPipeline } from "../actions";
 import { PipelineActionsMenu } from "../pipeline-actions-menu";
 import { PipelineWorkflow } from "./pipeline-workflow";
 import { CloneToEditButton } from "./clone-to-edit-button";
+import { PipelineModeBar } from "./pipeline-mode-bar";
+import { AddAgentDialog } from "./add-agent-dialog";
 
 export default async function PipelineEditorPage({
   params,
@@ -89,11 +91,24 @@ export default async function PipelineEditorPage({
         </div>
       )}
 
-      <PipelineWorkflow
-        pipeline={data.pipeline}
-        agents={data.agents}
-        providerKeys={keys}
-      />
+      <PipelineModeBar pipeline={data.pipeline} />
+
+      <div className="mt-6">
+        <PipelineWorkflow
+          pipeline={data.pipeline}
+          agents={data.agents}
+          providerKeys={keys}
+        />
+      </div>
+
+      {!data.pipeline.isPreset && (
+        <div className="mt-4 flex items-center justify-end">
+          <AddAgentDialog
+            pipelineId={data.pipeline.id}
+            providerKeys={keys}
+          />
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 md:grid-cols-3 text-xs">
         <Hint
