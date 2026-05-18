@@ -66,9 +66,8 @@ export default async function BureauPage() {
                     {pipeline.name}
                   </h2>
                 </div>
-                <div onClick={(e) => e.preventDefault()}>
-                  <PipelineActionsMenu pipeline={pipeline} />
-                </div>
+                <PipelineActionsMenu pipeline={pipeline} />
+
               </div>
 
               {pipeline.description && (

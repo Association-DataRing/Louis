@@ -94,6 +94,12 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
           className="size-9 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors disabled:opacity-50"
           aria-label="Actions sur la pipeline"
           disabled={pending}
+          onClick={(e) => {
+            // Empêche la propagation au <Link> parent quand ce menu est
+            // rendu à l'intérieur d'une carte cliquable (/bureau index).
+            e.stopPropagation();
+            e.preventDefault();
+          }}
         >
           <IconDots className="size-4" />
         </DropdownMenuTrigger>
