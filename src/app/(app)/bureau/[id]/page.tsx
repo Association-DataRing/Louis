@@ -116,8 +116,24 @@ export default async function PipelineEditorPage({
           body="Pour modifier son modèle, sa clé provider, son system prompt ou les outils autorisés."
         />
         <Hint
-          title="Audit trail"
-          body="Chaque exécution de la pipeline produit un agent_run par agent — tokens, latence, sortie."
+          title={
+            data.pipeline.mode === "sequential" && !data.pipeline.isPreset
+              ? "Glissez pour réordonner"
+              : data.pipeline.mode === "council"
+                ? "Conseil de débateurs"
+                : data.pipeline.mode === "parallel"
+                  ? "Exécution parallèle"
+                  : "Audit trail"
+          }
+          body={
+            data.pipeline.mode === "sequential" && !data.pipeline.isPreset
+              ? "Faites glisser les cartes horizontalement pour changer l'ordre d'exécution. Le dernier agent reste le synthétiseur."
+              : data.pipeline.mode === "council"
+                ? `${data.pipeline.rounds} tour${data.pipeline.rounds > 1 ? "s" : ""} de débat — chaque agent voit les positions des autres et révise la sienne.`
+                : data.pipeline.mode === "parallel"
+                  ? "Tous les agents non-terminaux travaillent en parallèle, le dernier synthétise."
+                  : "Chaque exécution produit un agent_run par agent — tokens, latence, sortie."
+          }
         />
         <Hint
           title={

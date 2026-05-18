@@ -16,7 +16,10 @@ import "@xyflow/react/dist/style.css";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
 import { AgentEditSheet } from "../agent-edit-sheet";
 import { AgentFlowNode, type AgentFlowNodeData } from "./agent-flow-node";
-import { removeAgentFromPipeline } from "../actions";
+import {
+  removeAgentFromPipeline,
+  reorderPipelineAgents,
+} from "../actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -187,6 +190,35 @@ function PipelineWorkflowInner({
     [router]
   );
 
+  // Drag-to-reorder en mode sequential : lit la position X de chaque
+  // node après le drop, calcule le nouvel ordre, persiste via Server
+  // Action. Désactivé en council/parallel où la position 2D ne mappe
+  // pas trivialement à un ordre linéaire.
+  const dragReorderEnabled = editable && mode === "sequential" && agents.length > 1;
+  const handleNodeDragStop = useCallback(
+    (_e: React.MouseEvent | React.TouchEvent | unknown, _node: Node, nodesAfterDrag: Node[]) => {
+      if (!dragReorderEnabled) return;
+      const sortedByX = [...nodesAfterDrag].sort(
+        (a, b) => a.position.x - b.position.x
+      );
+      const newOrder = sortedByX.map((n) => n.id);
+      const currentOrder = agents.map((a) => a.id);
+      if (newOrder.every((id, i) => id === currentOrder[i])) return;
+      startTransition(async () => {
+        const result = await reorderPipelineAgents(pipeline.id, newOrder);
+        router.refresh();
+        if (result.ok) {
+          toast.success("Ordre mis à jour");
+        } else {
+          toast.error("Réordonnancement impossible", {
+            description: result.error,
+          });
+        }
+      });
+    },
+    [agents, dragReorderEnabled, pipeline.id, router]
+  );
+
   const positions = useMemo(() => layoutNodes(agents, mode), [agents, mode]);
 
   const initialNodes: Node[] = useMemo(
@@ -210,10 +242,10 @@ function PipelineWorkflowInner({
           type: "agent",
           position: positions[i],
           data,
-          draggable: false,
+          draggable: dragReorderEnabled,
         };
       }),
-    [agents, providerKeys, liveStates, editable, handleDelete, positions]
+    [agents, providerKeys, liveStates, editable, handleDelete, positions, dragReorderEnabled]
   );
 
   const initialEdges = useMemo(
@@ -260,10 +292,11 @@ function PipelineWorkflowInner({
           panOnDrag
           zoomOnScroll
           zoomOnPinch
-          nodesDraggable={false}
+          nodesDraggable={dragReorderEnabled}
           nodesConnectable={false}
           edgesFocusable={false}
           onNodeClick={onNodeClick}
+          onNodeDragStop={(e, n, all) => handleNodeDragStop(e, n, all)}
         >
           <Background
             variant={BackgroundVariant.Dots}
