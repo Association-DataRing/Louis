@@ -2,7 +2,8 @@
 
 # Louis
 
-### L'intelligence juridique, une discipline souveraine, reprendre le contrôle .
+### L'orchestrateur d'IA souverain pour les professions juridiques.
+### Pas un chatbot. Un cabinet d'IA.
 
 [![CI](https://github.com/D4kooo/louis/actions/workflows/ci.yml/badge.svg)](https://github.com/D4kooo/louis/actions/workflows/ci.yml)
 [![Licence : AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-000091)](./LICENSE)
@@ -67,6 +68,35 @@ n'est partagée avec qui que ce soit hors de votre infrastructure. le deployeur 
 ---
 
 ## Ce que Louis fait
+
+### Un orchestrateur, pas un chatbot
+
+Louis n'est pas un assistant conversationnel de plus. C'est un
+**orchestrateur** : une architecture où plusieurs agents IA — chacun
+spécialisé (recherche, rédaction, vérification, citation) — coopèrent
+sous le pilotage d'un agent maître pour produire une réponse tracée
+de bout en bout.
+
+```
+┌─ Orchestrateur ────────────────────────────────────────┐
+│  Décide qui fait quoi, synthétise, contrôle            │
+└──┬─────────────────────────────────────────────────────┘
+   │
+   ├─▶ Agent Recherche   (Perplexity, Albert, …)
+   ├─▶ Agent Légifrance  (DataRing MCP — verbatim sourcé)
+   ├─▶ Agent Rédaction   (Mistral, GPT, Claude…)
+   ├─▶ Agent Relecteur   (anti-hallucination · déontologie)
+   └─▶ Agent Citateur    (vérifie chaque référence)
+```
+
+Chaque agent utilise **votre clé**, sur **le modèle de votre choix**.
+La hiérarchie est déclarée dans un fichier de configuration lisible,
+versionnable, auditable. Chaque réponse est accompagnée du journal des
+agents qui y ont contribué — un véritable « audit trail » opposable.
+
+> **État actuel (v0.1) :** un seul agent (`default-chat`) tourne
+> derrière l'orchestrateur. La couche d'abstraction est en place ;
+> les agents spécialisés arrivent en v0.2.
 
 ### Chat juridique avec accès aux textes
 
@@ -431,9 +461,10 @@ pour la référence complète.
 
 | Milestone | Date cible | Statut |
 |---|---|---|
-| v0.1 — Fondation publique | 2026-Q2 | 🟡 En cours |
+| v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | 🟡 En cours |
 | v0.1.x — Sub-APIs PISTE étendues + sécurité durcie | 2026-Q3 | ⚪ À venir |
-| v0.2 — i18n + project sharing | 2026-Q4 | ⚪ À venir |
+| v0.2 — Orchestrateur multi-agents (recherche, rédaction, relecteur, citateur) + pipelines métier | 2026-Q4 | ⚪ À venir |
+| v0.3 — i18n, project sharing, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
 | v1.0 — Production-ready, documentation complète | 2027 | ⚪ À venir |
 
 ---

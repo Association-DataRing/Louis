@@ -1,40 +1,11 @@
-import {
-  streamText,
-  convertToModelMessages,
-  stepCountIs,
-  type UIMessage,
-} from "ai";
+import { type UIMessage } from "ai";
 import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { conversations, documents, messages } from "@/db/schema";
-import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
-import { buildToolsForUser } from "@/lib/connectors/tools";
-import { buildMcpToolsForUser } from "@/lib/mcp/tools";
+import { loadProviderKey } from "@/lib/providers/factory";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
-
-const SYSTEM_PROMPT_FR = `Tu es Louis, un assistant IA juridique francophone, conçu pour les professions du droit en France.
-
-Réponds en français, avec rigueur. Lorsque tu cites une règle, indique sa source quand tu la connais (article, code, décision). Tu n'inventes JAMAIS de jurisprudence ou de référence : si tu n'es pas certain, dis-le. Tu n'es pas un avocat ; rappelle-le quand l'utilisateur semble attendre un conseil personnalisé.
-
-UTILISATION DES TOOLS — règle essentielle :
-
-Quand l'utilisateur demande explicitement un document (« rédige une mise en demeure et exporte en docx », « fais-moi un mémo PDF »…), tu DOIS appeler directement le tool \`generate_document\` SANS d'abord annoncer en prose ce que tu vas faire. Ne dis JAMAIS « Je vais créer le document… » avant l'appel — appelle le tool immédiatement, puis commente brièvement APRÈS que le tool a renvoyé son résultat. L'interface affiche déjà un indicateur d'activité pendant l'exécution, donc une annonce en prose est redondante et frustrante pour l'utilisateur.
-
-Même règle pour edit_document, search_documents, legifrance_search, pappers_search : appelle d'abord, commente ensuite. Si tu as besoin de plusieurs tools en chaîne, enchaîne-les sans phrases de transition (« Je vais maintenant chercher… »).
-
-Quand tu proposes une réécriture inline (sans génération de document complet) — clause contractuelle, paragraphe à reformuler — emballe-la dans un bloc Markdown spécial avec la langue "edit", au format suivant :
-
-\`\`\`edit
-::before
-texte original mot pour mot
-::after
-texte proposé
-::reason
-(optionnel) justification courte
-\`\`\`
-
-L'interface rendra ce bloc comme une carte d'édition que l'utilisateur peut accepter ou ignorer en un clic.`;
+import { Orchestrator, chatSimplePipeline } from "@/lib/orchestrator";
 
 type Body = {
   messages: UIMessage[];
@@ -72,9 +43,8 @@ export async function POST(req: Request) {
     return new Response("providerKeyId is required", { status: 400 });
   }
 
-  let key;
   try {
-    key = await loadProviderKey(userId, providerKeyId);
+    await loadProviderKey(userId, providerKeyId);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Provider error";
     return new Response(msg, { status: 400 });
@@ -108,10 +78,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const model = modelFromKey(key, modelOverride);
-  const modelMessages = await convertToModelMessages(uiMessages);
-
-  let systemPrompt = SYSTEM_PROMPT_FR;
+  // Charge les pièces jointes éventuelles et les injecte comme rallonge du
+  // system prompt. L'Orchestrator/Agent reste agnostique : il ne sait pas
+  // qu'il s'agit de documents, il reçoit simplement du contexte additionnel.
+  let systemPromptExtras: string | undefined;
   if (documentIds && documentIds.length > 0) {
     const docs = await db
       .select({
@@ -120,10 +90,7 @@ export async function POST(req: Request) {
       })
       .from(documents)
       .where(
-        and(
-          eq(documents.userId, userId),
-          inArray(documents.id, documentIds)
-        )
+        and(eq(documents.userId, userId), inArray(documents.id, documentIds))
       );
 
     const docBlocks = docs
@@ -134,28 +101,24 @@ export async function POST(req: Request) {
       );
 
     if (docBlocks.length > 0) {
-      systemPrompt = `${SYSTEM_PROMPT_FR}
-
-Les documents suivants ont été joints à la conversation par l'utilisateur. Réponds en t'appuyant sur leur contenu quand c'est pertinent et cite explicitement le nom du document quand tu en reprends un extrait.
-
-${docBlocks.join("\n\n")}`;
+      systemPromptExtras = `Les documents suivants ont été joints à la conversation par l'utilisateur. Réponds en t'appuyant sur leur contenu quand c'est pertinent et cite explicitement le nom du document quand tu en reprends un extrait.\n\n${docBlocks.join("\n\n")}`;
     }
   }
 
-  const [connectorTools, mcpTools] = await Promise.all([
-    buildToolsForUser(userId),
-    buildMcpToolsForUser(userId),
-  ]);
-  const tools = { ...connectorTools, ...mcpTools };
+  const orchestrator = new Orchestrator(
+    chatSimplePipeline({ providerKeyId, modelOverride })
+  );
 
-  const result = streamText({
-    model,
-    system: systemPrompt,
-    messages: modelMessages,
-    tools,
-    stopWhen: stepCountIs(5),
+  const finalConversationId = conversationId;
+
+  const { stream } = await orchestrator.run({
+    userId,
+    conversationId: finalConversationId,
+    messages: uiMessages,
+    documentIds,
+    systemPromptExtras,
     onFinish: async ({ text, usage, response }) => {
-      if (!conversationId || !text) return;
+      if (!finalConversationId || !text) return;
 
       // Extrait les parts brutes des messages assistants — texte +
       // tool-calls + tool-results en format normalisé pour re-render
@@ -202,7 +165,7 @@ ${docBlocks.join("\n\n")}`;
       }
 
       await db.insert(messages).values({
-        conversationId,
+        conversationId: finalConversationId,
         role: "assistant",
         content: text,
         parts: savedParts.length > 0 ? savedParts : null,
@@ -213,12 +176,11 @@ ${docBlocks.join("\n\n")}`;
       await db
         .update(conversations)
         .set({ updatedAt: new Date() })
-        .where(eq(conversations.id, conversationId));
+        .where(eq(conversations.id, finalConversationId));
     },
   });
 
-  const finalConversationId = conversationId;
-  return result.toUIMessageStreamResponse({
+  return stream.toUIMessageStreamResponse({
     headers: {
       "x-conversation-id": finalConversationId,
     },
