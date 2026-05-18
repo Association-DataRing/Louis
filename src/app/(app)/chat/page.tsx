@@ -7,10 +7,13 @@ import {
   conversations,
   documents,
   messages,
+  pipelineAgents,
+  pipelines,
   projects,
   providerKeys,
   workflows,
 } from "@/db/schema";
+import { seedPresetsForUser } from "@/lib/orchestrator";
 import { ChatShell } from "./chat-shell";
 
 type Search = { id?: string; project?: string };
@@ -58,6 +61,43 @@ export default async function ChatPage({
 
   if (activeKeys.length === 0) {
     return <NoProviderState />;
+  }
+
+  // Garantit que l'utilisateur dispose au moins des pipelines presets,
+  // semés à la volée si c'est sa première visite sur /chat ou /bureau.
+  let pipelineList = await db
+    .select({
+      id: pipelines.id,
+      slug: pipelines.slug,
+      name: pipelines.name,
+      description: pipelines.description,
+      isPreset: pipelines.isPreset,
+      agentCount: db.$count(
+        pipelineAgents,
+        eq(pipelineAgents.pipelineId, pipelines.id)
+      ),
+    })
+    .from(pipelines)
+    .where(eq(pipelines.userId, userId))
+    .orderBy(asc(pipelines.isPreset), asc(pipelines.name));
+
+  if (pipelineList.length === 0) {
+    await seedPresetsForUser(userId);
+    pipelineList = await db
+      .select({
+        id: pipelines.id,
+        slug: pipelines.slug,
+        name: pipelines.name,
+        description: pipelines.description,
+        isPreset: pipelines.isPreset,
+        agentCount: db.$count(
+          pipelineAgents,
+          eq(pipelineAgents.pipelineId, pipelines.id)
+        ),
+      })
+      .from(pipelines)
+      .where(eq(pipelines.userId, userId))
+      .orderBy(asc(pipelines.isPreset), asc(pipelines.name));
   }
 
   const docList = await db
@@ -157,6 +197,7 @@ export default async function ChatPage({
       initialMessages={initialMessages}
       availableDocuments={docList}
       workflows={workflowList}
+      pipelines={pipelineList}
       initialUsage={{
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
+import { AgentEventBadge, type AgentEventData } from "./agent-event-badge";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -75,6 +76,15 @@ type WorkflowOption = {
   prompt: string;
 };
 
+type PipelineOption = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  isPreset: boolean;
+  agentCount: number;
+};
+
 type Props = {
   providerKeys: KeyOption[];
   initialProviderKeyId: string;
@@ -90,6 +100,7 @@ type Props = {
   }[];
   availableDocuments: DocumentOption[];
   workflows: WorkflowOption[];
+  pipelines: PipelineOption[];
   initialUsage: Usage;
   userName: string;
 };
@@ -661,11 +672,20 @@ export function ChatShell({
   initialMessages,
   availableDocuments,
   workflows,
+  pipelines,
   initialUsage,
   userName,
 }: Props) {
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
+  // Sélection de pipeline orchestrateur. Par défaut on prend « chat-simple »
+  // (preset mono-agent) pour ne pas surprendre l'utilisateur, et on retombe
+  // sur la première pipeline disponible si absent.
+  const defaultPipelineId =
+    pipelines.find((p) => p.slug === "chat-simple")?.id ??
+    pipelines[0]?.id ??
+    null;
+  const [pipelineId, setPipelineId] = useState<string | null>(defaultPipelineId);
   const [usage, setUsage] = useState<Usage>(initialUsage);
   const initialType =
     providerKeys.find((k) => k.id === initialProviderKeyId)?.type ?? "mistral";
@@ -818,6 +838,7 @@ export function ChatShell({
           documentIds: attachedDocIds,
           modelOverride: modelId,
           projectId: initialProjectId,
+          pipelineId,
         },
       }
     );
@@ -928,6 +949,13 @@ export function ChatShell({
                   className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}
                 >
                   {m.parts.map((part, i) => {
+                    if (part.type === "data-agent-event") {
+                      const data = (
+                        part as { data?: AgentEventData }
+                      ).data;
+                      if (!data) return null;
+                      return <AgentEventBadge key={i} event={data} />;
+                    }
                     if (part.type === "text") {
                       if (isUser) {
                         return (
@@ -1185,6 +1213,32 @@ export function ChatShell({
                   />
                 </PopoverContent>
               </Popover>
+
+              {pipelines.length > 1 && (
+                <Select
+                  value={pipelineId ?? defaultPipelineId ?? undefined}
+                  onValueChange={(v) => setPipelineId(v)}
+                  disabled={isBusy}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="h-8 border-0 bg-transparent shadow-none hover:bg-accent text-xs px-2 gap-1.5"
+                    aria-label="Pipeline orchestrateur"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pipelines.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="truncate">{p.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          · {p.agentCount} agent{p.agentCount > 1 ? "s" : ""}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               <Select
                 value={providerKeyId}
