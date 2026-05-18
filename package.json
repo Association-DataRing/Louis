@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "sbom": "npm sbom --sbom-format=cyclonedx --omit=dev > sbom.cdx.json && echo 'SBOM CycloneDX écrit dans sbom.cdx.json'"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.77",

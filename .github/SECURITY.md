@@ -5,6 +5,45 @@ PISTE/Pappers, mots de passe utilisateurs) et est destiné à un environnement
 de travail juridique soumis au secret professionnel. Les questions de
 sécurité sont prioritaires.
 
+## Périmètre du support
+
+| Branche | Statut | Mises à jour de sécurité |
+|---|---|---|
+| `0.1.x` (alpha en cours) | ✅ active | jusqu'à publication de `0.2` |
+| Branches antérieures (pré-v0.1) | ❌ non maintenues | — |
+
+Une fois `v1.0` publiée, la N-1 sera maintenue 12 mois après la sortie de
+la N. Pour les déploiements en production, suivre `main` ou la dernière
+release stable.
+
+## Software Bill of Materials (SBOM)
+
+Chaque GitHub Release inclut un SBOM **CycloneDX 1.x** (`louis-sbom-vX.Y.Z.cdx.json`)
+listant l'ensemble des dépendances de production avec versions, hashes
+et licences. Vous pouvez aussi le régénérer localement :
+
+```bash
+npm ci --omit=dev
+npm run sbom         # → sbom.cdx.json
+```
+
+Le SBOM peut être consommé par tout scanner compatible CycloneDX (Trivy,
+Grype, Dependency-Track, Snyk) pour cartographier la chaîne
+d'approvisionnement et corréler aux CVE publiées.
+
+## Coordination avec les autorités
+
+Conformément à l'**EU Cyber Resilience Act** (Règlement UE 2024/2847,
+Article 14), une vulnérabilité activement exploitée affectant Louis fera
+l'objet d'un signalement coordonné à :
+
+- **ENISA** (signalement initial 24h, intermédiaire 72h, final 14 jours)
+- **CSIRT-FR** (l'autorité nationale française désignée)
+
+La politique de signalement complète et le mapping détaillé des
+exigences CRA → mesures Louis sont décrits dans
+[`docs/security/cra-compliance.md`](../docs/security/cra-compliance.md).
+
 ## Signaler une vulnérabilité
 
 **Ne créez pas d'issue publique.**
@@ -144,4 +183,10 @@ Lors du déploiement de Louis, en production :
 
 ## Vulnérabilités connues
 
-Cf. `CHANGELOG.md` — section sécurité de chaque release.
+Les vulnérabilités corrigées sont documentées :
+
+- dans la section sécurité de chaque release du `CHANGELOG.md`
+- via les **GitHub Security Advisories** publiés sur ce dépôt
+  (onglet Security → Advisories) pour les vulnérabilités sévères
+- via un identifiant CVE le cas échéant (réservé via GHSA pour les
+  CVSS ≥ 7.0)

@@ -37,6 +37,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# SBOM généré (publié comme asset GitHub Release, pas commité)
+sbom.cdx.json
+
 # vercel
 .vercel
 
