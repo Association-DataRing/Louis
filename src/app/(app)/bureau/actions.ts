@@ -1,0 +1,383 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import {
+  pipelineAgents,
+  pipelines,
+  type Pipeline,
+  type PipelineAgent,
+} from "@/db/schema";
+import { findPreset, seedPresetsForUser } from "@/lib/orchestrator";
+
+export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResultWith<T> =
+  | ({ ok: true } & T)
+  | { ok: false; error: string };
+
+async function requireUserId(): Promise<string> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  return session.user.id;
+}
+
+const AGENT_ROLE_VALUES = [
+  "default-chat",
+  "orchestrator",
+  "research",
+  "drafting",
+  "reviewer",
+  "citator",
+  "legifrance",
+] as const;
+
+const pipelineMetaSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(500).nullable().optional(),
+});
+
+const agentUpdateSchema = z.object({
+  label: z.string().trim().min(1).max(80).optional(),
+  providerKeyId: z.string().uuid().nullable().optional(),
+  modelOverride: z.string().trim().max(120).nullable().optional(),
+  systemPrompt: z.string().max(8000).nullable().optional(),
+  toolAllowlist: z.array(z.string()).nullable().optional(),
+});
+
+const agentInsertSchema = z.object({
+  role: z.enum(AGENT_ROLE_VALUES),
+  label: z.string().trim().min(1).max(80),
+  providerKeyId: z.string().uuid().nullable().optional(),
+  modelOverride: z.string().trim().max(120).nullable().optional(),
+  systemPrompt: z.string().max(8000).nullable().optional(),
+  toolAllowlist: z.array(z.string()).nullable().optional(),
+});
+
+export interface PipelineWithAgents {
+  pipeline: Pipeline;
+  agents: PipelineAgent[];
+}
+
+export async function listPipelines(): Promise<PipelineWithAgents[]> {
+  const userId = await requireUserId();
+  const rows = await db
+    .select()
+    .from(pipelines)
+    .where(eq(pipelines.userId, userId))
+    .orderBy(asc(pipelines.isPreset), asc(pipelines.name));
+
+  if (rows.length === 0) {
+    await seedPresetsForUser(userId);
+    return listPipelines();
+  }
+
+  const allAgents = await db
+    .select()
+    .from(pipelineAgents)
+    .where(
+      sql`${pipelineAgents.pipelineId} IN (${sql.join(
+        rows.map((r) => sql`${r.id}`),
+        sql`, `
+      )})`
+    )
+    .orderBy(asc(pipelineAgents.position));
+
+  return rows.map((p) => ({
+    pipeline: p,
+    agents: allAgents.filter((a) => a.pipelineId === p.id),
+  }));
+}
+
+export async function getPipeline(id: string): Promise<PipelineWithAgents | null> {
+  const userId = await requireUserId();
+  const [pipeline] = await db
+    .select()
+    .from(pipelines)
+    .where(and(eq(pipelines.id, id), eq(pipelines.userId, userId)))
+    .limit(1);
+  if (!pipeline) return null;
+
+  const agents = await db
+    .select()
+    .from(pipelineAgents)
+    .where(eq(pipelineAgents.pipelineId, pipeline.id))
+    .orderBy(asc(pipelineAgents.position));
+
+  return { pipeline, agents };
+}
+
+export async function clonePipeline(
+  sourceId: string,
+  newName?: string
+): Promise<ActionResultWith<{ id: string }>> {
+  const userId = await requireUserId();
+  const source = await getPipeline(sourceId);
+  if (!source) return { ok: false, error: "Pipeline source introuvable." };
+
+  const baseName = newName ?? `${source.pipeline.name} (copie)`;
+  const slug = await uniqueSlug(userId, source.pipeline.slug);
+
+  const [created] = await db
+    .insert(pipelines)
+    .values({
+      userId,
+      slug,
+      name: baseName,
+      description: source.pipeline.description,
+      isPreset: false,
+    })
+    .returning({ id: pipelines.id });
+
+  if (source.agents.length > 0) {
+    await db.insert(pipelineAgents).values(
+      source.agents.map((a, i) => ({
+        pipelineId: created.id,
+        role: a.role,
+        label: a.label,
+        providerKeyId: a.providerKeyId,
+        modelOverride: a.modelOverride,
+        systemPrompt: a.systemPrompt,
+        toolAllowlist: a.toolAllowlist,
+        position: i,
+      }))
+    );
+  }
+
+  revalidatePath("/bureau");
+  return { ok: true, id: created.id };
+}
+
+export async function clonePresetBySlug(
+  slug: string
+): Promise<ActionResultWith<{ id: string }>> {
+  const userId = await requireUserId();
+  const preset = findPreset(slug);
+  if (!preset) return { ok: false, error: "Preset inconnu." };
+
+  const newSlug = await uniqueSlug(userId, slug);
+
+  const [created] = await db
+    .insert(pipelines)
+    .values({
+      userId,
+      slug: newSlug,
+      name: `${preset.name} (copie)`,
+      description: preset.description,
+      isPreset: false,
+    })
+    .returning({ id: pipelines.id });
+
+  if (preset.agents.length > 0) {
+    await db.insert(pipelineAgents).values(
+      preset.agents.map((a, i) => ({
+        pipelineId: created.id,
+        role: a.role,
+        label: a.label,
+        providerKeyId: null,
+        modelOverride: null,
+        systemPrompt: null,
+        toolAllowlist:
+          a.toolAllowlist === undefined ? null : a.toolAllowlist,
+        position: i,
+      }))
+    );
+  }
+
+  revalidatePath("/bureau");
+  return { ok: true, id: created.id };
+}
+
+export async function updatePipelineMeta(
+  id: string,
+  data: { name: string; description?: string | null }
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const parsed = pipelineMetaSchema.safeParse(data);
+  if (!parsed.success) return { ok: false, error: "Champs invalides." };
+
+  await db
+    .update(pipelines)
+    .set({
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(pipelines.id, id), eq(pipelines.userId, userId)));
+
+  revalidatePath("/bureau");
+  revalidatePath("/chat");
+  return { ok: true };
+}
+
+export async function deletePipeline(id: string): Promise<ActionResult> {
+  const userId = await requireUserId();
+  // Garde-fou : on refuse de supprimer le dernier pipeline restant à
+  // l'utilisateur — sinon plus rien à exécuter dans le chat.
+  const count = await db.$count(pipelines, eq(pipelines.userId, userId));
+  if (count <= 1) {
+    return {
+      ok: false,
+      error: "Impossible de supprimer votre dernière pipeline.",
+    };
+  }
+  await db
+    .delete(pipelines)
+    .where(and(eq(pipelines.id, id), eq(pipelines.userId, userId)));
+  revalidatePath("/bureau");
+  revalidatePath("/chat");
+  return { ok: true };
+}
+
+export async function updatePipelineAgent(
+  agentId: string,
+  data: z.infer<typeof agentUpdateSchema>
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const parsed = agentUpdateSchema.safeParse(data);
+  if (!parsed.success) return { ok: false, error: "Champs invalides." };
+
+  const [owned] = await db
+    .select({ id: pipelineAgents.id })
+    .from(pipelineAgents)
+    .innerJoin(pipelines, eq(pipelines.id, pipelineAgents.pipelineId))
+    .where(and(eq(pipelineAgents.id, agentId), eq(pipelines.userId, userId)))
+    .limit(1);
+  if (!owned) return { ok: false, error: "Agent introuvable." };
+
+  await db
+    .update(pipelineAgents)
+    .set({
+      ...(parsed.data.label !== undefined && { label: parsed.data.label }),
+      ...(parsed.data.providerKeyId !== undefined && {
+        providerKeyId: parsed.data.providerKeyId,
+      }),
+      ...(parsed.data.modelOverride !== undefined && {
+        modelOverride: parsed.data.modelOverride,
+      }),
+      ...(parsed.data.systemPrompt !== undefined && {
+        systemPrompt: parsed.data.systemPrompt,
+      }),
+      ...(parsed.data.toolAllowlist !== undefined && {
+        toolAllowlist: parsed.data.toolAllowlist,
+      }),
+      updatedAt: new Date(),
+    })
+    .where(eq(pipelineAgents.id, agentId));
+
+  revalidatePath("/bureau");
+  return { ok: true };
+}
+
+export async function addAgentToPipeline(
+  pipelineId: string,
+  data: z.infer<typeof agentInsertSchema>
+): Promise<ActionResultWith<{ id: string }>> {
+  const userId = await requireUserId();
+  const parsed = agentInsertSchema.safeParse(data);
+  if (!parsed.success) return { ok: false, error: "Champs invalides." };
+
+  const [pipeline] = await db
+    .select({ id: pipelines.id })
+    .from(pipelines)
+    .where(and(eq(pipelines.id, pipelineId), eq(pipelines.userId, userId)))
+    .limit(1);
+  if (!pipeline) return { ok: false, error: "Pipeline introuvable." };
+
+  const maxPos = await db
+    .select({ p: sql<number>`coalesce(max(${pipelineAgents.position}), -1)` })
+    .from(pipelineAgents)
+    .where(eq(pipelineAgents.pipelineId, pipelineId));
+  const nextPos = (maxPos[0]?.p ?? -1) + 1;
+
+  const [row] = await db
+    .insert(pipelineAgents)
+    .values({
+      pipelineId,
+      role: parsed.data.role,
+      label: parsed.data.label,
+      providerKeyId: parsed.data.providerKeyId ?? null,
+      modelOverride: parsed.data.modelOverride ?? null,
+      systemPrompt: parsed.data.systemPrompt ?? null,
+      toolAllowlist: parsed.data.toolAllowlist ?? null,
+      position: nextPos,
+    })
+    .returning({ id: pipelineAgents.id });
+
+  revalidatePath("/bureau");
+  return { ok: true, id: row.id };
+}
+
+export async function removeAgentFromPipeline(
+  agentId: string
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const [owned] = await db
+    .select({
+      id: pipelineAgents.id,
+      pipelineId: pipelineAgents.pipelineId,
+    })
+    .from(pipelineAgents)
+    .innerJoin(pipelines, eq(pipelines.id, pipelineAgents.pipelineId))
+    .where(and(eq(pipelineAgents.id, agentId), eq(pipelines.userId, userId)))
+    .limit(1);
+  if (!owned) return { ok: false, error: "Agent introuvable." };
+
+  const remaining = await db.$count(
+    pipelineAgents,
+    eq(pipelineAgents.pipelineId, owned.pipelineId)
+  );
+  if (remaining <= 1) {
+    return {
+      ok: false,
+      error: "Une pipeline doit contenir au moins un agent.",
+    };
+  }
+
+  await db.delete(pipelineAgents).where(eq(pipelineAgents.id, agentId));
+  revalidatePath("/bureau");
+  return { ok: true };
+}
+
+export async function reorderPipelineAgents(
+  pipelineId: string,
+  agentIds: string[]
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const [pipeline] = await db
+    .select({ id: pipelines.id })
+    .from(pipelines)
+    .where(and(eq(pipelines.id, pipelineId), eq(pipelines.userId, userId)))
+    .limit(1);
+  if (!pipeline) return { ok: false, error: "Pipeline introuvable." };
+
+  for (let i = 0; i < agentIds.length; i++) {
+    await db
+      .update(pipelineAgents)
+      .set({ position: i, updatedAt: new Date() })
+      .where(
+        and(
+          eq(pipelineAgents.id, agentIds[i]),
+          eq(pipelineAgents.pipelineId, pipelineId)
+        )
+      );
+  }
+  revalidatePath("/bureau");
+  return { ok: true };
+}
+
+async function uniqueSlug(userId: string, base: string): Promise<string> {
+  let slug = base;
+  let n = 2;
+  while (true) {
+    const [hit] = await db
+      .select({ id: pipelines.id })
+      .from(pipelines)
+      .where(and(eq(pipelines.userId, userId), eq(pipelines.slug, slug)))
+      .limit(1);
+    if (!hit) return slug;
+    slug = `${base}-${n++}`;
+  }
+}
