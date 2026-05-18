@@ -242,7 +242,7 @@ npm install
 
 > Si vous modifiez `package.json` plus tard, régénérez le lockfile
 > avec `npm install --include=optional` pour ne pas casser la CI
-> Linux (cf. [`CONTRIBUTING.md`](./CONTRIBUTING.md)).
+> Linux (cf. [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md)).
 
 **4. Initialiser le schéma de base et créer un admin**
 
@@ -427,7 +427,7 @@ Louis manipule des secrets sensibles (clés API providers, identifiants
 PISTE/Pappers, hash de mots de passe) et est destiné à un environnement
 de travail soumis au secret professionnel.
 
-- Politique de divulgation responsable : [`SECURITY.md`](./SECURITY.md)
+- Politique de divulgation responsable : [`SECURITY.md`](./.github/SECURITY.md)
 - Modèle de menace : [`docs/security/threat-model.md`](./docs/security/threat-model.md)
 - Rotation des secrets : [`docs/security/secret-rotation.md`](./docs/security/secret-rotation.md)
 - Sauvegardes chiffrées : [`docs/admin/backups.md`](./docs/admin/backups.md)
@@ -447,9 +447,9 @@ se stabilisent. D'ici là :
   juridique manquant, ou d'une question d'architecture
 - 📣 Partager le projet à vos confrères et consœurs
 
-Voir [`CONTRIBUTING.md`](./CONTRIBUTING.md),
-[`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) et
-[`GOVERNANCE.md`](./GOVERNANCE.md).
+Voir [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md),
+[`CODE_OF_CONDUCT.md`](./.github/CODE_OF_CONDUCT.md) et
+[`GOVERNANCE.md`](./.github/GOVERNANCE.md).
 
 ---
 
@@ -460,7 +460,7 @@ d'une souveraineté numérique concrète pour les professions juridiques
 françaises.
 
 Les dépendances tierces et leurs licences sont documentées dans
-[`THIRD_PARTY/NOTICE.md`](./THIRD_PARTY/NOTICE.md).
+[`NOTICE.md`](./NOTICE.md).
 
 ---
 
@@ -473,7 +473,7 @@ instance publique de Louis doit revenir à la communauté.
 
 <div align="center">
 
-*« Justicia est constans et perpetua voluntas jus suum cuique tribuendi. »*
+*« Justitia est constans et perpetua voluntas jus suum cuique tribuendi. »*
 
 — Ulpien, *Digeste* 1.1.10.
 
