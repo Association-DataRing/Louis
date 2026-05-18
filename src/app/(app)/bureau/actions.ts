@@ -169,6 +169,8 @@ export async function clonePresetBySlug(
       name: `${preset.name} (copie)`,
       description: preset.description,
       isPreset: false,
+      mode: preset.mode ?? "sequential",
+      rounds: preset.rounds ?? 1,
     })
     .returning({ id: pipelines.id });
 
@@ -180,7 +182,7 @@ export async function clonePresetBySlug(
         label: a.label,
         providerKeyId: null,
         modelOverride: null,
-        systemPrompt: null,
+        systemPrompt: a.systemPrompt ?? null,
         toolAllowlist:
           a.toolAllowlist === undefined ? null : a.toolAllowlist,
         position: i,

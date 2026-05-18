@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import {
   Sheet,
@@ -87,8 +88,14 @@ export function AgentEditSheet({
       if (result.ok) {
         onOpenChange(false);
         router.refresh();
+        toast.success("Agent enregistré", {
+          description: `${label.trim() || agent.label} a été mis à jour.`,
+        });
       } else {
         setError(result.error);
+        toast.error("Enregistrement impossible", {
+          description: result.error,
+        });
       }
     });
   }

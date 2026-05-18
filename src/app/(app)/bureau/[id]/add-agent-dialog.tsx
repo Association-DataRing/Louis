@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { IconPlus } from "@tabler/icons-react";
 import {
   Dialog,
@@ -103,8 +104,14 @@ export function AddAgentDialog({
         setOpen(false);
         reset();
         router.refresh();
+        toast.success("Agent ajouté", {
+          description: `${label.trim()} fait désormais partie de la pipeline.`,
+        });
       } else {
         setError(result.error);
+        toast.error("Impossible d'ajouter l'agent", {
+          description: result.error,
+        });
       }
     });
   }

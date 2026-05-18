@@ -18,6 +18,7 @@ import { AgentEditSheet } from "../agent-edit-sheet";
 import { AgentFlowNode, type AgentFlowNodeData } from "./agent-flow-node";
 import { removeAgentFromPipeline } from "../actions";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface PipelineWorkflowProps {
   pipeline: Pipeline;
@@ -170,8 +171,17 @@ function PipelineWorkflowInner({
       )
         return;
       startTransition(async () => {
-        await removeAgentFromPipeline(agent.id);
+        const result = await removeAgentFromPipeline(agent.id);
         router.refresh();
+        if (result.ok) {
+          toast.success("Agent retiré", {
+            description: `${agent.label} a été retiré de la pipeline.`,
+          });
+        } else {
+          toast.error("Suppression impossible", {
+            description: result.error,
+          });
+        }
       });
     },
     [router]

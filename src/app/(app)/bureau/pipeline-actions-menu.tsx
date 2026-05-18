@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   IconCopy,
   IconDots,
@@ -50,8 +51,13 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
     setError(null);
     startTransition(async () => {
       const result = await clonePipeline(pipeline.id);
-      if (result.ok) router.refresh();
-      else setError(result.error);
+      if (result.ok) {
+        router.refresh();
+        toast.success("Pipeline clonée");
+      } else {
+        setError(result.error);
+        toast.error("Clonage impossible", { description: result.error });
+      }
     });
   }
 
@@ -64,8 +70,13 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
       return;
     startTransition(async () => {
       const result = await deletePipeline(pipeline.id);
-      if (result.ok) router.refresh();
-      else setError(result.error);
+      if (result.ok) {
+        router.refresh();
+        toast.success("Pipeline supprimée");
+      } else {
+        setError(result.error);
+        toast.error("Suppression impossible", { description: result.error });
+      }
     });
   }
 
@@ -79,8 +90,10 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
       if (result.ok) {
         setRenameOpen(false);
         router.refresh();
+        toast.success("Pipeline mise à jour");
       } else {
         setError(result.error);
+        toast.error("Mise à jour impossible", { description: result.error });
       }
     });
   }

@@ -47,6 +47,8 @@ export async function seedPresetsForUser(userId: string): Promise<Pipeline[]> {
         name: preset.name,
         description: preset.description,
         isPreset: true,
+        mode: preset.mode ?? "sequential",
+        rounds: preset.rounds ?? 1,
       })
       .returning();
     created.push(row);
@@ -59,7 +61,7 @@ export async function seedPresetsForUser(userId: string): Promise<Pipeline[]> {
           label: agent.label,
           providerKeyId: fallbackProviderKeyId,
           modelOverride: null,
-          systemPrompt: null,
+          systemPrompt: agent.systemPrompt ?? null,
           toolAllowlist:
             agent.toolAllowlist === undefined ? null : agent.toolAllowlist,
           position,

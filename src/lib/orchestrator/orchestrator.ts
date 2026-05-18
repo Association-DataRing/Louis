@@ -167,6 +167,17 @@ export class Orchestrator {
               ),
             });
             const text = await collectText(result);
+            writer.write({
+              type: "data-agent-output",
+              data: {
+                pipelineRunId,
+                agentId: def.id,
+                role: def.role,
+                label: def.label,
+                output: text.value,
+                round,
+              },
+            });
             await this.emit(args, writer, {
               type: "agent_finish",
               pipelineRunId,
@@ -288,6 +299,16 @@ export class Orchestrator {
             priorOutputs: [...priorOutputs],
           });
           const text = await collectText(result);
+          writer.write({
+            type: "data-agent-output",
+            data: {
+              pipelineRunId,
+              agentId: def.id,
+              role: def.role,
+              label: def.label,
+              output: text.value,
+            },
+          });
           await this.emit(args, writer, {
             type: "agent_finish",
             pipelineRunId,
@@ -361,6 +382,19 @@ export class Orchestrator {
       role: def.role,
       label: def.label,
       output: text.value,
+    });
+    // Émet le texte complet de cet agent intermédiaire dans un canal
+    // distinct (data-agent-output) que le client utilise pour la theatre
+    // view. Distinct de agent_finish dont le preview reste tronqué.
+    args.writer.write({
+      type: "data-agent-output",
+      data: {
+        pipelineRunId,
+        agentId: def.id,
+        role: def.role,
+        label: def.label,
+        output: text.value,
+      },
     });
     await this.emit(args, args.writer, {
       type: "agent_finish",

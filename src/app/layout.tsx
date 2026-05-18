@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, EB_Garamond } from "next/font/google";
+import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -44,7 +45,23 @@ export default function RootLayout({
       )}
     >
       <body className="min-h-full flex flex-col">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <Toaster
+            position="bottom-right"
+            richColors
+            closeButton
+            theme="system"
+            toastOptions={{
+              classNames: {
+                toast:
+                  "!font-sans !rounded-xl !border !border-border !bg-card !text-foreground !shadow-lg",
+                title: "!font-medium !text-sm",
+                description: "!text-xs !text-muted-foreground",
+              },
+            }}
+          />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { IconBriefcase, IconLoader2, IconCheck, IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { roleMeta } from "../bureau/agent-role-meta";
+import { OpenTheatreButton } from "./agent-theatre";
 
 export interface LiveAgentState {
   id: string;
@@ -19,6 +20,7 @@ interface LiveWorkflowPanelProps {
   pipelineName: string;
   agents: LiveAgentState[];
   onClose?: () => void;
+  onOpenTheatre?: () => void;
 }
 
 const verbByRole: Record<string, string> = {
@@ -43,6 +45,7 @@ export function LiveWorkflowPanel({
   pipelineName,
   agents,
   onClose,
+  onOpenTheatre,
 }: LiveWorkflowPanelProps) {
   return (
     <AnimatePresence>
@@ -64,6 +67,9 @@ export function LiveWorkflowPanel({
               </div>
               <div className="text-sm font-medium truncate">{pipelineName}</div>
             </div>
+            {onOpenTheatre && (
+              <OpenTheatreButton onClick={onOpenTheatre} />
+            )}
             {onClose && (
               <button
                 type="button"

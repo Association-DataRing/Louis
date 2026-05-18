@@ -13,6 +13,11 @@ import {
   LiveWorkflowPanel,
   type LiveAgentState,
 } from "./live-workflow-panel";
+import {
+  AgentTheatre,
+  buildAgentTurns,
+  type AgentTurn,
+} from "./agent-theatre";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -927,6 +932,39 @@ export function ChatShell({
     !manuallyClosed &&
     (someAgentActive || someAgentDone);
 
+  // Theatre view : agrège les sorties intermédiaires (data-agent-output)
+  // + le texte streamé du synthétiseur final. Reconstruit la timeline
+  // chronologique de la délibération du conseil.
+  const [theatreOpen, setTheatreOpen] = useState(false);
+  const theatreTurns: AgentTurn[] = useMemo(() => {
+    if (!selectedPipeline) return [];
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    if (!lastAssistant?.parts) return [];
+
+    // Collecte tous les events agents et le texte streamé final du
+    // dernier message assistant.
+    const events: AgentEventData[] = [];
+    let finalText = "";
+    for (const part of lastAssistant.parts) {
+      if (part.type === "data-agent-event") {
+        const d = (part as { data?: AgentEventData }).data;
+        if (d) events.push(d);
+      } else if (part.type === "text") {
+        const text = (part as { text?: string }).text;
+        if (text) finalText += text;
+      }
+    }
+    const isLastMessageStreaming = isBusy;
+    return buildAgentTurns(
+      lastAssistant.parts as { type: string; data?: unknown; text?: string }[],
+      events,
+      finalText || null,
+      isLastMessageStreaming
+    );
+  }, [messages, selectedPipeline, isBusy]);
+
   // Auto-ouverture du DocPanel dès qu'un tool generate_document /
   // edit_document termine avec un document_id. On scanne les parts du
   // dernier message assistant et on prend le plus récent non vu.
@@ -1240,8 +1278,22 @@ export function ChatShell({
                 pipelineName={selectedPipeline.name}
                 agents={liveAgents}
                 onClose={() => setManuallyClosed(true)}
+                onOpenTheatre={
+                  theatreTurns.length > 0
+                    ? () => setTheatreOpen(true)
+                    : undefined
+                }
               />
             </div>
+          )}
+
+          {selectedPipeline && (
+            <AgentTheatre
+              open={theatreOpen}
+              onOpenChange={setTheatreOpen}
+              pipelineName={selectedPipeline.name}
+              turns={theatreTurns}
+            />
           )}
 
           <form

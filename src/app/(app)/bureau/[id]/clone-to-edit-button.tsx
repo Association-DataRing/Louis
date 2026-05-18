@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { IconCopy } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { clonePipeline } from "../actions";
@@ -25,6 +26,11 @@ export function CloneToEditButton({ pipelineId }: CloneToEditButtonProps) {
       const result = await clonePipeline(pipelineId);
       if (result.ok) {
         router.push(`/bureau/${result.id}`);
+        toast.success("Pipeline clonée", {
+          description: "Vous pouvez maintenant éditer chaque agent.",
+        });
+      } else {
+        toast.error("Clonage impossible", { description: result.error });
       }
     });
   }
