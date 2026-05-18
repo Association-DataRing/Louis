@@ -2,17 +2,15 @@
 
 # Louis
 
-### L'intelligence juridique, strictement souveraine.
+### L'intelligence juridique, une discipline souveraine, reprendre le contrôle .
 
 [![CI](https://github.com/D4kooo/louis/actions/workflows/ci.yml/badge.svg)](https://github.com/D4kooo/louis/actions/workflows/ci.yml)
 [![Licence : AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-000091)](./LICENSE)
 [![Status : Alpha](https://img.shields.io/badge/Status-Alpha-orange)](#état-réel-des-fonctionnalités)
 [![Made in France](https://img.shields.io/badge/Made_in-France-000091?labelColor=FFFFFF)]()
 
-Plateforme d'intelligence artificielle open-source pour les professions
-juridiques. Conçue par l'**association DataRing** pour les cabinets
-d'avocats, les directions juridiques et les juristes qui refusent de
-confier leur secret professionnel à un service tiers.
+Application prototype d'intelligence artificielle open-source pour les professions
+juridiques. Conçue par l'**association DataRing** 
 
 **Vos clés. Vos données. Votre infrastructure.**
 
@@ -40,7 +38,7 @@ confier leur secret professionnel à un service tiers.
 ## Le problème
 
 Les outils d'IA juridique grand public posent un dilemme inacceptable
-pour la profession : pour bénéficier des modèles les plus capables, il
+pour la profession du droit : pour bénéficier des modèles les plus capables, il
 faut envoyer les pièces de ses clients chez un éditeur de SaaS, le plus
 souvent américain, dont les engagements de confidentialité s'arrêtent
 là où commencent ses obligations de coopération avec une autorité
@@ -50,14 +48,21 @@ L'alternative — renoncer à l'IA — n'est pas tenable. Les délais
 compressent, les volumes documentaires explosent, les confrères
 équipés vont plus vite.
 
-Louis propose une troisième voie : un logiciel libre, auto-hébergeable,
-qui orchestre **vos propres** fournisseurs d'IA et **vos propres**
-sources juridiques. Aucun appel ne transite par DataRing. Aucune donnée
-n'est partagée avec qui que ce soit hors de votre infrastructure.
+Le droit est l'art de rendre a chacun le sien, l'outillage du droit doit rester nôtre. L'outil du droit s'est éloigné de l'avocat, du juriste, de l'institution : Hébergé ailleurs calculé ailleurs, régi par d'autres droits. Et a force de "prêt a emploi", la création intellectuelle se délègue par fragments à des machines opérées par d'autres>
 
-> **Le nom.** Louis fait référence à Louis IX rendant la justice sous
-> le chêne de Vincennes — figure fondatrice de la justice française.
-> La technologie change ; la mission de la profession, non.
+Louis est une réponse à cette dépossession : une application web open source conçue pour les professions du droit, auto-hébergeable, agnostique de fournisseur distribuée sous licence GNU AGPL 3.0 or later.
+
+Louis ne vend pas d'IA juridique, n'est pas un produit mais un prototype de solutions libres dans le bac a sable d'intérêt général Data Ring : Un objet de travail collectif mis a disposition pour être éprouvé, critiqué, approprié. 
+
+Le Lab IA de Data Ring est un  bac a sable,  un espace ouvert où l'on essaie, où l'on rate , où l'on recommence où l'on apprend ensemble à habiter techniquement la Technologie. La souveraineté en droit ne se décrète pas elle s'arbitre: Regagner pour créer, pour retrouver la maitrise de ses propres worflows, agents, sa propre forme d'exercice.
+
+C'est un objet de travail mis à l'épreuve : la numérotation v0.1 dit explicitement que le code est en exploration, que l'architecture peut évoluer, que les interfaces ne sont pas stabilisées:
+C'est une activité de recherche et de logiciel libre sans conterpartie commerciale ni engagement juridique ou opérationnel. 
+
+Vous orchestrez sous votre contrôle **vos propres** fournisseurs d'IA et **vos propres**
+sources juridiques. Aucun appel ne transite par DataRing. Aucune donnée
+n'est partagée avec qui que ce soit hors de votre infrastructure. le deployeur de louis est responsable de traitement unique. Vous decidez.
+
 
 ---
 
@@ -124,30 +129,42 @@ Aucune surprise en fin de période.
 
 ---
 
-## Le manifeste
+## Le manifeste : Vous êtes votre seul maître 
+Au sens du droit et au sens de le technique
+
 
 1. **Vos clés, pas les nôtres.** Louis fonctionne en *Bring Your Own
    Key*. Vous branchez vos comptes Mistral, Scaleway, OVH, Anthropic,
-   OpenAI, Albert, ou un modèle auto-hébergé. **Aucun appel IA ne
-   transite par DataRing.**
+   OpenAI, Albert ou un modèle auto-hébergé. Vous choisissez votre fournisseur 
+    **Aucun appel IA ne transite par DataRing.**
 
-2. **Vos connecteurs, pas les nôtres.** PISTE (Légifrance), Pappers —
+3. **Vos connecteurs sous vos accés, pas les nôtres.** PISTE (Légifrance), Pappers —
    vous configurez vos accès, vos quotas, vos contrats. Louis
    orchestre, n'intermédie pas.
 
-3. **Vos données, chez vous.** PostgreSQL local, pgvector local,
+4. **Vos données, chez vous sur votre infra .** PostgreSQL local, pgvector local,
    fichiers chiffrés sur **votre** stockage (S3 compatible : MinIO,
    Scaleway, OVH, AWS). Docker Compose en une commande.
 
-4. **Open-source AGPL-3.0.** Code lisible, modifiable, auditable.
+5. **Open-source AGPL-3.0.** Code lisible, modifiable, auditable.
    Toute amélioration apportée à une instance publique de Louis
    doit revenir à la communauté. Il n'y aura jamais de version
    « premium » cachée du moteur.
 
-5. **Souverain par défaut.** Les fournisseurs européens sont en
+6. **Souverain par défaut.** Les fournisseurs européens sont en
    première ligne dans l'interface ; les fournisseurs américains
    restent disponibles mais explicitement étiquetés. Vous choisissez
    où va chaque requête.
+   Le choix vous appartient selon votre approche par les risques et envionnement de travail
+
+7. **Autonomie creative.** Vous experimentez, vous etes acteur ou auteurs de vos propres outils 
+   selon differents niveaux d'autonomie, soit:
+   A. llm externe sous votre propre cle, pour des usages non couverts par le secret professionel,
+   ou pour lequel un accord de sous traitance RGPD DPA est conclu et documenté, vous maitrisez vos prompts et vos workflows mais pas le modele
+   B. llm souverain en API, vos clé, vos données transitent par un prestataire UE sous DPA. le Risque          d'extraterritorialité (Cloud Act FISA 702) est minimisé sans etre nul, il depends de la chaine capitalistique et infrastructurelle du prestataire a examiner au cas par cas. Vous orchestrez sur un socle juridiquement europeen.
+   C. llm heberger en open weight: vous executez un modele (qwen, llamma, etc...) sur votre propre infrastructure, aucune donnee ne quitte votre perimetre. Vous devenez auteur de vos propres outils.
+
+   Louis permet de tester et de combiner ces 3 voies par usage.
 
 ---
 
@@ -423,16 +440,16 @@ pour la référence complète.
 
 ## Sécurité
 
-Louis manipule des secrets sensibles (clés API providers, identifiants
+Louis est attentif a la protection (clés API providers, identifiants
 PISTE/Pappers, hash de mots de passe) et est destiné à un environnement
-de travail soumis au secret professionnel.
+de travail soumis au secret professionnel. Il est par construction non garanti et deliberement modeste.
 
 - Politique de divulgation responsable : [`SECURITY.md`](./.github/SECURITY.md)
 - Modèle de menace : [`docs/security/threat-model.md`](./docs/security/threat-model.md)
 - Rotation des secrets : [`docs/security/secret-rotation.md`](./docs/security/secret-rotation.md)
 - Sauvegardes chiffrées : [`docs/admin/backups.md`](./docs/admin/backups.md)
 
-Signaler une vulnérabilité : **security@data-ring.net**.
+Signaler une vulnérabilité : **contact@data-ring.net**.
 
 ---
 
@@ -445,7 +462,9 @@ se stabilisent. D'ici là :
 - ⭐ Mettre une étoile au dépôt si l'idée vous intéresse
 - 💬 Ouvrir une issue pour discuter d'un cas d'usage, d'un connecteur
   juridique manquant, ou d'une question d'architecture
-- 📣 Partager le projet à vos confrères et consœurs
+- 📣 Partager le projet
+- Documenter et faire remonter les retours d'experience sur contact@data-ring.net
+  
 
 Voir [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md),
 [`CODE_OF_CONDUCT.md`](./.github/CODE_OF_CONDUCT.md) et
@@ -455,9 +474,12 @@ Voir [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md),
 
 ## Crédits
 
-Louis est porté par l'**association DataRing**, qui défend une vision
-d'une souveraineté numérique concrète pour les professions juridiques
-françaises.
+Louis est porté par l'**association DataRing**, au sein de son bac a sable Lab IA, avec l'equipe de benevoles passionnes : 
+-France Charruyer, Avocat en Innovation, Technologies avancees et Cybersecurite, 
+-Frederic Ollivier Docteur en Informatique,  RSSI et Tech lead Auditor, 
+-Clement GINER , ingenierie IA, developpeur
+
+
 
 Les dépendances tierces et leurs licences sont documentées dans
 [`NOTICE.md`](./NOTICE.md).
