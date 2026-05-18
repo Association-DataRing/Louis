@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
-import { AgentEventBadge, type AgentEventData } from "./agent-event-badge";
+import {
+  AgentEventBadge,
+  dedupeAgentEvents,
+  type AgentEventData,
+} from "./agent-event-badge";
 import {
   LiveWorkflowPanel,
   type LiveAgentState,
@@ -1017,20 +1021,42 @@ export function ChatShell({
           <EmptyState userName={userName} />
         ) : (
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
-            {messages.map((m) => {
+            {messages.map((m, msgIdx) => {
               const isUser = m.role === "user";
+              // Pour les messages assistants : on déduplique les events
+              // d'agents en amont du rendering pour n'afficher qu'UN badge
+              // par agentId (latest state). Le chrono « live » ne tourne
+              // que sur le dernier message en cours de streaming.
+              const isLastAssistant =
+                !isUser && msgIdx === messages.length - 1;
+              const isLiveMessage = isLastAssistant && isBusy;
+              const dedupedAgentEvents = !isUser
+                ? dedupeAgentEvents(
+                    m.parts as { type: string; data?: unknown }[]
+                  )
+                : [];
+
               return (
                 <div
                   key={m.id}
                   className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}
                 >
+                  {dedupedAgentEvents.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {dedupedAgentEvents.map((evt) => (
+                        <AgentEventBadge
+                          key={evt.agentId}
+                          event={evt}
+                          isLive={isLiveMessage}
+                        />
+                      ))}
+                    </div>
+                  )}
                   {m.parts.map((part, i) => {
                     if (part.type === "data-agent-event") {
-                      const data = (
-                        part as { data?: AgentEventData }
-                      ).data;
-                      if (!data) return null;
-                      return <AgentEventBadge key={i} event={data} />;
+                      // Rendu déjà fait via dedupedAgentEvents au-dessus —
+                      // on skippe ici pour éviter les doublons.
+                      return null;
                     }
                     if (part.type === "text") {
                       if (isUser) {
