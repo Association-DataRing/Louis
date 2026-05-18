@@ -42,6 +42,12 @@ export type ProviderMeta = {
   baseUrlPlaceholder?: string;
   /** Help text shown under the baseUrl input when `requiresBaseUrl` is true. */
   baseUrlHelp?: string;
+  /** SVG logo path under /public, used in CutoutCard media. */
+  logo: string;
+  /** Brand-tinted background for the media zone (CSS color or gradient). */
+  accent: string;
+  /** Foreground color used to tint a monochrome logo against the accent. */
+  logoTint: string;
 };
 
 export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
@@ -55,6 +61,9 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     requiresBaseUrl: false,
     testBaseUrl: "https://api.mistral.ai/v1",
     authStyle: "bearer",
+    logo: "/logos/providers/mistral.svg",
+    accent: "linear-gradient(135deg, #FF7000 0%, #FA520F 100%)",
+    logoTint: "#FFFFFF",
   },
   scaleway: {
     type: "scaleway",
@@ -69,6 +78,9 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     baseUrlPlaceholder: "https://api.scaleway.ai/VOTRE_PROJECT_ID/v1",
     baseUrlHelp:
       "Scaleway nécessite l'ID de votre projet dans l'URL. Récupérez-le sur console.scaleway.com → Projets, puis remplacez VOTRE_PROJECT_ID ci-dessus.",
+    logo: "/logos/providers/scaleway.svg",
+    accent: "linear-gradient(135deg, #4F0599 0%, #2B0259 100%)",
+    logoTint: "#FFFFFF",
   },
   ovh: {
     type: "ovh",
@@ -84,6 +96,9 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
       "https://meta-llama-3-1-8b-instruct.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1",
     baseUrlHelp:
       "OVH expose un endpoint par modèle. Copiez l'URL OpenAI-compatible depuis endpoints.ai.cloud.ovh.net après avoir choisi votre modèle.",
+    logo: "/logos/providers/ovh.svg",
+    accent: "linear-gradient(135deg, #123F6D 0%, #001F3D 100%)",
+    logoTint: "#FFFFFF",
   },
   albert: {
     type: "albert",
@@ -95,6 +110,9 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     requiresBaseUrl: false,
     testBaseUrl: "https://albert.api.etalab.gouv.fr/v1",
     authStyle: "bearer",
+    logo: "/logos/providers/albert.svg",
+    accent: "linear-gradient(135deg, #000091 0%, #1212FF 60%, #E1000F 100%)",
+    logoTint: "#FFFFFF",
   },
   anthropic: {
     type: "anthropic",
@@ -106,6 +124,9 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     requiresBaseUrl: false,
     testBaseUrl: "https://api.anthropic.com/v1",
     authStyle: "x-api-key",
+    logo: "/logos/providers/anthropic.svg",
+    accent: "linear-gradient(135deg, #1F1F1E 0%, #0E0E0D 100%)",
+    logoTint: "#D97757",
   },
   openai: {
     type: "openai",
@@ -117,6 +138,9 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     requiresBaseUrl: false,
     testBaseUrl: "https://api.openai.com/v1",
     authStyle: "bearer",
+    logo: "/logos/providers/openai.svg",
+    accent: "linear-gradient(135deg, #10A37F 0%, #0B6B53 100%)",
+    logoTint: "#FFFFFF",
   },
   openai_compatible: {
     type: "openai_compatible",
@@ -131,6 +155,9 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     baseUrlPlaceholder: "http://localhost:11434/v1",
     baseUrlHelp:
       "Endpoint OpenAI-compatible (Ollama, vLLM, llama.cpp, LiteLLM, etc.).",
+    logo: "/logos/providers/openai_compatible.svg",
+    accent: "linear-gradient(135deg, #3F3F46 0%, #18181B 100%)",
+    logoTint: "#A1A1AA",
   },
 };
 

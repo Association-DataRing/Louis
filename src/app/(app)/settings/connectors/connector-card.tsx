@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type MouseEvent } from "react";
 import {
   IconCheck,
   IconCircleDashed,
   IconDots,
   IconExternalLink,
   IconKey,
-  IconLock,
   IconTrash,
 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
@@ -31,11 +30,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  CutoutCard,
+  CutoutCardAction,
+  CutoutCardContent,
+  CutoutCardInsetLabel,
+  CutoutCardMedia,
+  CutoutCardOverlay,
+  CutoutCardPin,
+  CutoutCorner,
+  cutoutCardSurfaceClassName,
+} from "@/components/ui/cutout-card";
+import {
   CATEGORY_LABEL,
   CONNECTOR_CATALOG,
   type ConnectorType,
 } from "@/lib/connectors/catalog";
 import type { ConnectorKey } from "@/db/schema/connector-keys";
+import { cn } from "@/lib/utils";
 import {
   createConnectorKey,
   deleteConnectorKey,
@@ -48,6 +59,10 @@ type Props = {
   keys: ConnectorKey[];
 };
 
+function stopCardClick(e: MouseEvent) {
+  e.stopPropagation();
+}
+
 export function ConnectorCard({ type, keys }: Props) {
   const meta = CONNECTOR_CATALOG[type];
   const Icon = meta.icon;
@@ -58,14 +73,8 @@ export function ConnectorCard({ type, keys }: Props) {
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [error, setError] = useState<string | null>(null);
 
-  function openCreate() {
-    setDialogMode("create");
-    setError(null);
-    setDialogOpen(true);
-  }
-
-  function openEdit() {
-    setDialogMode("edit");
+  function openDialog() {
+    setDialogMode(isConfigured ? "edit" : "create");
     setError(null);
     setDialogOpen(true);
   }
@@ -85,19 +94,100 @@ export function ConnectorCard({ type, keys }: Props) {
     });
   }
 
-  const categoryVariant =
-    meta.category === "official" ? "default" : "secondary";
-
   return (
-    <div className="border border-border rounded-lg p-5 bg-card flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="size-10 shrink-0 rounded-md bg-muted flex items-center justify-center">
-            <Icon className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
+    <>
+      <CutoutCard
+        className={cn(cutoutCardSurfaceClassName, "flex flex-col")}
+        role="button"
+        tabIndex={0}
+        aria-label={`${isConfigured ? "Modifier" : "Configurer"} ${meta.label}`}
+        onClick={openDialog}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openDialog();
+          }
+        }}
+      >
+        <CutoutCardMedia
+          className="relative h-44 w-full"
+          style={{ background: meta.accent }}
+        >
+          <div
+            aria-hidden
+            className="absolute inset-0 m-auto h-20 w-20 transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover/cutout:scale-110"
+            style={{
+              WebkitMaskImage: `url(${meta.logo})`,
+              maskImage: `url(${meta.logo})`,
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              backgroundColor: meta.logoTint,
+            }}
+          />
+          <CutoutCardOverlay />
+
+          {/* Category pin — top-left */}
+          <CutoutCardPin className="left-3 top-3 flex items-center gap-1 rounded-full bg-card/85 px-2 py-1 backdrop-blur-sm">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-card-foreground">
+              {CATEGORY_LABEL[meta.category]}
+            </span>
+          </CutoutCardPin>
+
+          {/* Switch pin — top-right floating pill */}
+          {isConfigured && (
+            <CutoutCardPin
+              className="right-3 top-3 flex items-center gap-2 rounded-full bg-card/85 px-2.5 py-1 backdrop-blur-sm"
+              onClick={stopCardClick}
+            >
+              <span className="text-[10px] font-medium text-card-foreground/80">
+                {primary.isActive ? "Activé" : "Inactif"}
+              </span>
+              <Switch
+                checked={primary.isActive}
+                disabled={pending}
+                onCheckedChange={() => {
+                  startTransition(() => toggleConnectorKeyActive(primary.id));
+                }}
+                aria-label="Activer ce connecteur"
+              />
+            </CutoutCardPin>
+          )}
+
+          {/* Status inset label — bottom-left */}
+          <CutoutCardInsetLabel className="bottom-0 left-0 flex items-center gap-2 rounded-tr-[20px] bg-card px-4 py-2.5">
+            {isConfigured ? (
+              <>
+                <IconCheck className="size-3.5 text-success" />
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-card-foreground">
+                  Configuré
+                </span>
+                {keys.length > 1 && (
+                  <Badge variant="outline" className="text-[10px]">
+                    +{keys.length - 1}
+                  </Badge>
+                )}
+              </>
+            ) : (
+              <>
+                <IconCircleDashed className="size-3.5 text-muted-foreground" />
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Non configuré
+                </span>
+              </>
+            )}
+            <CutoutCorner className="absolute -right-[31px] -bottom-px rotate-90 text-card" />
+            <CutoutCorner className="absolute -top-[31px] -left-px rotate-90 text-card" />
+          </CutoutCardInsetLabel>
+        </CutoutCardMedia>
+
+        <CutoutCardContent className="flex flex-1 flex-col gap-3 p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex items-center gap-2">
+              <Icon className="size-4 shrink-0 text-muted-foreground" />
               <h3 className="font-heading text-base tracking-tight truncate">
                 {meta.label}
               </h3>
@@ -105,142 +195,77 @@ export function ConnectorCard({ type, keys }: Props) {
                 href={meta.docsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={stopCardClick}
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Documentation"
               >
                 <IconExternalLink className="size-3.5" />
               </a>
             </div>
-            <Badge variant={categoryVariant} className="mt-1 text-[10px]">
-              {CATEGORY_LABEL[meta.category]}
-            </Badge>
+            {isConfigured && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="-mt-1 -mr-1 size-7 inline-flex shrink-0 items-center justify-center rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-50"
+                  aria-label="Actions"
+                  disabled={pending}
+                  onClick={stopCardClick}
+                >
+                  <IconDots className="size-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  onClick={stopCardClick}
+                >
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={pending}
+                    onSelect={() => {
+                      if (confirm(`Supprimer "${primary.label}" ?`)) {
+                        startTransition(() => deleteConnectorKey(primary.id));
+                      }
+                    }}
+                  >
+                    <IconTrash className="size-4" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
-        </div>
 
-        {isConfigured && (
-          <Switch
-            checked={primary.isActive}
-            disabled={pending}
-            onCheckedChange={() => {
-              startTransition(() => toggleConnectorKeyActive(primary.id));
-            }}
-            aria-label="Activer ce connecteur"
-          />
-        )}
-      </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {meta.description}
+          </p>
 
-      {/* Description */}
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        {meta.description}
-      </p>
-
-      {/* Unlocks badges */}
-      <div className="flex items-center gap-1 flex-wrap">
-        <span className="text-[10px] text-muted-foreground mr-1">Débloque :</span>
-        {meta.unlocks.map((u) => (
-          <Badge key={u} variant="outline" className="text-[10px]">
-            {u}
-          </Badge>
-        ))}
-      </div>
-
-      {/* Status */}
-      <div className="flex items-center gap-2 flex-wrap text-[10px]">
-        {isConfigured ? (
-          <>
-            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success px-2 py-0.5">
-              <IconCheck className="size-2.5" />
-              Configuré
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[10px] text-muted-foreground mr-1">
+              Débloque :
             </span>
-            {primary.isActive && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5">
-                Activé
-              </span>
-            )}
-            {keys.length > 1 && (
-              <Badge variant="outline" className="text-[10px]">
-                +{keys.length - 1} autre{keys.length > 2 ? "s" : ""}
+            {meta.unlocks.map((u) => (
+              <Badge key={u} variant="outline" className="text-[10px]">
+                {u}
               </Badge>
-            )}
-          </>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2 py-0.5">
-            <IconCircleDashed className="size-2.5" />
-            Non configuré
-          </span>
-        )}
-      </div>
+            ))}
+          </div>
 
-      {/* Body */}
-      {isConfigured ? (
-        <div className="rounded-md bg-muted/40 border border-border px-3 py-2.5 flex items-center gap-2">
-          <IconLock className="size-3.5 text-muted-foreground shrink-0" />
-          <span className="text-xs truncate flex-1 min-w-0">{primary.label}</span>
-          <span className="text-[10px] text-muted-foreground font-mono">
-            ••••••••
-          </span>
-        </div>
-      ) : (
-        <div className="rounded-md bg-muted/40 border border-dashed border-border px-3 py-4 flex flex-col items-center justify-center text-center gap-1">
-          <IconKey className="size-5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">
-            Aucun identifiant configuré
-          </span>
-        </div>
-      )}
+          {isConfigured && (
+            <p className="text-[11px] text-muted-foreground/80 truncate">
+              <span className="font-mono">••••</span>{" "}
+              <span className="font-medium text-foreground/80">
+                {primary.label}
+              </span>
+            </p>
+          )}
+        </CutoutCardContent>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-        {isConfigured ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={openEdit}
-            disabled={pending}
-            className="flex-1"
-          >
-            <IconKey className="size-3.5" />
-            Modifier
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            onClick={openCreate}
-            disabled={pending}
-            className="flex-1"
-          >
-            <IconKey className="size-3.5" />
-            Configurer
-          </Button>
-        )}
-        {isConfigured && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="size-8 inline-flex items-center justify-center rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-50"
-              aria-label="Actions"
-              disabled={pending}
-            >
-              <IconDots className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={pending}
-                onSelect={() => {
-                  if (confirm(`Supprimer "${primary.label}" ?`)) {
-                    startTransition(() => deleteConnectorKey(primary.id));
-                  }
-                }}
-              >
-                <IconTrash className="size-4" />
-                Supprimer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+        <CutoutCardAction className="right-5 bottom-5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-primary-foreground shadow-sm">
+            <IconKey className="size-3" />
+            {isConfigured ? "Modifier" : "Configurer"}
+          </span>
+        </CutoutCardAction>
+      </CutoutCard>
 
-      {/* Dialog config / edit */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -351,6 +376,6 @@ export function ConnectorCard({ type, keys }: Props) {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

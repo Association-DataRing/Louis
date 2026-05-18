@@ -23,6 +23,12 @@ export type ConnectorMeta = {
   /** APIs unlocked by configuring this connector. Surfaced in the UI. */
   unlocks: string[];
   credentialFields: CredentialField[];
+  /** SVG logo path under /public, used in CutoutCard media. */
+  logo: string;
+  /** Brand-tinted background for the media zone (CSS color or gradient). */
+  accent: string;
+  /** Foreground color used to tint a monochrome logo against the accent. */
+  logoTint: string;
 };
 
 export const CONNECTOR_CATALOG: Record<ConnectorType, ConnectorMeta> = {
@@ -51,6 +57,9 @@ export const CONNECTOR_CATALOG: Record<ConnectorType, ConnectorMeta> = {
         required: true,
       },
     ],
+    logo: "/logos/connectors/piste.svg",
+    accent: "linear-gradient(135deg, #000091 0%, #1212FF 50%, #E1000F 100%)",
+    logoTint: "#FFFFFF",
   },
   pappers: {
     type: "pappers",
@@ -75,6 +84,9 @@ export const CONNECTOR_CATALOG: Record<ConnectorType, ConnectorMeta> = {
         help: "Disponible dans votre espace Pappers, rubrique API.",
       },
     ],
+    logo: "/logos/connectors/pappers.svg",
+    accent: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+    logoTint: "#FFFFFF",
   },
 };
 
