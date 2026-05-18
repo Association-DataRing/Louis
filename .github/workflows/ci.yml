@@ -118,10 +118,13 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Install dependencies (prod only)
-        run: npm ci --omit=dev
+      # `npm sbom` exige que l'arbre complet soit installé pour vérifier
+      # l'intégrité avant export, même si on filtre les devDeps en sortie
+      # via `--omit=dev`. On installe donc tout puis on filtre.
+      - name: Install all dependencies
+        run: npm ci
 
-      - name: Generate SBOM CycloneDX
+      - name: Generate SBOM CycloneDX (prod components only)
         run: npm run sbom
 
       - name: Validate SBOM JSON
