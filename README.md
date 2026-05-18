@@ -10,7 +10,7 @@
 [![Made in France](https://img.shields.io/badge/Made_in-France-000091?labelColor=FFFFFF)]()
 
 Application prototype d'intelligence artificielle open-source pour les professions
-juridiques. Conçue par l'**association DataRing** 
+du Droit. Conçue par l'**Association DataRing** 
 
 **Vos clés. Vos données. Votre infrastructure.**
 
@@ -161,8 +161,8 @@ Au sens du droit et au sens de le technique
    selon differents niveaux d'autonomie, soit:
    A. llm externe sous votre propre cle, pour des usages non couverts par le secret professionel,
    ou pour lequel un accord de sous traitance RGPD DPA est conclu et documenté, vous maitrisez vos prompts et vos workflows mais pas le modele
-   B. llm souverain en API, vos clé, vos données transitent par un prestataire UE sous DPA. le Risque          d'extraterritorialité (Cloud Act FISA 702) est minimisé sans etre nul, il depends de la chaine capitalistique et infrastructurelle du prestataire a examiner au cas par cas. Vous orchestrez sur un socle juridiquement europeen.
-   C. llm heberger en open weight: vous executez un modele (qwen, llamma, etc...) sur votre propre infrastructure, aucune donnee ne quitte votre perimetre. Vous devenez auteur de vos propres outils.
+   B. llm souverain en API, vos clé, vos données transitent par un prestataire UE sous DPA. le Risque d'extraterritorialité (Cloud Act FISA 702) est minimisé sans etre nul, il depends de la chaine capitalistique et infrastructurelle du prestataire a examiner au cas par cas. Vous orchestrez sur un socle juridiquement europeen.
+   C. llm hebergé en open weight: vous executez un modele (qwen, llamma, etc...) sur votre propre infrastructure, aucune donnee ne quitte votre perimetre. Vous devenez auteur de vos propres outils.
 
    Louis permet de tester et de combiner ces 3 voies par usage.
 
