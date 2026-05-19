@@ -41,14 +41,23 @@ function AgentFlowNodeBase({ data }: NodeProps) {
   return (
     <div
       className={cn(
-        "w-[280px] rounded-xl border bg-card overflow-hidden shadow-sm transition-all",
+        "relative w-[280px] rounded-xl border bg-card overflow-hidden shadow-sm transition-all",
         isFinal ? "border-foreground/40" : "border-border",
         state === "active" &&
-          "ring-2 ring-foreground/40 ring-offset-2 ring-offset-background animate-pulse",
+          "ring-2 ring-foreground/40 ring-offset-2 ring-offset-background",
         state === "done" && "border-foreground/50",
         state === "error" && "border-destructive/60 bg-destructive/5"
       )}
     >
+      {state === "active" && (
+        <span
+          className="absolute top-2 right-2 z-10 flex size-2"
+          aria-label="Agent actif"
+        >
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-foreground/40 opacity-75" />
+          <span className="relative inline-flex size-2 rounded-full bg-foreground/80" />
+        </span>
+      )}
       <Handle
         type="target"
         position={Position.Left}
@@ -82,7 +91,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
                   e.stopPropagation();
                   onEdit();
                 }}
-                className="size-7 grid place-items-center rounded-md hover:bg-accent transition-colors"
+                className="size-9 grid place-items-center rounded-md hover:bg-accent transition-colors"
                 aria-label={`Modifier ${agent.label}`}
               >
                 <IconPencil className="size-3.5" />

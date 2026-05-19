@@ -153,9 +153,9 @@ export default async function PipelineEditorPage({
 
 function Hint({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-card/30 p-3">
+    <div className="border-l-2 border-border pl-3 py-1">
       <p className="font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-muted-foreground">{body}</p>
+      <p className="mt-0.5 text-muted-foreground">{body}</p>
     </div>
   );
 }

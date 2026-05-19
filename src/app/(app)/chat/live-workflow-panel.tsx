@@ -77,10 +77,10 @@ export function LiveWorkflowPanel({
               <button
                 type="button"
                 onClick={onClose}
-                className="size-7 grid place-items-center rounded-md hover:bg-accent transition-colors"
+                className="size-9 grid place-items-center rounded-md hover:bg-accent transition-colors"
                 aria-label="Fermer"
               >
-                <IconX className="size-3.5" />
+                <IconX className="size-4" />
               </button>
             )}
           </div>

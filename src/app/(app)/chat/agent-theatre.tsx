@@ -319,9 +319,9 @@ export function OpenTheatreButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-accent"
+      className="inline-flex items-center gap-1.5 h-9 text-xs text-foreground/70 hover:text-foreground transition-colors px-3 rounded-md hover:bg-accent"
     >
-      <IconArrowsMaximize className="size-3" />
+      <IconArrowsMaximize className="size-3.5" />
       Voir le débat
     </button>
   );

@@ -70,10 +70,10 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
   const current = MODES.find((m) => m.value === mode) ?? MODES[0];
 
   return (
-    <div className="rounded-xl border border-border bg-card/30 p-4">
+    <div className="py-4 border-y border-border">
       <div className="flex items-start gap-4 flex-wrap">
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[11px] uppercase tracking-wider text-foreground/70">
             Mode d&apos;orchestration
           </div>
           <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
