@@ -56,7 +56,7 @@ export function AgentCard({
             <span className="font-heading text-sm tracking-tight">
               {agent.label}
             </span>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
               {meta.label}
             </span>
           </div>

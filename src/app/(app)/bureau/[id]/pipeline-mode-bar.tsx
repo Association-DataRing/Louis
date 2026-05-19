@@ -73,7 +73,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
     <div className="rounded-xl border border-border bg-card/30 p-4">
       <div className="flex items-start gap-4 flex-wrap">
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
             Mode d&apos;orchestration
           </div>
           <p className="mt-1 text-xs text-muted-foreground max-w-2xl">

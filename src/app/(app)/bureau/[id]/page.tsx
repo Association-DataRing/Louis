@@ -48,14 +48,13 @@ export default async function PipelineEditorPage({
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0 max-w-2xl">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
+            <div className="text-xs text-foreground/70 uppercase tracking-wider">
               {data.pipeline.isPreset ? "Preset système" : "Pipeline cabinet"}
-              <span>·</span>
-              <span className="font-mono normal-case tracking-normal">
-                {data.pipeline.slug}
-              </span>
             </div>
-            <h1 className="mt-2 font-heading text-3xl md:text-4xl tracking-tight">
+            <h1
+              className="mt-2 font-heading text-3xl md:text-4xl tracking-tight"
+              title={`slug: ${data.pipeline.slug}`}
+            >
               {data.pipeline.name}
             </h1>
             {data.pipeline.description && (

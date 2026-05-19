@@ -66,12 +66,12 @@ function AgentFlowNodeBase({ data }: NodeProps) {
           <Icon className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[11px] uppercase tracking-wider text-foreground/70">
             Étape {position + 1} {isFinal && "· terminal"}
           </div>
-          <div className="font-heading text-sm tracking-tight truncate">
+          <h3 className="font-heading text-sm tracking-tight truncate font-medium">
             {agent.label}
-          </div>
+          </h3>
         </div>
         {editable && (
           <div className="flex items-center gap-0.5">
@@ -109,7 +109,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
       <div className="px-3 py-3 space-y-2">
         <div className="text-[11px] text-muted-foreground">{meta.pitch}</div>
 
-        <div className="flex flex-wrap gap-1.5 text-[10px]">
+        <div className="flex flex-wrap gap-1.5 text-[11px]">
           {agent.modelOverride ? (
             <span className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 font-mono text-foreground">
               {agent.modelOverride}
@@ -127,7 +127,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
         </div>
 
         {agent.systemPrompt && (
-          <div className="text-[10px] text-muted-foreground line-clamp-2 italic border-l-2 border-border/60 pl-2">
+          <div className="text-[11px] text-muted-foreground line-clamp-2 italic border-l-2 border-border/60 pl-2">
             {agent.systemPrompt.slice(0, 120)}
             {agent.systemPrompt.length > 120 && "…"}
           </div>
@@ -135,7 +135,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
       </div>
 
       {/* Footer */}
-      <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center justify-between text-[10px] text-muted-foreground">
+      <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center justify-between text-[11px] text-muted-foreground">
         <span className="font-mono uppercase tracking-wider">{meta.label}</span>
         {agent.toolAllowlist === null || agent.toolAllowlist === undefined ? (
           <span>Tous les outils</span>

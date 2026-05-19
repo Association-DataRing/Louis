@@ -66,7 +66,7 @@ export function PipelineBoard({
               role="presentation"
               aria-hidden
             />
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
               s&apos;appuie sur
             </div>
             <div
@@ -77,7 +77,7 @@ export function PipelineBoard({
             >
               {team.map((a, i) => (
                 <div key={a.id} className="relative">
-                  <span className="absolute -top-3 left-3 text-[10px] uppercase tracking-wider bg-background px-1 text-muted-foreground">
+                  <span className="absolute -top-3 left-3 text-[11px] uppercase tracking-wider bg-background px-1 text-muted-foreground">
                     Étape {i + 1}
                   </span>
                   <AgentCard

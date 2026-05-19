@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogTitle,
   DialogHeader,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -149,26 +150,34 @@ export function AgentTheatre({
         className="max-w-5xl w-[95vw] h-[90vh] p-0 overflow-hidden flex flex-col"
         showCloseButton={false}
       >
-        <DialogHeader className="px-6 py-4 border-b border-border flex-row items-center justify-between space-y-0">
+        <DialogHeader className="px-6 py-4 border-b border-border flex-row items-center justify-between space-y-0 pr-4">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <p className="text-[11px] uppercase tracking-wider text-foreground/70">
               Salle de délibération
             </p>
             <DialogTitle className="font-heading text-xl tracking-tight">
               {pipelineName}
             </DialogTitle>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            aria-label="Fermer"
-          >
-            <IconX className="size-4" />
-          </Button>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="size-9"
+              aria-label="Fermer"
+            >
+              <IconX className="size-4" />
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-muted/20">
+        <div
+          role="log"
+          aria-live="polite"
+          aria-atomic="false"
+          aria-relevant="additions"
+          className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-muted/20"
+        >
           {turns.length === 0 ? (
             <EmptyState />
           ) : (
@@ -231,7 +240,7 @@ function RoundBlock({
       {round.label && (
         <div className="flex items-center gap-3 mb-4">
           <div className="h-px flex-1 bg-border" />
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
+          <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
             {round.label}
           </span>
           <div className="h-px flex-1 bg-border" />
@@ -252,7 +261,9 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
   const isFinal = turn.key.endsWith("-final");
 
   return (
-    <motion.div
+    <motion.article
+      role="article"
+      aria-label={`${meta.label} : ${turn.label}${turn.round !== undefined ? ` — tour ${turn.round}` : ""}`}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", damping: 26, stiffness: 220 }}
@@ -271,12 +282,12 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[11px] uppercase tracking-wider text-foreground/70">
             {meta.label}
           </div>
-          <div className="font-heading text-sm tracking-tight">
+          <h3 className="font-heading text-sm tracking-tight font-medium">
             {turn.label}
-          </div>
+          </h3>
         </div>
         {turn.streaming ? (
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -295,7 +306,7 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
           </ReactMarkdown>
         </AnimatePresence>
       </div>
-    </motion.div>
+    </motion.article>
   );
 }
 

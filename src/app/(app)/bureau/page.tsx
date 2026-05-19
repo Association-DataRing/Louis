@@ -55,19 +55,17 @@ export default async function BureauPage() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
-                    {pipeline.isPreset ? "Preset" : "Cabinet"}
-                    <span>·</span>
-                    <span className="font-mono normal-case tracking-normal">
-                      {pipeline.slug}
-                    </span>
+                  <div className="text-[11px] text-foreground/70 uppercase tracking-wider">
+                    {pipeline.isPreset ? "Preset" : "Pipeline cabinet"}
                   </div>
-                  <h2 className="mt-1 font-heading text-xl tracking-tight">
+                  <h2
+                    className="mt-1 font-heading text-xl tracking-tight"
+                    title={`slug: ${pipeline.slug}`}
+                  >
                     {pipeline.name}
                   </h2>
                 </div>
                 <PipelineActionsMenu pipeline={pipeline} />
-
               </div>
 
               {pipeline.description && (
@@ -84,7 +82,7 @@ export default async function BureauPage() {
                   return (
                     <div
                       key={a.id}
-                      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] ${
+                      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] ${
                         isFinal
                           ? "border-foreground/30 bg-foreground/5"
                           : "border-border bg-background"

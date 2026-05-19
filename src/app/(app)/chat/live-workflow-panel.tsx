@@ -55,6 +55,9 @@ export function LiveWorkflowPanel({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.98 }}
           transition={{ type: "spring", damping: 24, stiffness: 280 }}
+          role="status"
+          aria-live="polite"
+          aria-atomic="false"
           className="pointer-events-auto w-full max-w-3xl rounded-2xl border border-border bg-card/95 backdrop-blur shadow-lg overflow-hidden"
         >
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/30">
@@ -62,7 +65,7 @@ export function LiveWorkflowPanel({
               <IconBriefcase className="size-3.5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 Bureau en action
               </div>
               <div className="text-sm font-medium truncate">{pipelineName}</div>
@@ -132,7 +135,7 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
           <Icon className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
             {meta.label}
           </div>
           <div className="text-xs font-medium truncate">{agent.label}</div>
@@ -147,7 +150,7 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-2 text-[11px] text-muted-foreground"
+            className="mt-2 text-xs text-muted-foreground"
           >
             <span className="inline-flex items-center gap-1">
               <span className="relative flex size-1.5">
@@ -163,7 +166,7 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
             key="done"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-2 text-[11px] text-muted-foreground"
+            className="mt-2 text-xs text-muted-foreground"
           >
             terminé en {formatLatency(agent.latencyMs)}
           </motion.div>
