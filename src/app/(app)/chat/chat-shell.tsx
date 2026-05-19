@@ -18,6 +18,7 @@ import {
   buildAgentTurns,
   type AgentTurn,
 } from "./agent-theatre";
+import { ChatErrorBanner } from "./chat-error-banner";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -815,7 +816,7 @@ export function ChatShell({
     []
   );
 
-  const { messages, sendMessage, status, error, stop } = useChat({
+  const { messages, sendMessage, status, error, stop, regenerate } = useChat({
     messages: toUIMessages(initialMessages),
     transport,
     onFinish: ({ message }) => {
@@ -1235,9 +1236,21 @@ export function ChatShell({
             })()}
 
             {error && (
-              <div className="rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm p-3">
-                Une erreur est survenue : {error.message}
-              </div>
+              <ChatErrorBanner
+                error={error}
+                onRetry={() => {
+                  regenerate({
+                    body: {
+                      providerKeyId,
+                      conversationId,
+                      documentIds: attachedDocIds,
+                      modelOverride: modelId,
+                      projectId: initialProjectId,
+                      pipelineId,
+                    },
+                  });
+                }}
+              />
             )}
 
             <div ref={bottomRef} />
