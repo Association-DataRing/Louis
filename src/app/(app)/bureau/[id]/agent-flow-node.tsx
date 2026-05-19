@@ -41,7 +41,8 @@ function AgentFlowNodeBase({ data }: NodeProps) {
   return (
     <div
       className={cn(
-        "relative w-[280px] rounded-xl border bg-card overflow-hidden shadow-sm transition-all",
+        "relative w-[280px] rounded-xl border overflow-hidden shadow-sm transition-all",
+        meta.tintBg,
         isFinal ? "border-foreground/40" : "border-border",
         state === "active" &&
           "ring-2 ring-foreground/40 ring-offset-2 ring-offset-background",
@@ -68,7 +69,9 @@ function AgentFlowNodeBase({ data }: NodeProps) {
       <div
         className={cn(
           "flex items-center gap-2 px-3 py-2 border-b",
-          isFinal ? "bg-foreground/5 border-foreground/15" : "bg-muted/30 border-border"
+          isFinal
+            ? "bg-foreground/5 border-foreground/15"
+            : cn(meta.tintAccent, "border-border")
         )}
       >
         <div className="size-7 rounded-md grid place-items-center bg-foreground/10">

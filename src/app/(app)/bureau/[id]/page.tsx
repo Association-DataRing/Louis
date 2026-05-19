@@ -11,6 +11,7 @@ import { PipelineWorkflow } from "./pipeline-workflow";
 import { CloneToEditButton } from "./clone-to-edit-button";
 import { PipelineModeBar } from "./pipeline-mode-bar";
 import { AddAgentDialog } from "./add-agent-dialog";
+import { InlineRename } from "./inline-rename";
 
 export default async function PipelineEditorPage({
   params,
@@ -51,12 +52,14 @@ export default async function PipelineEditorPage({
             <div className="text-xs text-foreground/70 uppercase tracking-wider">
               {data.pipeline.isPreset ? "Preset système" : "Pipeline cabinet"}
             </div>
-            <h1
-              className="mt-2 font-heading text-3xl md:text-4xl tracking-tight"
-              title={`slug: ${data.pipeline.slug}`}
-            >
-              {data.pipeline.name}
-            </h1>
+            <div className="mt-2">
+              <InlineRename
+                pipelineId={data.pipeline.id}
+                initialName={data.pipeline.name}
+                description={data.pipeline.description}
+                editable={!data.pipeline.isPreset}
+              />
+            </div>
             {data.pipeline.description && (
               <p className="mt-3 text-sm text-muted-foreground">
                 {data.pipeline.description}
@@ -109,53 +112,21 @@ export default async function PipelineEditorPage({
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3 text-xs">
-        <Hint
-          title="Cliquez sur un agent"
-          body="Pour modifier son modèle, sa clé provider, son system prompt ou les outils autorisés."
-        />
-        <Hint
-          title={
-            data.pipeline.mode === "sequential" && !data.pipeline.isPreset
-              ? "Glissez pour réordonner"
-              : data.pipeline.mode === "council"
-                ? "Conseil de débatteurs"
-                : data.pipeline.mode === "parallel"
-                  ? "Exécution parallèle"
-                  : "Audit trail"
-          }
-          body={
-            data.pipeline.mode === "sequential" && !data.pipeline.isPreset
-              ? "Faites glisser les cartes horizontalement pour changer l'ordre d'exécution. Le dernier agent reste le synthétiseur."
-              : data.pipeline.mode === "council"
-                ? `${data.pipeline.rounds} tour${data.pipeline.rounds > 1 ? "s" : ""} de débat — chaque agent voit les positions des autres et révise la sienne.`
-                : data.pipeline.mode === "parallel"
-                  ? "Tous les agents non-terminaux travaillent en parallèle, le dernier synthétise."
-                  : "Chaque exécution produit un agent_run par agent — tokens, latence, sortie."
-          }
-        />
-        <Hint
-          title={
-            data.pipeline.isPreset
-              ? "Pipeline preset, lecture seule"
-              : "Pipeline modifiable"
-          }
-          body={
-            data.pipeline.isPreset
-              ? "Pour modifier, clonez-la depuis le menu ••• puis éditez la copie."
-              : "Modifications appliquées immédiatement aux prochaines exécutions."
-          }
-        />
+      <div className="mt-5 text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span>
+          💡 Cliquez un agent pour l&apos;éditer
+        </span>
+        {data.pipeline.mode === "sequential" && !data.pipeline.isPreset && (
+          <span>· Glissez les cartes pour réordonner</span>
+        )}
+        {data.pipeline.mode === "council" && (
+          <span>
+            · {data.pipeline.rounds} tour
+            {data.pipeline.rounds > 1 ? "s" : ""} de débat
+          </span>
+        )}
+        <span>· Chaque exécution est tracée dans l&apos;audit</span>
       </div>
     </main>
-  );
-}
-
-function Hint({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="border-l-2 border-border pl-3 py-1">
-      <p className="font-medium text-foreground">{title}</p>
-      <p className="mt-0.5 text-muted-foreground">{body}</p>
-    </div>
   );
 }

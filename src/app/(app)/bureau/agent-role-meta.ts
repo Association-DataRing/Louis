@@ -12,8 +12,12 @@ import type { AgentRole } from "@/lib/orchestrator";
 
 /**
  * Métadonnées d'affichage par rôle d'agent. Centralisé ici pour que
- * l'icône / la couleur / le pitch restent cohérents partout (carte
+ * l'icône / la teinte / le pitch restent cohérents partout (carte
  * /bureau, halo durant le streaming, audit trail).
+ *
+ * `tint` est une teinte LÉGÈRE (5% chroma) ajoutée au fond du node pour
+ * différencier visuellement les rôles sans tomber dans le rainbow AI.
+ * Valeurs choisies dans le hue 265 (cohérent avec la marque) ± variation.
  */
 export const AGENT_ROLE_META: Record<
   AgentRole,
@@ -21,50 +25,66 @@ export const AGENT_ROLE_META: Record<
     icon: Icon;
     label: string;
     pitch: string;
-    accent: string;
+    /** Couleur de teinte pour le fond du node (très subtile). */
+    tintBg: string;
+    /** Couleur de teinte pour le header / accent (très subtile). */
+    tintAccent: string;
   }
 > = {
   orchestrator: {
     icon: IconBriefcase,
     label: "Maestro",
     pitch: "Coordonne et synthétise — rend la réponse finale à l'utilisateur.",
-    accent: "bg-foreground/5 border-foreground/20",
+    tintBg: "bg-[oklch(0.99_0.005_265)] dark:bg-[oklch(0.18_0.018_265)]",
+    tintAccent:
+      "bg-[oklch(0.95_0.012_265)] dark:bg-[oklch(0.22_0.025_265)]",
   },
   research: {
     icon: IconSearch,
     label: "Recherche",
     pitch: "Cherche, source, organise les références.",
-    accent: "bg-foreground/5 border-foreground/15",
+    tintBg: "bg-[oklch(0.985_0.008_230)] dark:bg-[oklch(0.18_0.018_230)]",
+    tintAccent:
+      "bg-[oklch(0.95_0.018_230)] dark:bg-[oklch(0.22_0.028_230)]",
   },
   citator: {
     icon: IconCheck,
     label: "Citateur",
     pitch: "Vérifie chaque référence juridique citée.",
-    accent: "bg-foreground/5 border-foreground/15",
+    tintBg: "bg-[oklch(0.985_0.008_160)] dark:bg-[oklch(0.18_0.018_160)]",
+    tintAccent:
+      "bg-[oklch(0.95_0.02_160)] dark:bg-[oklch(0.22_0.03_160)]",
   },
   reviewer: {
     icon: IconScale,
     label: "Relecteur",
     pitch: "Déontologie, hallucinations, ton.",
-    accent: "bg-foreground/5 border-foreground/15",
+    tintBg: "bg-[oklch(0.985_0.008_85)] dark:bg-[oklch(0.18_0.018_85)]",
+    tintAccent:
+      "bg-[oklch(0.95_0.02_85)] dark:bg-[oklch(0.22_0.03_85)]",
   },
   drafting: {
     icon: IconFileText,
     label: "Rédacteur",
     pitch: "Rédige acte, mémoire, note de synthèse.",
-    accent: "bg-foreground/5 border-foreground/15",
+    tintBg: "bg-[oklch(0.985_0.008_310)] dark:bg-[oklch(0.18_0.018_310)]",
+    tintAccent:
+      "bg-[oklch(0.95_0.02_310)] dark:bg-[oklch(0.22_0.03_310)]",
   },
   legifrance: {
     icon: IconGavel,
     label: "Légifrance",
     pitch: "Lookup verbatim FR/EU.",
-    accent: "bg-foreground/5 border-foreground/15",
+    tintBg: "bg-[oklch(0.985_0.008_265)] dark:bg-[oklch(0.18_0.018_265)]",
+    tintAccent:
+      "bg-[oklch(0.95_0.02_265)] dark:bg-[oklch(0.22_0.03_265)]",
   },
   "default-chat": {
     icon: IconMessageCircle,
     label: "Assistant",
     pitch: "Modèle généraliste — recherche, raisonnement, rédaction.",
-    accent: "bg-foreground/5 border-foreground/15",
+    tintBg: "bg-card",
+    tintAccent: "bg-muted/30",
   },
 };
 

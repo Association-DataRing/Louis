@@ -9,6 +9,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   type Edge,
+  type EdgeTypes,
   type Node,
   type NodeTypes,
 } from "@xyflow/react";
@@ -16,6 +17,7 @@ import "@xyflow/react/dist/style.css";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
 import { AgentEditSheet } from "../agent-edit-sheet";
 import { AgentFlowNode, type AgentFlowNodeData } from "./agent-flow-node";
+import { AnimatedEdge } from "./animated-edge";
 import {
   removeAgentFromPipeline,
   reorderPipelineAgents,
@@ -44,10 +46,14 @@ const nodeTypes: NodeTypes = {
   agent: AgentFlowNode,
 };
 
+const edgeTypes: EdgeTypes = {
+  animated: AnimatedEdge,
+};
+
 const NODE_WIDTH = 280;
 const NODE_GAP_X = 80;
 const NODE_HEIGHT = 200;
-const NODE_GAP_Y = 100;
+const NODE_GAP_Y = 80;
 
 /**
  * Calcule les positions de chaque node selon le mode :
@@ -68,19 +74,27 @@ function layoutNodes(
     }));
   }
 
-  // council & parallel : workers/débatteurs en ligne en haut, synth en bas
+  // council & parallel : workers/débatteurs en arc en haut, synth centré au milieu
+  // de l'arc en bas. Le synthétiseur devient l'élément central visuel.
   const synthIndex = agents.length - 1;
   const workers = agents.slice(0, -1);
   const totalWidth = workers.length * (NODE_WIDTH + NODE_GAP_X) - NODE_GAP_X;
   const synthX = totalWidth / 2 - NODE_WIDTH / 2;
 
+  // Léger arc : on baisse légèrement les workers extrêmes pour créer un
+  // effet "demi-cercle" naturel, qui converge vers le synthétiseur.
+  const arcOffset = workers.length > 2 ? 20 : 0;
+
   return agents.map((_, i) => {
     if (i === synthIndex) {
       return { x: synthX, y: NODE_HEIGHT + NODE_GAP_Y };
     }
+    // Workers : courbe parabolique légère (centre haut, bords bas)
+    const ratio = workers.length > 1 ? i / (workers.length - 1) : 0.5;
+    const arcY = -arcOffset * (1 - 4 * Math.pow(ratio - 0.5, 2));
     return {
       x: i * (NODE_WIDTH + NODE_GAP_X),
-      y: 0,
+      y: arcY,
     };
   });
 }
@@ -107,13 +121,8 @@ function buildEdges(
         id: `${a.id}->${next.id}`,
         source: a.id,
         target: next.id,
-        type: "smoothstep",
-        animated: active || !liveStates,
-        style: {
-          stroke: "var(--color-foreground)",
-          strokeOpacity: 0.4,
-          strokeWidth: 1.5,
-        },
+        type: "animated",
+        data: { active },
       };
     });
   }
@@ -127,17 +136,15 @@ function buildEdges(
       id: `${w.id}->${synth.id}`,
       source: w.id,
       target: synth.id,
-      type: "smoothstep",
-      animated: active || !liveStates,
-      style: {
-        stroke: "var(--color-foreground)",
-        strokeOpacity: 0.4,
-        strokeWidth: 1.5,
-      },
+      type: "animated",
+      data: { active },
     };
   });
 
-  // En council, on rajoute des edges de débat entre workers (en pointillés)
+  // En council, on rajoute des edges de débat entre workers (en pointillés
+  // subtils) — les membres voient mutuellement leurs positions au tour
+  // suivant. Pour ≥3 débatteurs, on ne dessine qu'avec les voisins
+  // immédiats pour éviter le spaghetti.
   if (mode === "council" && workers.length > 1) {
     for (let i = 0; i < workers.length - 1; i++) {
       const a = workers[i];
@@ -146,16 +153,8 @@ function buildEdges(
         id: `${a.id}<->${b.id}`,
         source: a.id,
         target: b.id,
-        type: "straight",
-        animated: false,
-        style: {
-          stroke: "var(--color-foreground)",
-          strokeOpacity: 0.25,
-          strokeWidth: 1,
-          strokeDasharray: "4 4",
-        },
-        sourceHandle: undefined,
-        targetHandle: undefined,
+        type: "animated",
+        data: { dashed: true },
       });
     }
   }
@@ -284,13 +283,19 @@ function PipelineWorkflowInner({
   return (
     <>
       <div
-        className="w-full rounded-2xl border border-border bg-muted/10 overflow-hidden"
+        className="relative w-full rounded-2xl border border-border bg-muted/10 overflow-hidden"
         style={{ height: canvasHeight }}
       >
+        {/* Vignette radiale subtile pour donner du caractère au canvas */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,transparent,oklch(var(--color-foreground)/0.02)_70%,oklch(var(--color-foreground)/0.04))]"
+        />
         <ReactFlow
           nodes={initialNodes}
           edges={initialEdges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           fitView
           fitViewOptions={fitViewOptions}
           proOptions={proOptions}
@@ -307,8 +312,8 @@ function PipelineWorkflowInner({
         >
           <Background
             variant={BackgroundVariant.Dots}
-            gap={20}
-            size={1}
+            gap={22}
+            size={1.2}
             color="var(--color-border)"
           />
           <Controls
@@ -316,7 +321,9 @@ function PipelineWorkflowInner({
             showInteractive={false}
             className="!bg-card !border !border-border !shadow-sm"
           />
-          {agents.length > 3 && (
+          {/* MiniMap : utile à partir de 6 agents (avant ça tient à l'écran
+              et la mini-carte affiche surtout du vide — looks broken). */}
+          {agents.length > 5 && (
             <MiniMap
               pannable
               zoomable
