@@ -196,10 +196,26 @@ export function AgentEditSheet({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`prompt-${agent.id}`}>
-              System prompt{" "}
-              <span className="text-muted-foreground text-xs">(optionnel)</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor={`prompt-${agent.id}`}>
+                System prompt{" "}
+                <span className="text-muted-foreground text-xs">
+                  (optionnel)
+                </span>
+              </Label>
+              <span
+                className={`text-xs tabular-nums ${
+                  systemPrompt.length > 4000
+                    ? "text-destructive"
+                    : systemPrompt.length > 2000
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                }`}
+                aria-live="polite"
+              >
+                {systemPrompt.length} / 8000
+              </span>
+            </div>
             <textarea
               id={`prompt-${agent.id}`}
               value={systemPrompt}
@@ -208,7 +224,17 @@ export function AgentEditSheet({
               placeholder={`Vide = prompt « factory » du rôle "${meta.label}".`}
               className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 font-mono"
               maxLength={8000}
+              aria-describedby={`prompt-help-${agent.id}`}
             />
+            {systemPrompt.length > 2000 && (
+              <p
+                id={`prompt-help-${agent.id}`}
+                className="text-xs text-muted-foreground"
+              >
+                ⚠️ Ce prompt sera répété à chaque appel de cet agent — un
+                prompt long multiplie les coûts en mode council/parallel.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

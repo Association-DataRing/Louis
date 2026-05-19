@@ -295,7 +295,7 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
             en cours
           </span>
         ) : (
-          <IconCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          <IconCheck className="size-3.5 text-success" />
         )}
       </div>
 

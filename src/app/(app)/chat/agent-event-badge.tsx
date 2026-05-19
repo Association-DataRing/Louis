@@ -123,7 +123,7 @@ export function AgentEventBadge({ event, isLive = false }: AgentEventBadgeProps)
   if (event.type === "agent_finish") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
-        <IconCheck className="size-3 text-emerald-600 dark:text-emerald-400" />
+        <IconCheck className="size-3 text-success" />
         <Icon className="size-3" />
         <span className="font-medium text-foreground">{label}</span>
         {typeof event.latencyMs === "number" && (

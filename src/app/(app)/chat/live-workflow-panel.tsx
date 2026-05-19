@@ -147,10 +147,11 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
         {agent.state === "active" && (
           <motion.div
             key="active"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-2 text-xs text-muted-foreground"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
+            className="mt-2 text-xs text-muted-foreground overflow-hidden"
           >
             <span className="inline-flex items-center gap-1">
               <span className="relative flex size-1.5">
@@ -191,7 +192,7 @@ function StateIndicator({ state }: { state: LiveAgentState["state"] }) {
     return <IconLoader2 className="size-3.5 animate-spin text-foreground/70 shrink-0" />;
   }
   if (state === "done") {
-    return <IconCheck className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />;
+    return <IconCheck className="size-3.5 text-success shrink-0" />;
   }
   if (state === "error") {
     return <IconAlertTriangle className="size-3.5 text-destructive shrink-0" />;
