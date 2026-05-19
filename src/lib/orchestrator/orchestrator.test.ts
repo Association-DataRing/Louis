@@ -360,7 +360,7 @@ describe("Orchestrator: mode council", () => {
     const startEvents = events.filter((e) => e.type === "agent_start");
     const finishEvents = events.filter((e) => e.type === "agent_finish");
 
-    // 2 tours × 2 débateurs = 4 starts pour les débateurs + 1 pour le
+    // 2 tours × 2 débatteurs = 4 starts pour les débatteurs + 1 pour le
     // synthétiseur = 5 starts au total.
     expect(startEvents).toHaveLength(5);
     expect(finishEvents).toHaveLength(5);
@@ -369,7 +369,7 @@ describe("Orchestrator: mode council", () => {
     expect(startEvents[startEvents.length - 1].agentId).toBe("synth");
   });
 
-  it("au tour 2, les débateurs voient les positions du tour 1", async () => {
+  it("au tour 2, les débatteurs voient les positions du tour 1", async () => {
     const observed = new Map<string, AgentContext>();
     const pipeline: PipelineConfig = {
       slug: "c",
@@ -403,7 +403,7 @@ describe("Orchestrator: mode council", () => {
     expect(lastD1Call?.[1].priorOutputs?.length).toBe(2);
   });
 
-  it("tombe sur sequential si pas de débateurs (1 seul agent)", async () => {
+  it("tombe sur sequential si pas de débatteurs (1 seul agent)", async () => {
     const pipeline: PipelineConfig = {
       slug: "lone",
       name: "Solo",

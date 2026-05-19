@@ -91,7 +91,7 @@ export default async function PipelineEditorPage({
         </div>
       )}
 
-      <PipelineModeBar pipeline={data.pipeline} />
+      <PipelineModeBar pipeline={data.pipeline} agentCount={data.agents.length} />
 
       <div className="mt-6">
         <PipelineWorkflow
@@ -120,7 +120,7 @@ export default async function PipelineEditorPage({
             data.pipeline.mode === "sequential" && !data.pipeline.isPreset
               ? "Glissez pour réordonner"
               : data.pipeline.mode === "council"
-                ? "Conseil de débateurs"
+                ? "Conseil de débatteurs"
                 : data.pipeline.mode === "parallel"
                   ? "Exécution parallèle"
                   : "Audit trail"

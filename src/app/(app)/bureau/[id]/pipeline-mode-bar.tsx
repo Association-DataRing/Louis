@@ -46,9 +46,10 @@ const MODES: { value: Mode; label: string; icon: typeof IconCircleArrowRight; pi
 
 interface PipelineModeBarProps {
   pipeline: Pipeline;
+  agentCount: number;
 }
 
-export function PipelineModeBar({ pipeline }: PipelineModeBarProps) {
+export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const isPreset = pipeline.isPreset;
@@ -129,8 +130,17 @@ export function PipelineModeBar({ pipeline }: PipelineModeBarProps) {
             "mt-3 text-[11px] text-muted-foreground border-t border-border/40 pt-2"
           )}
         >
-          ⚠️ Coût multiplié par {rounds} × {Math.max(0, 1)} (chaque tour rejoue
-          chaque débateur). Le synthétiseur final ne tourne qu&apos;une fois.
+          {(() => {
+            const debaters = Math.max(0, agentCount - 1);
+            const calls = rounds * debaters + 1;
+            return (
+              <>
+                ⚠️ Coût estimé : {calls} appel{calls > 1 ? "s" : ""} LLM par
+                question — {debaters} débatteur{debaters > 1 ? "s" : ""} sur{" "}
+                {rounds} tour{rounds > 1 ? "s" : ""}, plus 1 synthèse finale.
+              </>
+            );
+          })()}
         </p>
       )}
 

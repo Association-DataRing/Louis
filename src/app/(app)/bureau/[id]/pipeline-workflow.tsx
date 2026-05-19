@@ -22,6 +22,16 @@ import {
 } from "../actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PipelineWorkflowProps {
   pipeline: Pipeline;
@@ -42,7 +52,7 @@ const NODE_GAP_Y = 100;
 /**
  * Calcule les positions de chaque node selon le mode :
  * - sequential : grille horizontale (gauche → droite)
- * - council    : synthétiseur centré en bas, débateurs en arc au-dessus
+ * - council    : synthétiseur centré en bas, débatteurs en arc au-dessus
  * - parallel   : synthétiseur en bas, workers étalés au-dessus
  */
 function layoutNodes(
@@ -58,7 +68,7 @@ function layoutNodes(
     }));
   }
 
-  // council & parallel : workers/débateurs en ligne en haut, synth en bas
+  // council & parallel : workers/débatteurs en ligne en haut, synth en bas
   const synthIndex = agents.length - 1;
   const workers = agents.slice(0, -1);
   const totalWidth = workers.length * (NODE_WIDTH + NODE_GAP_X) - NODE_GAP_X;
@@ -161,34 +171,31 @@ function PipelineWorkflowInner({
 }: PipelineWorkflowProps) {
   const router = useRouter();
   const [editingAgent, setEditingAgent] = useState<PipelineAgent | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PipelineAgent | null>(null);
   const [pending, startTransition] = useTransition();
   const editable = !pipeline.isPreset && !pending;
   const mode = (pipeline.mode as "sequential" | "council" | "parallel") ?? "sequential";
 
-  const handleDelete = useCallback(
-    (agent: PipelineAgent) => {
-      if (
-        !confirm(
-          `Supprimer l'agent « ${agent.label} » de cette pipeline ?`
-        )
-      )
-        return;
-      startTransition(async () => {
-        const result = await removeAgentFromPipeline(agent.id);
-        router.refresh();
-        if (result.ok) {
-          toast.success("Agent retiré", {
-            description: `${agent.label} a été retiré de la pipeline.`,
-          });
-        } else {
-          toast.error("Suppression impossible", {
-            description: result.error,
-          });
-        }
-      });
-    },
-    [router]
-  );
+  const handleDelete = useCallback((agent: PipelineAgent) => {
+    setPendingDelete(agent);
+  }, []);
+
+  function confirmDelete() {
+    if (!pendingDelete) return;
+    const agent = pendingDelete;
+    startTransition(async () => {
+      const result = await removeAgentFromPipeline(agent.id);
+      router.refresh();
+      setPendingDelete(null);
+      if (result.ok) {
+        toast.success("Agent retiré", {
+          description: `${agent.label} a été retiré de la pipeline.`,
+        });
+      } else {
+        toast.error("Suppression impossible", { description: result.error });
+      }
+    });
+  }
 
   // Drag-to-reorder en mode sequential : lit la position X de chaque
   // node après le drop, calcule le nouvel ordre, persiste via Server
@@ -331,6 +338,36 @@ function PipelineWorkflowInner({
           }}
         />
       )}
+
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => {
+          if (!o) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Retirer « {pendingDelete?.label} » de la pipeline ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Cet agent ne participera plus aux exécutions futures. Vous
+              pourrez toujours l&apos;ajouter à nouveau. Les exécutions
+              passées conservent leur trace dans l&apos;audit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={pending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {pending ? "Suppression…" : "Retirer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

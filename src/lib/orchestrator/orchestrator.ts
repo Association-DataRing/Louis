@@ -130,7 +130,7 @@ export class Orchestrator {
     const synthesizer = agents[agents.length - 1];
     const debaters = agents.slice(0, -1);
 
-    // Si pas de débateurs, on retombe sur du séquentiel (un seul agent).
+    // Si pas de débatteurs, on retombe sur du séquentiel (un seul agent).
     if (debaters.length === 0) return this.runSequential(args);
 
     // priorOutputs accumule TOUTES les positions à travers TOUS les tours.
@@ -138,7 +138,7 @@ export class Orchestrator {
     const priorOutputs: AgentPriorOutput[] = [...(ctx.priorOutputs ?? [])];
 
     for (let round = 1; round <= rounds; round++) {
-      // À chaque tour, on lance les débateurs EN PARALLÈLE — ils ne se
+      // À chaque tour, on lance les débatteurs EN PARALLÈLE — ils ne se
       // voient pas du tour en cours, ils voient seulement les tours
       // précédents via priorOutputs.
       const snapshotForRound = [...priorOutputs];

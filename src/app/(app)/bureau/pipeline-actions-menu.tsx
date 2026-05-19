@@ -18,6 +18,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -42,6 +52,7 @@ interface PipelineActionsMenuProps {
 export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
   const router = useRouter();
   const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState(pipeline.name);
@@ -61,16 +72,11 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
     });
   }
 
-  function handleDelete() {
-    if (
-      !confirm(
-        `Supprimer la pipeline « ${pipeline.name} » ? Les conversations qui l'utilisaient continueront de fonctionner avec leur historique mais ne pourront plus l'invoquer.`
-      )
-    )
-      return;
+  function handleDeleteConfirmed() {
     startTransition(async () => {
       const result = await deletePipeline(pipeline.id);
       if (result.ok) {
+        setDeleteOpen(false);
         router.refresh();
         toast.success("Pipeline supprimée");
       } else {
@@ -130,7 +136,10 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
           {!isPreset && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => setDeleteOpen(true)}
+              >
                 <IconTrash className="size-4" />
                 Supprimer
               </DropdownMenuItem>
@@ -138,6 +147,31 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Supprimer « {pipeline.name} » ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Les conversations qui ont utilisé
+              cette pipeline conservent leur historique mais ne pourront plus
+              l&apos;invoquer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirmed}
+              disabled={pending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {pending ? "Suppression…" : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent>
