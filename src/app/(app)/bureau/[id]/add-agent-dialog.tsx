@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconSparkles } from "@tabler/icons-react";
+import { PERSONAS, type Persona } from "../personas";
 import {
   Dialog,
   DialogContent,
@@ -72,6 +73,17 @@ export function AddAgentDialog({
   const [label, setLabel] = useState("");
   const [providerKeyId, setProviderKeyId] = useState<string>(NONE_VALUE);
   const [modelOverride, setModelOverride] = useState("");
+  const [systemPromptFromPersona, setSystemPromptFromPersona] = useState<
+    string | null
+  >(null);
+  const [pickedPersona, setPickedPersona] = useState<string | null>(null);
+
+  function applyPersona(p: Persona) {
+    setRole(p.role);
+    setLabel(p.label);
+    setSystemPromptFromPersona(p.systemPrompt);
+    setPickedPersona(p.slug);
+  }
 
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
   const modelOptions = selectedKey ? MODEL_CATALOG[selectedKey.type] : [];
@@ -82,6 +94,8 @@ export function AddAgentDialog({
     setLabel("");
     setProviderKeyId(NONE_VALUE);
     setModelOverride("");
+    setSystemPromptFromPersona(null);
+    setPickedPersona(null);
     setError(null);
   }
 
@@ -97,7 +111,7 @@ export function AddAgentDialog({
         label: label.trim(),
         providerKeyId: providerKeyId === NONE_VALUE ? null : providerKeyId,
         modelOverride: modelOverride.trim() || null,
-        systemPrompt: null,
+        systemPrompt: systemPromptFromPersona,
         toolAllowlist: null,
       });
       if (result.ok) {
@@ -125,7 +139,11 @@ export function AddAgentDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button type="button" variant="outline">
+        <Button
+          type="button"
+          variant="default"
+          className="shadow-lg shadow-foreground/10 rounded-full pl-3 pr-4 h-10"
+        >
           <IconPlus className="size-4" />
           Ajouter un agent
         </Button>
@@ -139,7 +157,42 @@ export function AddAgentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* Persona quick-pick — démarre avec un agent pré-configuré */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <IconSparkles className="size-3.5 text-foreground/60" />
+              <Label className="text-xs text-foreground/70 uppercase tracking-wider">
+                Démarrer avec une persona
+              </Label>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {PERSONAS.map((p) => (
+                <button
+                  key={p.slug}
+                  type="button"
+                  onClick={() => applyPersona(p)}
+                  title={p.pitch}
+                  className={`group flex flex-col items-center gap-0.5 rounded-lg border px-1.5 py-2 text-[10px] transition-all ${
+                    pickedPersona === p.slug
+                      ? "border-foreground/40 bg-foreground/5"
+                      : "border-border bg-card hover:border-foreground/20 hover:bg-card/70"
+                  }`}
+                >
+                  <span className="text-base leading-none">{p.emoji}</span>
+                  <span className="font-medium text-foreground line-clamp-1 leading-tight">
+                    {p.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Ou configurez manuellement ci-dessous.
+            </p>
+          </div>
+
+          <div className="border-t border-border pt-4 space-y-4">
+
           <div className="space-y-2">
             <Label htmlFor="agent-role">Rôle</Label>
             <Select value={role} onValueChange={(v) => setRole(v as Role)}>
@@ -237,6 +290,7 @@ export function AddAgentDialog({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+          </div>
         </div>
 
         <DialogFooter>

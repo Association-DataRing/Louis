@@ -9,6 +9,7 @@ import { listPipelines } from "./actions";
 import { roleMeta } from "./agent-role-meta";
 import { modeMeta } from "./mode-meta";
 import { PipelineActionsMenu } from "./pipeline-actions-menu";
+import { TryPipelineButton } from "./try-pipeline-button";
 
 export default async function BureauPage() {
   const session = await auth();
@@ -115,10 +116,20 @@ export default async function BureauPage() {
                   <span>
                     {agents.length} agent{agents.length > 1 ? "s" : ""}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-foreground group-hover:gap-2 transition-all">
-                    Ouvrir
-                    <IconArrowRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <TryPipelineButton
+                      pipelineId={pipeline.id}
+                      slug={pipeline.slug}
+                    />
+                    <span
+                      aria-hidden
+                      className="w-px h-3 bg-border self-center"
+                    />
+                    <span className="inline-flex items-center gap-1 text-foreground group-hover:gap-2 transition-all">
+                      Ouvrir
+                      <IconArrowRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
                 </div>
               </Link>
             );

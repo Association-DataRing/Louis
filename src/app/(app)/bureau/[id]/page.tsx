@@ -95,22 +95,21 @@ export default async function PipelineEditorPage({
 
       <PipelineModeBar pipeline={data.pipeline} agentCount={data.agents.length} />
 
-      <div className="mt-6">
+      <div className="relative mt-6">
         <PipelineWorkflow
           pipeline={data.pipeline}
           agents={data.agents}
           providerKeys={keys}
         />
+        {!data.pipeline.isPreset && (
+          <div className="absolute left-4 bottom-4 z-10">
+            <AddAgentDialog
+              pipelineId={data.pipeline.id}
+              providerKeys={keys}
+            />
+          </div>
+        )}
       </div>
-
-      {!data.pipeline.isPreset && (
-        <div className="mt-4 flex items-center justify-end">
-          <AddAgentDialog
-            pipelineId={data.pipeline.id}
-            providerKeys={keys}
-          />
-        </div>
-      )}
 
       <div className="mt-5 text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
         <span>

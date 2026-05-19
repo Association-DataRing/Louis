@@ -16,7 +16,12 @@ import {
 import { seedPresetsForUser } from "@/lib/orchestrator";
 import { ChatShell } from "./chat-shell";
 
-type Search = { id?: string; project?: string };
+type Search = {
+  id?: string;
+  project?: string;
+  pipeline?: string;
+  prompt?: string;
+};
 
 export default async function ChatPage({
   searchParams,
@@ -193,7 +198,7 @@ export default async function ChatPage({
   // le state interne de useChat).
   return (
     <ChatShell
-      key={currentId ?? `new-${projectIdFromUrl ?? ""}`}
+      key={currentId ?? `new-${projectIdFromUrl ?? ""}-${sp.pipeline ?? ""}-${sp.prompt ? "p" : ""}`}
       providerKeys={activeKeys}
       initialProviderKeyId={initialProviderKeyId}
       initialModelId={initialModelId}
@@ -201,6 +206,10 @@ export default async function ChatPage({
       initialProjectId={
         currentId ? null : projectContext?.id ?? null
       }
+      initialPipelineId={
+        currentId ? null : sp.pipeline ?? null
+      }
+      initialPrompt={currentId ? null : sp.prompt ?? null}
       projectContext={conversationProjectContext}
       initialMessages={initialMessages}
       availableDocuments={docList}

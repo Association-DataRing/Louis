@@ -111,6 +111,8 @@ type Props = {
   initialModelId: string | null;
   initialConversationId: string | null;
   initialProjectId: string | null;
+  initialPipelineId?: string | null;
+  initialPrompt?: string | null;
   projectContext: { id: string; name: string } | null;
   initialMessages: {
     id: string;
@@ -688,6 +690,8 @@ export function ChatShell({
   initialModelId,
   initialConversationId,
   initialProjectId,
+  initialPipelineId,
+  initialPrompt,
   projectContext,
   initialMessages,
   availableDocuments,
@@ -698,10 +702,13 @@ export function ChatShell({
 }: Props) {
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
-  // Sélection de pipeline orchestrateur. Par défaut on prend « chat-simple »
-  // (preset mono-agent) pour ne pas surprendre l'utilisateur, et on retombe
-  // sur la première pipeline disponible si absent.
+  // Sélection de pipeline orchestrateur. Priorité :
+  // 1. initialPipelineId (deep-link depuis /bureau "Essayer")
+  // 2. preset "chat-simple"
+  // 3. première pipeline disponible
   const defaultPipelineId =
+    (initialPipelineId &&
+      pipelines.find((p) => p.id === initialPipelineId)?.id) ??
     pipelines.find((p) => p.slug === "chat-simple")?.id ??
     pipelines[0]?.id ??
     null;
@@ -838,7 +845,10 @@ export function ChatShell({
     router.replace(`/chat?id=${conversationId}`, { scroll: false });
   }, [conversationId, router]);
 
-  const [input, setInput] = useState("");
+  // initialPrompt vient du deep-link "?prompt=" (CTA Essayer sur /bureau).
+  // On le pré-remplit comme valeur initiale du composer, l'utilisateur
+  // peut éditer/envoyer ou l'effacer.
+  const [input, setInput] = useState(initialPrompt ?? "");
   const isBusy = status === "submitted" || status === "streaming";
   const bottomRef = useRef<HTMLDivElement>(null);
 
