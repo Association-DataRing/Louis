@@ -73,7 +73,7 @@ export async function fetchLiveModels(
     case "anthropic":
       return fetchAnthropic(apiKey);
     case "openrouter":
-      return fetchOpenRouter();
+      return fetchOpenRouter(apiKey);
     case "scaleway": {
       if (!key.baseUrl)
         throw new LiveCatalogError("Scaleway nécessite un baseUrl.");
@@ -233,10 +233,18 @@ interface OpenRouterModelsResponse {
   }>;
 }
 
-async function fetchOpenRouter(): Promise<LiveModel[]> {
-  // OpenRouter /models est public — pas d'auth requise.
+async function fetchOpenRouter(apiKey: string): Promise<LiveModel[]> {
+  // OpenRouter /models est documenté comme public mais retourne parfois
+  // 401 sans Authorization. On passe la clé + les headers attribution
+  // (HTTP-Referer, X-Title) qu'OpenRouter recommande pour identifier
+  // l'app appelante.
   const res = await fetch("https://openrouter.ai/api/v1/models", {
-    headers: { Accept: "application/json" },
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://github.com/D4kooo/louis",
+      "X-Title": "Louis — orchestrateur IA souverain",
+      Accept: "application/json",
+    },
     cache: "no-store",
   });
 
