@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -14,6 +14,7 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { IconMaximize, IconMinimize } from "@tabler/icons-react";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
 import { AgentEditSheet } from "../agent-edit-sheet";
 import { AgentFlowNode, type AgentFlowNodeData } from "./agent-flow-node";
@@ -24,6 +25,8 @@ import {
 } from "../actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -267,11 +270,33 @@ function PipelineWorkflowInner({
     [agents, mode, liveStates]
   );
 
+  // Padding plus serré que la valeur historique 0.2 — les cartes
+  // d'agent occupent désormais ~85% de la zone visible au lieu de ~60%.
   const fitViewOptions = useMemo(
-    () => ({ padding: 0.2, duration: 600 }),
+    () => ({ padding: 0.08, duration: 600 }),
     []
   );
   const proOptions = useMemo(() => ({ hideAttribution: true }), []);
+
+  // Toggle plein écran : le wrapper devient `fixed inset-4 z-50`. Le
+  // canvas occupe alors quasi tout le viewport, ce qui rend les nodes
+  // beaucoup plus lisibles pour un workflow à 5+ agents.
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (!expanded) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setExpanded(false);
+    }
+    window.addEventListener("keydown", onKey);
+    // Bloque le scroll du body pendant l'expansion pour que la roulette
+    // zoome sur le canvas et pas la page derrière.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [expanded]);
 
   const onNodeClick = useCallback(
     (_e: React.MouseEvent, node: Node) => {
@@ -282,23 +307,55 @@ function PipelineWorkflowInner({
     [agents, editable]
   );
 
-  // Hauteur dynamique : sequential = 1 ligne, council/parallel = 2 lignes
-  const canvasHeight =
-    mode === "sequential"
-      ? Math.max(NODE_HEIGHT + 120, 320)
-      : Math.max(NODE_HEIGHT * 2 + NODE_GAP_Y + 120, 480);
+  // Hauteur du canvas : on dimensionne en viewport units pour que les
+  // nodes (280×200) gardent une taille lisible même avec 5+ agents en
+  // ligne. En plein écran, on prend tout le viewport restant.
+  // - sequential : 60vh (min 480px) — une ligne haute
+  // - council/parallel : 70vh (min 580px) — deux lignes + arc
+  const canvasStyle: React.CSSProperties = expanded
+    ? { height: "calc(100vh - 2rem)" }
+    : mode === "sequential"
+    ? { height: "60vh", minHeight: 480 }
+    : { height: "70vh", minHeight: 580 };
 
   return (
     <>
       <div
-        className="relative w-full rounded-2xl border border-border bg-muted/10 overflow-hidden"
-        style={{ height: canvasHeight }}
+        className={cn(
+          "relative w-full rounded-2xl border border-border bg-muted/10 overflow-hidden",
+          expanded && "fixed inset-4 z-50 shadow-2xl"
+        )}
+        style={canvasStyle}
       >
         {/* Vignette radiale subtile pour donner du caractère au canvas */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,transparent,oklch(var(--color-foreground)/0.02)_70%,oklch(var(--color-foreground)/0.04))]"
         />
+
+        {/* Toggle plein écran. Posé en absolute pour ne pas perturber
+            le layout du ReactFlow. Au-dessus des Controls (qui sont en
+            bottom-right) et de la MiniMap. */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setExpanded((v) => !v)}
+          className="absolute top-3 right-3 z-10 gap-1.5 bg-card/95 backdrop-blur-sm shadow-sm"
+          aria-label={expanded ? "Réduire le canvas" : "Agrandir le canvas"}
+        >
+          {expanded ? (
+            <>
+              <IconMinimize className="size-3.5" />
+              Réduire <kbd className="ml-1 text-[10px] text-muted-foreground font-mono">Esc</kbd>
+            </>
+          ) : (
+            <>
+              <IconMaximize className="size-3.5" />
+              Plein écran
+            </>
+          )}
+        </Button>
         <ReactFlow
           nodes={initialNodes}
           edges={initialEdges}
