@@ -13,8 +13,13 @@ import {
   messages,
   type SavedPart,
 } from "@/db/schema";
-import { loadProviderKey } from "@/lib/providers/factory";
+import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { getEnabledSkills } from "@/app/(app)/settings/skills/actions";
+import {
+  composeSkillsPrompt,
+  detectRelevantSkills,
+} from "@/lib/skills/detector";
 import {
   Orchestrator,
   chatSimplePipeline,
@@ -133,6 +138,48 @@ export async function POST(req: Request) {
     }
   }
 
+  // ─── Détection automatique de skills ────────────────────────────────
+  // Avant de lancer l'orchestrateur, on demande à un classificateur
+  // léger quelles skills (parmi celles activées par l'utilisateur) sont
+  // pertinentes pour la demande. Leurs system prompts sont alors empilés
+  // dans systemPromptExtras → injectés dans le prompt système du
+  // modèle principal. L'utilisateur n'a rien à toggle manuellement.
+  let detectedSkillSlugs: string[] = [];
+  try {
+    const lastUserText = extractTextPreview(lastUser);
+    if (lastUserText) {
+      const userSkills = await getEnabledSkills(userId);
+      if (userSkills.length > 0) {
+        // Modèle classificateur = même clé que la conversation. AI SDK
+        // gère le streaming pour la réponse principale ; ici on fait
+        // juste un generateObject one-shot.
+        const detectorModel = modelFromKey(
+          await loadProviderKey(userId, providerKeyId),
+          modelOverride ?? null
+        );
+        detectedSkillSlugs = await detectRelevantSkills({
+          model: detectorModel,
+          userMessage: lastUserText,
+          candidateSkills: userSkills,
+        });
+        if (detectedSkillSlugs.length > 0) {
+          const selected = userSkills.filter((s) =>
+            detectedSkillSlugs.includes(s.slug)
+          );
+          const skillsBlock = composeSkillsPrompt(selected);
+          if (skillsBlock) {
+            systemPromptExtras = systemPromptExtras
+              ? `${systemPromptExtras}\n\n---\n\n${skillsBlock}`
+              : skillsBlock;
+          }
+        }
+      }
+    }
+  } catch {
+    // Best-effort : si la détection plante (capacity, timeout…), on
+    // continue sans skills plutôt que de bloquer la conversation.
+  }
+
   // États mutables capturés par les callbacks de streamText (savedParts du
   // message final pour ré-hydrater les tool calls au reload) et par
   // onEvent (audit trail multi-agent dans agent_runs).
@@ -143,8 +190,20 @@ export async function POST(req: Request) {
 
   const orchestrator = new Orchestrator(pipelineConfig);
 
+  // Skills détectées qu'on émet dans le stream pour que la live panel
+  // puisse afficher "Skill X activée" — visible côté utilisateur.
+  const detectedSkillsForUI = detectedSkillSlugs;
+
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
+      // Émet la liste des skills détectées en tout début de stream pour
+      // que la live panel les affiche immédiatement.
+      if (detectedSkillsForUI.length > 0) {
+        writer.write({
+          type: "data-skills-detected",
+          data: { slugs: detectedSkillsForUI },
+        });
+      }
       await orchestrator.run({
         ctx: {
           userId,
