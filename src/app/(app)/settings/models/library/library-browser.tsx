@@ -104,9 +104,18 @@ export function LibraryBrowser({
 
   const filtered = useMemo(() => {
     if (state.kind !== "ready") return [];
-    if (!search.trim()) return state.models;
+    // Belt-and-braces : dédup côté client au cas où un futur provider
+    // renvoie des doublons (Mistral l'a fait avec mistral-large-latest
+    // / mistral-large-2512 partageant la même id apparemment).
+    const seen = new Set<string>();
+    const unique = state.models.filter((m) => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+    if (!search.trim()) return unique;
     const q = search.trim().toLowerCase();
-    return state.models.filter(
+    return unique.filter(
       (m) =>
         m.id.toLowerCase().includes(q) ||
         m.label.toLowerCase().includes(q) ||
