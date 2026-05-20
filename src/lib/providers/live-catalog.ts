@@ -238,11 +238,14 @@ async function fetchOpenRouter(apiKey: string): Promise<LiveModel[]> {
   // 401 sans Authorization. On passe la clé + les headers attribution
   // (HTTP-Referer, X-Title) qu'OpenRouter recommande pour identifier
   // l'app appelante.
+  // Important : les headers HTTP doivent être ASCII pur. Pas d'em-dash
+  // (—, U+2014) ni d'accents dans X-Title sinon ByteString throw côté
+  // fetch.
   const res = await fetch("https://openrouter.ai/api/v1/models", {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "HTTP-Referer": "https://github.com/D4kooo/louis",
-      "X-Title": "Louis — orchestrateur IA souverain",
+      "X-Title": "Louis - orchestrateur IA souverain",
       Accept: "application/json",
     },
     cache: "no-store",

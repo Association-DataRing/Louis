@@ -81,9 +81,11 @@ export function modelFromKey(
       return createOpenAI({
         apiKey,
         baseURL: "https://openrouter.ai/api/v1",
+        // ASCII pur obligatoire dans les headers HTTP (l'em-dash —
+        // U+2014 fait throw fetch « character > 255 »).
         headers: {
           "HTTP-Referer": "https://github.com/D4kooo/louis",
-          "X-Title": "Louis — orchestrateur IA souverain",
+          "X-Title": "Louis - orchestrateur IA souverain",
         },
       })(modelId);
     }
