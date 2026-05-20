@@ -120,7 +120,7 @@ export function ComposerMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-              Bureau
+              Board
             </DropdownMenuLabel>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
@@ -153,7 +153,7 @@ export function ComposerMenu({
                 <DropdownMenuItem asChild>
                   <Link href="/bureau">
                     <IconBriefcase className="size-4" />
-                    Gérer le bureau
+                    Gérer le board
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>

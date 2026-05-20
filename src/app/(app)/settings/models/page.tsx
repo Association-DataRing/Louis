@@ -61,7 +61,7 @@ export default async function MyModelsPage() {
           </h1>
           <p className="mt-2 text-muted-foreground text-sm">
             Les modèles que vous avez ajoutés à votre plateforme. Seuls ceux
-            listés ici apparaissent dans les pickers du Chat et du Bureau.
+            listés ici apparaissent dans les pickers du Chat et du Board.
             Parcourez la bibliothèque pour découvrir et ajouter de nouveaux
             modèles.
           </p>
@@ -79,7 +79,7 @@ export default async function MyModelsPage() {
           icon={IconCircleCheck}
           label="Modèles ajoutés"
           value={liveEnabled.length}
-          hint="disponibles dans Chat & Bureau"
+          hint="disponibles dans Chat & Board"
         />
         <StatCard
           icon={IconBooks}
@@ -192,7 +192,7 @@ function EmptyState() {
       </p>
       <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
         Allez explorer la bibliothèque pour choisir les modèles que vous
-        voulez rendre disponibles dans le Chat et le Bureau.
+        voulez rendre disponibles dans le Chat et le Board.
       </p>
       <div className="mt-6">
         <Button asChild>
