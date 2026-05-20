@@ -19,6 +19,7 @@ import {
   type AgentTurn,
 } from "./agent-theatre";
 import { ChatErrorBanner } from "./chat-error-banner";
+import { ComposerMenu } from "./composer-menu";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -34,14 +35,12 @@ import {
   IconTool,
   IconPlayerStop,
   IconFileText,
-  IconSparkles,
   IconLibrary,
   IconDownload,
   IconFileTypePdf,
   IconFileTypeDocx,
   IconAlertTriangle,
   IconPencil,
-  IconBriefcase,
 } from "@tabler/icons-react";
 import {
   Select,
@@ -815,15 +814,6 @@ export function ChatShell({
       : null
   );
 
-  // (anciennement utilisé pour basculer le provider depuis un dropdown
-  // dédié — désormais le picker de modèle gère lui-même la résolution
-  // de la clé provider via handleModelChange).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function handleProviderChange(nextId: string) {
-    setProviderKeyId(nextId);
-    const nextType = providerKeys.find((k) => k.id === nextId)?.type;
-    if (nextType) setModelId(DEFAULT_MODEL[nextType]);
-  }
 
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
   const selectedType: ProviderType = selectedKey?.type ?? "mistral";
@@ -1413,16 +1403,35 @@ export function ChatShell({
             />
 
             <div className="flex items-center gap-1 px-2 pb-2 flex-wrap">
+              {/* Menu unifié "+" inspiré du composer Claude — regroupe
+                  joindre document, insérer workflow, switch pipeline et
+                  accès rapide aux réglages. */}
+              <ComposerMenu
+                disabled={isBusy}
+                onPickDocument={() => setDocPickerOpen(true)}
+                onPickWorkflow={() => setWorkflowPickerOpen(true)}
+                onPickWorkflowItem={(prompt) => setInput(prompt)}
+                workflows={workflows}
+                pipelines={pipelines.map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  agentCount: p.agentCount,
+                }))}
+                currentPipelineId={pipelineId}
+                onPipelineChange={(v) => setPipelineId(v)}
+              />
+
+              {/* Les popovers existants restent pour les cas avancés
+                  (recherche dans tous les workflows, sélection multi-doc).
+                  Ils sont déclenchés depuis le menu via leur prop open. */}
               <Popover open={docPickerOpen} onOpenChange={setDocPickerOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    disabled={isBusy}
-                    className="inline-flex items-center justify-center size-10 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
-                    aria-label="Joindre des documents"
-                  >
-                    <IconPaperclip className="size-4" />
-                  </button>
+                    className="sr-only"
+                    aria-hidden
+                    tabIndex={-1}
+                  />
                 </PopoverTrigger>
                 <PopoverContent
                   side="top"
@@ -1450,13 +1459,10 @@ export function ChatShell({
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    disabled={isBusy}
-                    className="inline-flex items-center justify-center size-10 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
-                    aria-label="Insérer un workflow"
-                    title="Workflows"
-                  >
-                    <IconSparkles className="size-4" />
-                  </button>
+                    className="sr-only"
+                    aria-hidden
+                    tabIndex={-1}
+                  />
                 </PopoverTrigger>
                 <PopoverContent
                   side="top"
@@ -1472,34 +1478,6 @@ export function ChatShell({
                   />
                 </PopoverContent>
               </Popover>
-
-              {pipelines.length > 1 && (
-                <Select
-                  value={pipelineId ?? defaultPipelineId ?? undefined}
-                  onValueChange={(v) => setPipelineId(v)}
-                  disabled={isBusy}
-                >
-                  <SelectTrigger
-                    size="sm"
-                    className="h-8 rounded-full border border-border/60 bg-background/60 hover:bg-accent text-xs px-3 gap-1.5 shadow-none transition-colors"
-                    aria-label="Pipeline orchestrateur"
-                  >
-                    <IconBriefcase className="size-3 text-muted-foreground" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pipelines.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        <IconBriefcase className="size-3.5 text-muted-foreground" />
-                        <span className="truncate">{p.name}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          · {p.agentCount} agent{p.agentCount > 1 ? "s" : ""}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
 
               <Select
                 value={selectedModelValue}
