@@ -55,7 +55,7 @@ export default async function BureauPage() {
             return (
               <Link
                 key={pipeline.id}
-                href={`/bureau/${pipeline.id}`}
+                href={`/board/${pipeline.id}`}
                 className="group block rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-foreground/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -163,7 +163,7 @@ function EmptyKeysState() {
           Configurez d&apos;abord une clé provider.
         </p>
         <p className="mt-2 text-sm text-muted-foreground max-w-md">
-          Le bureau orchestre des agents qui appellent des modèles via vos
+          Le board orchestre des agents qui appellent des modèles via vos
           clés. Rendez-vous dans{" "}
           <Link
             href="/settings/providers"

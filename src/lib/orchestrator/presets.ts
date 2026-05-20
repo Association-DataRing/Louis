@@ -27,7 +27,7 @@ export interface PresetTemplate {
  * Catalogue des pipelines préfabriqués livrés avec Louis. Au premier login
  * (et au passage d'une nouvelle version qui en ajoute), `seedPresetsForUser`
  * crée une copie modifiable pour l'utilisateur — qui peut ensuite la cloner,
- * la renommer ou la supprimer depuis /bureau.
+ * la renommer ou la supprimer depuis /board.
  */
 export const PIPELINE_PRESETS: PresetTemplate[] = [
   {

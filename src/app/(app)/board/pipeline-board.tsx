@@ -12,7 +12,7 @@ interface PipelineBoardProps {
 }
 
 /**
- * Affichage hiérarchique d'une pipeline en mode « bureau ». L'agent
+ * Affichage hiérarchique d'une pipeline en mode « board ». L'agent
  * terminal (dernier de la séquence) est mis en avant en haut — c'est
  * celui dont la réponse arrive à l'utilisateur. Les agents intermédiaires
  * sont affichés en grille en dessous, dans leur ordre d'exécution.

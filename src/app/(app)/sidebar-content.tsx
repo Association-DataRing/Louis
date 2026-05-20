@@ -31,7 +31,7 @@ const navItems = [
   { href: "/documents", label: "Documents", icon: IconFolder },
   { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
   { href: "/workflows", label: "Workflows", icon: IconLibrary },
-  { href: "/bureau", label: "Board", icon: IconBriefcase },
+  { href: "/board", label: "Board", icon: IconBriefcase },
 ];
 
 const settingsNav = {

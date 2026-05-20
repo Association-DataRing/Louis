@@ -148,7 +148,7 @@ export async function clonePipeline(
     );
   }
 
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true, id: created.id };
 }
 
@@ -190,7 +190,7 @@ export async function clonePresetBySlug(
     );
   }
 
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true, id: created.id };
 }
 
@@ -218,8 +218,8 @@ export async function updatePipelineMeta(
     })
     .where(and(eq(pipelines.id, id), eq(pipelines.userId, userId)));
 
-  revalidatePath("/bureau");
-  revalidatePath(`/bureau/${id}`);
+  revalidatePath("/board");
+  revalidatePath(`/board/${id}`);
   revalidatePath("/chat");
   return { ok: true };
 }
@@ -238,7 +238,7 @@ export async function deletePipeline(id: string): Promise<ActionResult> {
   await db
     .delete(pipelines)
     .where(and(eq(pipelines.id, id), eq(pipelines.userId, userId)));
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   revalidatePath("/chat");
   return { ok: true };
 }
@@ -279,7 +279,7 @@ export async function updatePipelineAgent(
     })
     .where(eq(pipelineAgents.id, agentId));
 
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true };
 }
 
@@ -318,7 +318,7 @@ export async function addAgentToPipeline(
     })
     .returning({ id: pipelineAgents.id });
 
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true, id: row.id };
 }
 
@@ -349,7 +349,7 @@ export async function removeAgentFromPipeline(
   }
 
   await db.delete(pipelineAgents).where(eq(pipelineAgents.id, agentId));
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true };
 }
 
@@ -376,7 +376,7 @@ export async function reorderPipelineAgents(
         )
       );
   }
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true };
 }
 

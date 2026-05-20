@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { IconBriefcase, IconLoader2, IconCheck, IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
-import { roleMeta } from "../bureau/agent-role-meta";
+import { roleMeta } from "../board/agent-role-meta";
 import { OpenTheatreButton } from "./agent-theatre";
 
 export interface LiveAgentState {

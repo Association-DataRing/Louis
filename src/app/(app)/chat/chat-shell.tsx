@@ -718,7 +718,7 @@ export function ChatShell({
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
   // Sélection de pipeline orchestrateur. Priorité :
-  // 1. initialPipelineId (deep-link depuis /bureau "Essayer")
+  // 1. initialPipelineId (deep-link depuis /board "Essayer")
   // 2. preset "chat-simple"
   // 3. première pipeline disponible
   const defaultPipelineId =
@@ -907,7 +907,7 @@ export function ChatShell({
     router.replace(`/chat?id=${conversationId}`, { scroll: false });
   }, [conversationId, router]);
 
-  // initialPrompt vient du deep-link "?prompt=" (CTA Essayer sur /bureau).
+  // initialPrompt vient du deep-link "?prompt=" (CTA Essayer sur /board).
   // On le pré-remplit comme valeur initiale du composer, l'utilisateur
   // peut éditer/envoyer ou l'effacer.
   const [input, setInput] = useState(initialPrompt ?? "");

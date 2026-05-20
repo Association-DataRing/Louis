@@ -18,7 +18,7 @@ import type {
 /**
  * Configuration « factory » d'un rôle d'agent. Chaque agent dédié
  * (Research, Citator, Reviewer, Orchestrator) déclare ses defaults — qui
- * peuvent toujours être overridés par l'utilisateur via l'UI /bureau
+ * peuvent toujours être overridés par l'utilisateur via l'UI /board
  * (champ systemPrompt, toolAllowlist sur pipeline_agents).
  */
 export interface AgentFactoryDefaults {
@@ -52,7 +52,7 @@ export async function runAgentStream(
 
   // Le toolAllowlist côté définition utilisateur a la priorité sur le
   // default du rôle (un utilisateur peut élargir l'allowlist d'un agent
-  // dans /bureau).
+  // dans /board).
   const allowlist =
     def.toolAllowlist !== undefined && def.toolAllowlist !== null
       ? def.toolAllowlist

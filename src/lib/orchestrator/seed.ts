@@ -12,7 +12,7 @@ import { PIPELINE_PRESETS } from "./presets";
  * Sème les pipelines préfabriqués pour un utilisateur — appelé au premier
  * login et idempotent : on crée uniquement les slugs encore absents. La
  * provider key par défaut de l'utilisateur sert d'allocation initiale
- * pour chaque agent ; l'utilisateur peut ensuite réattribuer dans /bureau.
+ * pour chaque agent ; l'utilisateur peut ensuite réattribuer dans /board.
  */
 export async function seedPresetsForUser(userId: string): Promise<Pipeline[]> {
   const existing = await db

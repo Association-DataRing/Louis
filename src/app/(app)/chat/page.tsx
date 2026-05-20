@@ -71,7 +71,7 @@ export default async function ChatPage({
   }
 
   // Garantit que l'utilisateur dispose au moins des pipelines presets,
-  // semés à la volée si c'est sa première visite sur /chat ou /bureau.
+  // semés à la volée si c'est sa première visite sur /chat ou /board.
   let pipelineRows = await db
     .select()
     .from(pipelines)

@@ -24,7 +24,7 @@ export interface AgentDefinition {
   /** id stable du pipeline_agent (DB) ou id synthétique pour mono-agent. */
   id: string;
   role: AgentRole;
-  /** label humain affiché dans /bureau et dans l'audit trail. */
+  /** label humain affiché dans /board et dans l'audit trail. */
   label: string;
   providerKeyId: string;
   modelOverride?: string | null;
@@ -112,7 +112,7 @@ export interface Agent {
 /**
  * Événements émis par le runtime d'orchestration et relayés à l'UI via le
  * UI message stream (channel `data-*`). Chaque event identifie l'agent
- * concerné pour que /bureau et le chat puissent allumer le bon "halo".
+ * concerné pour que /board et le chat puissent allumer le bon "halo".
  */
 export type OrchestratorEvent =
   | {

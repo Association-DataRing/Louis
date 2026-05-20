@@ -115,7 +115,7 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
           disabled={pending}
           onClick={(e) => {
             // Empêche la propagation au <Link> parent quand ce menu est
-            // rendu à l'intérieur d'une carte cliquable (/bureau index).
+            // rendu à l'intérieur d'une carte cliquable (/board index).
             e.stopPropagation();
             e.preventDefault();
           }}

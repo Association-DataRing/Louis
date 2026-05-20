@@ -79,7 +79,7 @@ export async function addModel(
   revalidatePath("/settings/models");
   revalidatePath("/settings/models/library");
   revalidatePath("/chat");
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true };
 }
 
@@ -146,7 +146,7 @@ export async function removeModel(payload: {
   revalidatePath("/settings/models");
   revalidatePath("/settings/models/library");
   revalidatePath("/chat");
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true };
 }
 
@@ -272,7 +272,7 @@ export async function pruneOrphanModels(): Promise<ActionResult> {
   revalidatePath("/settings/models");
   revalidatePath("/settings/models/library");
   revalidatePath("/chat");
-  revalidatePath("/bureau");
+  revalidatePath("/board");
   return { ok: true };
 }
 

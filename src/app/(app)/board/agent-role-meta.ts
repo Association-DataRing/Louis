@@ -13,7 +13,7 @@ import type { AgentRole } from "@/lib/orchestrator";
 /**
  * Métadonnées d'affichage par rôle d'agent. Centralisé ici pour que
  * l'icône / la teinte / le pitch restent cohérents partout (carte
- * /bureau, halo durant le streaming, audit trail).
+ * /board, halo durant le streaming, audit trail).
  *
  * `tint` est une teinte LÉGÈRE (5% chroma) ajoutée au fond du node pour
  * différencier visuellement les rôles sans tomber dans le rainbow AI.

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { roleMeta } from "../bureau/agent-role-meta";
+import { roleMeta } from "../board/agent-role-meta";
 import type { AgentEventData } from "./agent-event-badge";
 
 export interface AgentOutputData {

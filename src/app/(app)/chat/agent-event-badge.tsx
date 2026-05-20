@@ -8,7 +8,7 @@ import {
   IconClock,
   IconRefresh,
 } from "@tabler/icons-react";
-import { roleMeta } from "../bureau/agent-role-meta";
+import { roleMeta } from "../board/agent-role-meta";
 
 /**
  * Forme du payload d'un event orchestrateur tel qu'il transite via

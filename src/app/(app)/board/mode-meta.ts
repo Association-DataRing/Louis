@@ -9,7 +9,7 @@ export type PipelineModeKey = "sequential" | "council" | "parallel";
 
 /**
  * Métadonnées d'affichage centralisées pour les 3 modes d'orchestration.
- * Utilisé par la card /bureau, le mode selector segmented et la
+ * Utilisé par la card /board, le mode selector segmented et la
  * visualisation workflow.
  */
 export const MODE_META: Record<

@@ -49,7 +49,7 @@ export default async function PipelineEditorPage({
     <main className="mx-auto w-full max-w-6xl px-6 py-10 md:px-8 md:py-14">
       <header className="mb-10">
         <Link
-          href="/bureau"
+          href="/board"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
         >
           <IconArrowLeft className="size-3.5" />

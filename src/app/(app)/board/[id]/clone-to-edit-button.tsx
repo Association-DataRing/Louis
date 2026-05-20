@@ -25,7 +25,7 @@ export function CloneToEditButton({ pipelineId }: CloneToEditButtonProps) {
     startTransition(async () => {
       const result = await clonePipeline(pipelineId);
       if (result.ok) {
-        router.push(`/bureau/${result.id}`);
+        router.push(`/board/${result.id}`);
         toast.success("Pipeline clonée", {
           description: "Vous pouvez maintenant éditer chaque agent.",
         });

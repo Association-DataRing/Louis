@@ -151,7 +151,7 @@ export function ComposerMenu({
                 ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/bureau">
+                  <Link href="/board">
                     <IconBriefcase className="size-4" />
                     Gérer le board
                   </Link>
