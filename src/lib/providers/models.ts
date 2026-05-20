@@ -54,6 +54,47 @@ export const MODEL_CATALOG: Record<ProviderType, ModelOption[]> = {
     { id: "llama3.1:8b", label: "Llama 3.1 8B (Ollama)" },
     { id: "mistral-small", label: "mistral-small (Ollama)" },
   ],
+  openrouter: [
+    {
+      id: "anthropic/claude-sonnet-4.5",
+      label: "Claude Sonnet 4.5",
+      hint: "Équilibré, via Anthropic",
+    },
+    {
+      id: "anthropic/claude-opus-4.5",
+      label: "Claude Opus 4.5",
+      hint: "Plus capable",
+    },
+    {
+      id: "openai/gpt-5",
+      label: "GPT-5",
+      hint: "OpenAI flagship",
+    },
+    {
+      id: "openai/gpt-4o-mini",
+      label: "GPT-4o mini",
+      hint: "Rapide, peu coûteux",
+    },
+    {
+      id: "mistralai/mistral-large",
+      label: "Mistral Large",
+      hint: "via OpenRouter (peut éviter les 429)",
+    },
+    {
+      id: "meta-llama/llama-3.1-405b-instruct",
+      label: "Llama 3.1 405B",
+      hint: "Open source",
+    },
+    {
+      id: "google/gemini-2.5-pro",
+      label: "Gemini 2.5 Pro",
+    },
+    {
+      id: "qwen/qwen-2.5-72b-instruct",
+      label: "Qwen 2.5 72B",
+      hint: "Open source, fort en code",
+    },
+  ],
 };
 
 /**
@@ -69,4 +110,5 @@ export const DEFAULT_MODEL: Record<ProviderType, string> = {
   anthropic: "claude-sonnet-4-7",
   openai: "gpt-4o-mini",
   openai_compatible: "gpt-3.5-turbo",
+  openrouter: "anthropic/claude-sonnet-4.5",
 };

@@ -73,6 +73,20 @@ export function modelFromKey(
       if (!key.baseUrl) throw new Error("baseUrl required for openai_compatible");
       return createOpenAI({ apiKey, baseURL: key.baseUrl })(modelId);
     }
+    case "openrouter": {
+      // OpenRouter expose une API OpenAI-compatible avec un catalogue
+      // multi-providers (claude-3.5-sonnet, gpt-4o, llama-3.1-405b…). Les
+      // headers HTTP-Referer / X-Title sont optionnels mais recommandés
+      // pour figurer dans les attributions sur openrouter.ai.
+      return createOpenAI({
+        apiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+        headers: {
+          "HTTP-Referer": "https://github.com/D4kooo/louis",
+          "X-Title": "Louis — orchestrateur IA souverain",
+        },
+      })(modelId);
+    }
     default: {
       const exhaustive: never = key.type;
       throw new Error(`Unsupported provider type: ${exhaustive}`);

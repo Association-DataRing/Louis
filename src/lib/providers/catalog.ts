@@ -16,7 +16,8 @@ export type ProviderType =
   | "albert"
   | "anthropic"
   | "openai"
-  | "openai_compatible";
+  | "openai_compatible"
+  | "openrouter";
 
 export type SovereigntyTier = "fr" | "eu" | "us";
 
@@ -158,6 +159,21 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
     logo: "/logos/providers/openai_compatible.svg",
     accent: "linear-gradient(135deg, #3F3F46 0%, #18181B 100%)",
     logoTint: "#A1A1AA",
+  },
+  openrouter: {
+    type: "openrouter",
+    label: "OpenRouter",
+    description:
+      "Aggrégateur multi-providers (Claude, GPT, Mistral, Llama, Gemini…) avec une clé unique.",
+    icon: IconCloud,
+    docsUrl: "https://openrouter.ai/keys",
+    sovereignty: "us",
+    requiresBaseUrl: false,
+    testBaseUrl: "https://openrouter.ai/api/v1",
+    authStyle: "bearer",
+    logo: "/logos/providers/openai_compatible.svg",
+    accent: "linear-gradient(135deg, #6E6BFF 0%, #2D2BB8 100%)",
+    logoTint: "#FFFFFF",
   },
 };
 

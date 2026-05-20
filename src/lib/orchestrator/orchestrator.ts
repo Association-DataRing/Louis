@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { DefaultAgent, resolveAgentConstructor } from "./agents";
+import { withRetry } from "./retry";
 import type {
   Agent,
   AgentContext,
@@ -91,10 +92,16 @@ export class Orchestrator {
       });
 
       try {
-        const agent = factory(def);
-        const result = await agent.run({ ...ctx, pipelineRunId, priorOutputs });
-
         if (isFinal) {
+          // Le terminal stream — pas de retry sur le stream lui-même
+          // (déjà 3 retries par défaut côté AI SDK). On limite les
+          // wrappers pour préserver le streaming UX.
+          const agent = factory(def);
+          const result = await agent.run({
+            ...ctx,
+            pipelineRunId,
+            priorOutputs,
+          });
           await this.streamFinal({
             args,
             def,
@@ -103,14 +110,42 @@ export class Orchestrator {
             startedAt,
           });
         } else {
-          await this.consumeIntermediate({
-            args,
-            def,
-            pipelineRunId,
-            result,
-            priorOutputs,
-            startedAt,
-          });
+          // Intermédiaire : retry exponentiel sur erreurs transitoires.
+          // L'utilisateur ne perd plus un run multi-agents juste parce
+          // que Mistral hoquette pendant 2 secondes.
+          const agent = factory(def);
+          await withRetry(
+            async () => {
+              const result = await agent.run({
+                ...ctx,
+                pipelineRunId,
+                priorOutputs,
+              });
+              return this.consumeIntermediate({
+                args,
+                def,
+                pipelineRunId,
+                result,
+                priorOutputs,
+                startedAt,
+              });
+            },
+            {
+              onRetry: async (attempt, delayMs) => {
+                writer.write({
+                  type: "data-agent-retry",
+                  data: {
+                    pipelineRunId,
+                    agentId: def.id,
+                    role: def.role,
+                    label: def.label,
+                    attempt,
+                    delayMs,
+                  },
+                });
+              },
+            }
+          );
         }
       } catch (err) {
         await this.emitError(args, writer, def, pipelineRunId, err);
@@ -141,8 +176,11 @@ export class Orchestrator {
       // À chaque tour, on lance les débatteurs EN PARALLÈLE — ils ne se
       // voient pas du tour en cours, ils voient seulement les tours
       // précédents via priorOutputs.
+      // allSettled au lieu de all : un débatteur qui échoue ne tue pas la
+      // pipeline. Le tour continue avec les survivants et le synthétiseur
+      // verra moins de positions, mais le run aboutira.
       const snapshotForRound = [...priorOutputs];
-      const results = await Promise.all(
+      const settled = await Promise.allSettled(
         debaters.map(async (def, position) => {
           const startedAt = Date.now();
           await this.emit(args, writer, {
@@ -154,59 +192,99 @@ export class Orchestrator {
             position,
             round,
           });
-          try {
-            const agent = factory(def);
-            const result = await agent.run({
-              ...ctx,
-              pipelineRunId,
-              priorOutputs: snapshotForRound,
-              systemPromptExtras: this.councilTurnInstructions(
-                ctx.systemPromptExtras,
-                round,
-                rounds
-              ),
-            });
-            const text = await collectText(result);
-            writer.write({
-              type: "data-agent-output",
-              data: {
+          const agent = factory(def);
+          const text = await withRetry(
+            async () => {
+              const result = await agent.run({
+                ...ctx,
                 pipelineRunId,
-                agentId: def.id,
-                role: def.role,
-                label: def.label,
-                output: text.value,
-                round,
+                priorOutputs: snapshotForRound,
+                systemPromptExtras: this.councilTurnInstructions(
+                  ctx.systemPromptExtras,
+                  round,
+                  rounds
+                ),
+              });
+              return collectText(result);
+            },
+            {
+              onRetry: async (attempt, delayMs) => {
+                writer.write({
+                  type: "data-agent-retry",
+                  data: {
+                    pipelineRunId,
+                    agentId: def.id,
+                    role: def.role,
+                    label: def.label,
+                    attempt,
+                    delayMs,
+                    round,
+                  },
+                });
               },
-            });
-            await this.emit(args, writer, {
-              type: "agent_finish",
+            }
+          );
+          writer.write({
+            type: "data-agent-output",
+            data: {
               pipelineRunId,
-              agentId: def.id,
-              role: def.role,
-              label: def.label,
-              latencyMs: Date.now() - startedAt,
-              inputTokens: text.inputTokens,
-              outputTokens: text.outputTokens,
-              preview: preview(text.value),
-              round,
-            });
-            return {
               agentId: def.id,
               role: def.role,
               label: def.label,
               output: text.value,
               round,
-            };
-          } catch (err) {
-            await this.emitError(args, writer, def, pipelineRunId, err, round);
-            throw err;
-          }
+            },
+          });
+          await this.emit(args, writer, {
+            type: "agent_finish",
+            pipelineRunId,
+            agentId: def.id,
+            role: def.role,
+            label: def.label,
+            latencyMs: Date.now() - startedAt,
+            inputTokens: text.inputTokens,
+            outputTokens: text.outputTokens,
+            preview: preview(text.value),
+            round,
+          });
+          return {
+            agentId: def.id,
+            role: def.role,
+            label: def.label,
+            output: text.value,
+            round,
+          };
         })
       );
 
-      // Fin du tour : on bascule toutes les positions dans priorOutputs
-      // pour que le tour suivant (ou le synthétiseur) les voie.
-      for (const r of results) priorOutputs.push(r);
+      // Sépare succès / échecs. Les échecs émettent agent_error mais ne
+      // tuent pas le run — on continue avec les survivants.
+      for (let i = 0; i < settled.length; i++) {
+        const outcome = settled[i];
+        if (outcome.status === "fulfilled") {
+          priorOutputs.push(outcome.value);
+        } else {
+          await this.emitError(
+            args,
+            writer,
+            debaters[i],
+            pipelineRunId,
+            outcome.reason,
+            round
+          );
+        }
+      }
+
+      // Si TOUS les débatteurs ont échoué sur ce tour, on s'arrête : pas
+      // de matière pour le synthétiseur, autant échouer franc.
+      const successCount = settled.filter(
+        (s) => s.status === "fulfilled"
+      ).length;
+      if (successCount === 0) {
+        throw new Error(
+          `Tous les débatteurs ont échoué au tour ${round} — pipeline annulée.`
+        );
+      }
     }
 
     // Synthétiseur final — voit toute la délibération.
@@ -280,7 +358,7 @@ export class Orchestrator {
 
     const priorOutputs: AgentPriorOutput[] = [...(ctx.priorOutputs ?? [])];
 
-    const results = await Promise.all(
+    const settled = await Promise.allSettled(
       workers.map(async (def, position) => {
         const startedAt = Date.now();
         await this.emit(args, writer, {
@@ -291,49 +369,77 @@ export class Orchestrator {
           label: def.label,
           position,
         });
-        try {
-          const agent = factory(def);
-          const result = await agent.run({
-            ...ctx,
-            pipelineRunId,
-            priorOutputs: [...priorOutputs],
-          });
-          const text = await collectText(result);
-          writer.write({
-            type: "data-agent-output",
-            data: {
+        const agent = factory(def);
+        const text = await withRetry(
+          async () => {
+            const result = await agent.run({
+              ...ctx,
               pipelineRunId,
-              agentId: def.id,
-              role: def.role,
-              label: def.label,
-              output: text.value,
+              priorOutputs: [...priorOutputs],
+            });
+            return collectText(result);
+          },
+          {
+            onRetry: async (attempt, delayMs) => {
+              writer.write({
+                type: "data-agent-retry",
+                data: {
+                  pipelineRunId,
+                  agentId: def.id,
+                  role: def.role,
+                  label: def.label,
+                  attempt,
+                  delayMs,
+                },
+              });
             },
-          });
-          await this.emit(args, writer, {
-            type: "agent_finish",
+          }
+        );
+        writer.write({
+          type: "data-agent-output",
+          data: {
             pipelineRunId,
-            agentId: def.id,
-            role: def.role,
-            label: def.label,
-            latencyMs: Date.now() - startedAt,
-            inputTokens: text.inputTokens,
-            outputTokens: text.outputTokens,
-            preview: preview(text.value),
-          });
-          return {
             agentId: def.id,
             role: def.role,
             label: def.label,
             output: text.value,
-          };
-        } catch (err) {
-          await this.emitError(args, writer, def, pipelineRunId, err);
-          throw err;
-        }
+          },
+        });
+        await this.emit(args, writer, {
+          type: "agent_finish",
+          pipelineRunId,
+          agentId: def.id,
+          role: def.role,
+          label: def.label,
+          latencyMs: Date.now() - startedAt,
+          inputTokens: text.inputTokens,
+          outputTokens: text.outputTokens,
+          preview: preview(text.value),
+        });
+        return {
+          agentId: def.id,
+          role: def.role,
+          label: def.label,
+          output: text.value,
+        };
       })
     );
 
-    for (const r of results) priorOutputs.push(r);
+    for (let i = 0; i < settled.length; i++) {
+      const outcome = settled[i];
+      if (outcome.status === "fulfilled") {
+        priorOutputs.push(outcome.value);
+      } else {
+        await this.emitError(args, writer, workers[i], pipelineRunId, outcome.reason);
+      }
+    }
+
+    const successCount = settled.filter((s) => s.status === "fulfilled").length;
+    if (successCount === 0) {
+      throw new Error(
+        "Tous les agents parallèles ont échoué — pipeline annulée."
+      );
+    }
 
     const startedAt = Date.now();
     await this.emit(args, writer, {

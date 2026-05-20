@@ -17,6 +17,7 @@ export const providerTypeEnum = pgEnum("provider_type", [
   "anthropic",
   "openai",
   "openai_compatible",
+  "openrouter",
 ]);
 
 export const providerKeys = pgTable(

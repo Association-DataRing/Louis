@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconCheck, IconLoader2, IconAlertTriangle, IconClock } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconLoader2,
+  IconAlertTriangle,
+  IconClock,
+  IconRefresh,
+} from "@tabler/icons-react";
 import { roleMeta } from "../bureau/agent-role-meta";
 
 /**
@@ -21,6 +27,26 @@ export interface AgentEventData {
   outputTokens?: number;
   preview?: string;
   error?: string;
+  /**
+   * Numéro de la tentative en cours (1 = première, 2 = premier retry…).
+   * Injecté côté chat-shell quand un `data-agent-retry` est reçu pour
+   * cet agent et qu'il est toujours en état `agent_start`.
+   */
+  retryAttempt?: number;
+}
+
+/**
+ * Payload du canal data-agent-retry — émis quand l'orchestrateur
+ * intercepte une erreur transitoire et déclenche un retry exponentiel.
+ */
+export interface AgentRetryData {
+  pipelineRunId?: string;
+  agentId?: string;
+  role?: string;
+  label?: string;
+  attempt: number;
+  delayMs: number;
+  round?: number;
 }
 
 /**
@@ -44,7 +70,21 @@ export function dedupeAgentEvents(
 ): AgentEventData[] {
   const map = new Map<string, AgentEventData>();
   const order: string[] = [];
+  const retriesByAgent = new Map<string, number>();
+
   for (const part of parts) {
+    // Collecte les attempts de retry par agent en parallèle des events.
+    if (part.type === "data-agent-retry") {
+      const r = part.data as AgentRetryData | undefined;
+      if (!r?.agentId) continue;
+      const cur = retriesByAgent.get(r.agentId) ?? 0;
+      // attempt fourni = numéro de la tentative ayant échoué, donc on
+      // affiche la SUIVANTE qui démarre (attempt + 1).
+      if (r.attempt + 1 > cur) {
+        retriesByAgent.set(r.agentId, r.attempt + 1);
+      }
+      continue;
+    }
     if (part.type !== "data-agent-event") continue;
     const data = part.data as AgentEventData | undefined;
     if (!data?.agentId) continue;
@@ -56,7 +96,16 @@ export function dedupeAgentEvents(
       map.set(data.agentId, data);
     }
   }
-  return order.map((id) => map.get(id)!);
+
+  // Injecte retryAttempt sur les agents encore en agent_start.
+  return order.map((id) => {
+    const evt = map.get(id)!;
+    const attempt = retriesByAgent.get(id);
+    if (attempt && evt.type === "agent_start") {
+      return { ...evt, retryAttempt: attempt };
+    }
+    return evt;
+  });
 }
 
 interface AgentEventBadgeProps {
@@ -95,13 +144,26 @@ export function AgentEventBadge({ event, isLive = false }: AgentEventBadgeProps)
   if (event.type === "agent_start") {
     // Cas live : loader anim + chrono qui tourne.
     if (isLive) {
+      const inRetry = (event.retryAttempt ?? 0) > 1;
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">
-          <IconLoader2 className="size-3 animate-spin" />
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
+            inRetry
+              ? "border-foreground/30 bg-muted/60 text-foreground"
+              : "border-border bg-muted/40 text-muted-foreground"
+          }`}
+        >
+          {inRetry ? (
+            <IconRefresh className="size-3 animate-spin" />
+          ) : (
+            <IconLoader2 className="size-3 animate-spin" />
+          )}
           <Icon className="size-3" />
           <span className="font-medium text-foreground">{label}</span>
-          <span className="opacity-60">
-            travaille{elapsed > 1500 ? ` · ${(elapsed / 1000).toFixed(1)}s` : "…"}
+          <span className="opacity-70">
+            {inRetry
+              ? `retry · tentative ${event.retryAttempt}`
+              : `travaille${elapsed > 1500 ? ` · ${(elapsed / 1000).toFixed(1)}s` : "…"}`}
           </span>
         </span>
       );
