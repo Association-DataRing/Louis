@@ -1,109 +1,54 @@
-import { IconBolt, IconCircleCheck, IconUserPlus } from "@tabler/icons-react";
 import { redirect } from "next/navigation";
+import { IconSparkles } from "@tabler/icons-react";
 import { auth } from "@/auth";
-import { listSkills } from "./actions";
+import { listSkills, listSkillTemplates } from "./actions";
 import { SkillToggle } from "./skill-toggle";
+import { SkillFormDialog } from "./skill-form-dialog";
+import { SkillTemplatesDialog } from "./skill-templates-dialog";
+import { SkillRowActions } from "./skill-row-actions";
 
 export default async function SkillsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const all = await listSkills();
-  const presets = all.filter((s) => s.isPreset);
-  const customs = all.filter((s) => !s.isPreset);
+  const [all, templates] = await Promise.all([
+    listSkills(),
+    listSkillTemplates(),
+  ]);
   const enabledCount = all.filter((s) => s.enabled).length;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-8 md:px-8 md:py-10">
-      <header className="mb-6">
-        <p className="text-xs text-foreground/70 uppercase tracking-wider">
-          Compétences IA
-        </p>
-        <h1 className="mt-1 font-heading text-3xl tracking-tight">
-          Skills
-        </h1>
-        <p className="mt-2 text-muted-foreground text-sm max-w-2xl">
-          Compétences contextuelles que l&apos;IA active automatiquement
-          selon la demande. Quand vous posez une question, un
-          classificateur léger détecte si une ou plusieurs skills sont
-          pertinentes et injecte leurs instructions dans le prompt système
-          du modèle principal.
-        </p>
-      </header>
-
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard
-          icon={IconCircleCheck}
-          label="Activées"
-          value={enabledCount}
-          hint="auto-détectées selon la demande"
-        />
-        <StatCard
-          icon={IconBolt}
-          label="Presets système"
-          value={presets.length}
-          hint="livrées avec Louis"
-        />
-        <StatCard
-          icon={IconUserPlus}
-          label="Custom"
-          value={customs.length}
-          hint="créées par votre cabinet"
-        />
-      </div>
-
-      <section className="mb-8">
-        <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="font-heading text-xl tracking-tight">
-            Presets système
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Désactivables, lecture seule. Pour personnaliser, dupliquez via
-            l&apos;option « Créer une variante ».
+      <header className="mb-8 flex items-end justify-between gap-4 flex-wrap">
+        <div className="max-w-2xl">
+          <p className="text-xs text-foreground/70 uppercase tracking-wider">
+            Compétences IA
+          </p>
+          <h1 className="mt-1 font-heading text-3xl tracking-tight">Skills</h1>
+          <p className="mt-2 text-muted-foreground text-sm">
+            Mini-instructions que Louis injecte dans le prompt système quand un
+            détecteur identifie qu&apos;elles sont pertinentes à votre demande.
+            Vous créez vos propres compétences — rien n&apos;est livré par
+            défaut, votre cabinet décide.
           </p>
         </div>
-
-        <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
-          <ul className="divide-y divide-border">
-            {presets.map((s) => (
-              <li
-                key={s.id}
-                className="flex items-start justify-between gap-4 px-4 py-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm">{s.name}</span>
-                    <code className="text-[11px] text-muted-foreground font-mono">
-                      {s.slug}
-                    </code>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                    {s.description}
-                  </p>
-                  <p className="mt-1.5 text-[11px] text-muted-foreground/80 italic">
-                    <span className="not-italic font-medium">Activé quand :</span>{" "}
-                    {s.triggerHint}
-                  </p>
-                </div>
-                <SkillToggle
-                  skillId={s.id}
-                  enabled={s.enabled}
-                  name={s.name}
-                />
-              </li>
-            ))}
-          </ul>
+        <div className="flex items-center gap-2">
+          <SkillTemplatesDialog templates={templates} />
+          <SkillFormDialog mode={{ kind: "create" }} />
         </div>
-      </section>
+      </header>
 
-      {customs.length > 0 && (
-        <section>
-          <h2 className="mb-3 font-heading text-xl tracking-tight">
-            Compétences cabinet
-          </h2>
+      {all.length === 0 ? (
+        <EmptyState hasTemplates={templates.length > 0} />
+      ) : (
+        <>
+          <p className="mb-3 text-xs text-muted-foreground">
+            {all.length} compétence{all.length > 1 ? "s" : ""} ·{" "}
+            {enabledCount} active{enabledCount > 1 ? "s" : ""}
+          </p>
           <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
             <ul className="divide-y divide-border">
-              {customs.map((s) => (
+              {all.map((s) => (
                 <li
                   key={s.id}
                   className="flex items-start justify-between gap-4 px-4 py-4"
@@ -119,46 +64,62 @@ export default async function SkillsPage() {
                       {s.description}
                     </p>
                     <p className="mt-1.5 text-[11px] text-muted-foreground/80 italic">
-                      <span className="not-italic font-medium">
-                        Activé quand :
-                      </span>{" "}
+                      <span className="not-italic font-medium">Activée quand :</span>{" "}
                       {s.triggerHint}
                     </p>
                   </div>
-                  <SkillToggle
-                    skillId={s.id}
-                    enabled={s.enabled}
-                    name={s.name}
-                  />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <SkillToggle
+                      skillId={s.id}
+                      enabled={s.enabled}
+                      name={s.name}
+                    />
+                    <SkillRowActions
+                      skill={{
+                        id: s.id,
+                        name: s.name,
+                        description: s.description,
+                        triggerHint: s.triggerHint,
+                        systemPrompt: s.systemPrompt,
+                      }}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
           </div>
-        </section>
+        </>
       )}
+
+      <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-xs text-muted-foreground">
+        <strong className="text-foreground">Comment ça marche.</strong> À chaque
+        message, un petit modèle ({"~"}1k tokens) regarde votre demande et la
+        liste des compétences actives. S&apos;il en détecte une de pertinente,
+        son instruction système est ajoutée au modèle principal — sans
+        intervention de votre part. Coût : quelques millièmes par requête.
+      </aside>
     </main>
   );
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: typeof IconBolt;
-  label: string;
-  value: number;
-  hint: string;
-}) {
+function EmptyState({ hasTemplates }: { hasTemplates: boolean }) {
   return (
-    <div className="rounded-xl border border-border bg-card/50 p-4">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
-        <Icon className="size-3.5" />
-        {label}
-      </div>
-      <div className="mt-2 font-heading text-3xl tracking-tight">{value}</div>
-      <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+    <div className="py-16 border-y border-dashed border-border">
+      <IconSparkles className="size-6 text-muted-foreground" />
+      <p className="mt-4 font-heading text-2xl tracking-tight">
+        Aucune compétence pour l&apos;instant.
+      </p>
+      <p className="mt-3 text-sm text-muted-foreground max-w-md">
+        Créez votre propre compétence depuis zéro
+        {hasTemplates ? (
+          <>
+            {" "}ou parcourez la <strong>bibliothèque d&apos;exemples</strong>{" "}
+            (à adapter à la pratique de votre cabinet).
+          </>
+        ) : (
+          "."
+        )}
+      </p>
     </div>
   );
 }

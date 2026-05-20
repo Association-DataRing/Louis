@@ -4,7 +4,6 @@ import { IconSparkles } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { workflows } from "@/db/schema";
-import { ImportDefaultsButton } from "./import-defaults-button";
 import { WorkflowCard } from "./workflow-card";
 import { AddWorkflowDialog } from "./add-workflow-dialog";
 
@@ -59,12 +58,11 @@ function EmptyState() {
         Pas encore de workflow.
       </p>
       <p className="mt-3 text-sm text-muted-foreground max-w-md">
-        Importez la bibliothèque par défaut (5 templates juridiques
-        courants) pour démarrer, ou créez votre propre prompt depuis zéro.
+        Un workflow est un prompt réutilisable que vous insérez d&apos;un clic
+        dans une conversation. Créez-en un depuis votre pratique — Louis ne
+        livre pas de templates par défaut, c&apos;est votre cabinet qui définit
+        sa bibliothèque.
       </p>
-      <div className="mt-6">
-        <ImportDefaultsButton />
-      </div>
     </div>
   );
 }

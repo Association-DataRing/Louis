@@ -87,49 +87,6 @@ export async function deleteWorkflow(id: string): Promise<void> {
   revalidatePath("/chat");
 }
 
-const DEFAULTS = [
-  {
-    name: "Résumé d'arrêt",
-    description: "Synthèse structurée d'une décision de justice.",
-    prompt:
-      "Résume cet arrêt en 5 sections : 1) Faits matériels et procédure, 2) Prétentions des parties, 3) Motifs retenus par la juridiction, 4) Dispositif, 5) Portée et apports — citations entre guillemets quand utile.",
-  },
-  {
-    name: "Analyse de clause",
-    description: "Décortique une clause contractuelle.",
-    prompt:
-      "Analyse cette clause sur 4 axes : objet de la clause, obligations qu'elle impose, risques (juridiques, opérationnels, financiers), reformulation alternative plus protectrice pour mon client. Cite les passages pertinents.",
-  },
-  {
-    name: "Comparaison de contrats",
-    description: "Tableau comparatif sur les dimensions clés.",
-    prompt:
-      "Compare les contrats fournis sur un tableau avec ces colonnes : objet, durée, prix/honoraires, conditions de résiliation, clause RGPD, juridiction compétente, garanties. Une ligne par contrat.",
-  },
-  {
-    name: "Due diligence rapide",
-    description: "Profil juridique d'une entreprise.",
-    prompt:
-      "Fais une due diligence rapide sur l'entreprise mentionnée : forme juridique, capital, dirigeants, bénéficiaires effectifs, situation financière récente, contentieux connus, risques de réputation. Utilise les connecteurs Pappers/Légifrance si disponibles.",
-  },
-  {
-    name: "Note de synthèse",
-    description: "Note interne courte (1 page).",
-    prompt:
-      "Rédige une note de synthèse interne (max 1 page) en français juridique soutenu : contexte, question de droit, état du droit positif (textes + jurisprudence majeure), réponse argumentée, recommandation pratique. Ton sobre, factuel.",
-  },
-];
-
-export async function importDefaultWorkflows(): Promise<void> {
-  const userId = await requireUserId();
-  await db.insert(workflows).values(
-    DEFAULTS.map((w) => ({
-      userId,
-      name: w.name,
-      description: w.description,
-      prompt: w.prompt,
-    }))
-  );
-  revalidatePath("/workflows");
-  revalidatePath("/chat");
-}
+// Pas de workflows pré-fournis : la bibliothèque est livrée vide, à
+// charge de chaque cabinet de construire ses propres templates. Évite
+// que des prompts par défaut non validés engagent la qualité de l'app.
