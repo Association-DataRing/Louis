@@ -12,12 +12,26 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// En dev on tourne sur http://localhost — donc PAS de cookie Secure
+// (sinon le navigateur ne le renvoie pas et l'utilisateur est
+// déconnecté à chaque retour de tab). En prod, Auth.js bascule via la
+// détection auto (X-Forwarded-Proto: https).
+const isProd = process.env.NODE_ENV === "production";
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Indispensable en dev et en self-hosting derrière reverse proxy :
+  // sans ça, Auth.js peut rejeter silencieusement des requêtes et
+  // retourner une session null intermittente.
+  trustHost: true,
+  // Force le cookie non-Secure en dev pour qu'il fonctionne en HTTP.
+  useSecureCookies: isProd,
   pages: {
     signIn: "/login",
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 jours
+    updateAge: 24 * 60 * 60,   // rotation JWT toutes les 24h
   },
   providers: [
     Credentials({
