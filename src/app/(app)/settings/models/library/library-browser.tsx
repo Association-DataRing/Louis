@@ -316,15 +316,28 @@ export function LibraryBrowser({
 
       {state.kind === "ready" && (
         <>
-          <div className="text-[11px] text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
+          <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground flex items-center justify-between gap-2 flex-wrap">
             <span>
-              {filtered.length} modèle{filtered.length > 1 ? "s" : ""}
-              {state.models.length !== filtered.length &&
-                ` (sur ${state.models.length})`}
+              <strong className="text-foreground">
+                {state.models.length}
+              </strong>{" "}
+              modèle{state.models.length > 1 ? "s" : ""} retourné
+              {state.models.length > 1 ? "s" : ""} par l&apos;API de{" "}
+              {providerType
+                ? PROVIDER_CATALOG[providerType].label
+                : "ce provider"}
+              {search.trim() && (
+                <>
+                  {" "}
+                  · <strong className="text-foreground">{filtered.length}</strong>{" "}
+                  après filtre
+                </>
+              )}
             </span>
             {selection.size > 0 && (
               <span>
-                {selection.size} sélectionné{selection.size > 1 ? "s" : ""}
+                <strong className="text-foreground">{selection.size}</strong>{" "}
+                sélectionné{selection.size > 1 ? "s" : ""}
               </span>
             )}
           </div>
