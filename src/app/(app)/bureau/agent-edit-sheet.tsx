@@ -31,6 +31,8 @@ import { updatePipelineAgent } from "./actions";
 interface AgentEditSheetProps {
   agent: PipelineAgent;
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
+  /** Set des couples providerType:modelId désactivés (settings/models). */
+  disabledModelKeys?: Set<string>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -46,6 +48,7 @@ const NONE_VALUE = "__none__";
 export function AgentEditSheet({
   agent,
   providerKeys,
+  disabledModelKeys,
   open,
   onOpenChange,
 }: AgentEditSheetProps) {
@@ -66,7 +69,12 @@ export function AgentEditSheet({
   const meta = roleMeta(agent.role);
   const Icon = meta.icon;
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
-  const modelOptions = selectedKey ? MODEL_CATALOG[selectedKey.type] : [];
+  const allModelOptions = selectedKey ? MODEL_CATALOG[selectedKey.type] : [];
+  const modelOptions = disabledModelKeys
+    ? allModelOptions.filter(
+        (m) => !disabledModelKeys.has(`${selectedKey?.type ?? ""}:${m.id}`)
+      )
+    : allModelOptions;
 
   function handleSave() {
     setError(null);

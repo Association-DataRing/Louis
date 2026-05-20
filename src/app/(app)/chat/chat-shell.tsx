@@ -124,6 +124,12 @@ type Props = {
   availableDocuments: DocumentOption[];
   workflows: WorkflowOption[];
   pipelines: PipelineOption[];
+  /**
+   * Liste des couples providerType:modelId désactivés par l'utilisateur
+   * dans /settings/models. Filtre les options du picker modèle pour ne
+   * proposer que ceux qu'il veut voir.
+   */
+  disabledModelKeys?: string[];
   initialUsage: Usage;
   userName: string;
 };
@@ -698,9 +704,14 @@ export function ChatShell({
   availableDocuments,
   workflows,
   pipelines,
+  disabledModelKeys,
   initialUsage,
   userName,
 }: Props) {
+  const disabledKeySet = useMemo(
+    () => new Set(disabledModelKeys ?? []),
+    [disabledModelKeys]
+  );
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
   // Sélection de pipeline orchestrateur. Priorité :
@@ -808,7 +819,15 @@ export function ChatShell({
 
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
   const selectedType: ProviderType = selectedKey?.type ?? "mistral";
-  const modelOptions = MODEL_CATALOG[selectedType];
+  // Filtre les modèles désactivés par l'utilisateur dans /settings/models.
+  // Si tout est désactivé, on retombe sur le catalogue complet pour ne
+  // pas le bloquer (cas pathologique).
+  const allModelOptions = MODEL_CATALOG[selectedType];
+  const filteredOptions = allModelOptions.filter(
+    (m) => !disabledKeySet.has(`${selectedType}:${m.id}`)
+  );
+  const modelOptions =
+    filteredOptions.length > 0 ? filteredOptions : allModelOptions;
   const selectedMeta = PROVIDER_CATALOG[selectedType];
 
   const transport = useMemo(

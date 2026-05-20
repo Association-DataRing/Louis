@@ -33,6 +33,8 @@ import { addAgentToPipeline } from "../actions";
 interface AddAgentDialogProps {
   pipelineId: string;
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
+  /** Set des couples providerType:modelId désactivés (settings/models). */
+  disabledModelKeys?: Set<string>;
 }
 
 type Role =
@@ -63,6 +65,7 @@ const NONE_VALUE = "__none__";
 export function AddAgentDialog({
   pipelineId,
   providerKeys,
+  disabledModelKeys,
 }: AddAgentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -86,7 +89,12 @@ export function AddAgentDialog({
   }
 
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
-  const modelOptions = selectedKey ? MODEL_CATALOG[selectedKey.type] : [];
+  const allModelOptions = selectedKey ? MODEL_CATALOG[selectedKey.type] : [];
+  const modelOptions = disabledModelKeys
+    ? allModelOptions.filter(
+        (m) => !disabledModelKeys.has(`${selectedKey?.type ?? ""}:${m.id}`)
+      )
+    : allModelOptions;
   const roleM = roleMeta(role);
 
   function reset() {

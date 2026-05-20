@@ -10,6 +10,7 @@ import {
   IconBolt,
   IconCash,
   IconShieldLock,
+  IconCpu,
 } from "@tabler/icons-react";
 
 const sections = [
@@ -25,6 +26,7 @@ const sections = [
     group: "Intégrations",
     items: [
       { href: "/settings/providers", label: "Providers IA", icon: IconKey },
+      { href: "/settings/models", label: "Modèles", icon: IconCpu },
       {
         href: "/settings/connectors",
         label: "Connecteurs",

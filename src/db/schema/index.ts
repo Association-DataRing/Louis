@@ -13,3 +13,4 @@ export * from "./workflows";
 export * from "./cabinet-settings";
 export * from "./audit-log";
 export * from "./pipelines";
+export * from "./model-settings";
