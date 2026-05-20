@@ -145,15 +145,34 @@ async function fetchOpenAiCompat(
     );
   }
 
-  return data.data
-    .filter((m) => m.id && typeof m.id === "string")
-    .map((m) => ({
-      id: m.id,
-      label: m.name?.trim() || prettyId(m.id),
-      hint: m.description?.trim() || undefined,
-      contextWindow: m.context_length ?? m.context_window ?? undefined,
-      vendor: m.owned_by ?? undefined,
-    }));
+  return dedupeById(
+    data.data
+      .filter((m) => m.id && typeof m.id === "string")
+      .map((m) => ({
+        id: m.id,
+        label: m.name?.trim() || prettyId(m.id),
+        hint: m.description?.trim() || undefined,
+        contextWindow: m.context_length ?? m.context_window ?? undefined,
+        vendor: m.owned_by ?? undefined,
+      }))
+  );
+}
+
+/**
+ * Certains providers renvoient le même id plusieurs fois (alias →
+ * version concrète chez Mistral, doublons silencieux chez OpenRouter…).
+ * On garde la première occurrence pour éviter les warnings React
+ * « duplicate key » et stabilise le rendu.
+ */
+function dedupeById(models: LiveModel[]): LiveModel[] {
+  const seen = new Set<string>();
+  const result: LiveModel[] = [];
+  for (const m of models) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    result.push(m);
+  }
+  return result;
 }
 
 interface AnthropicModelsResponse {
@@ -184,16 +203,18 @@ async function fetchAnthropic(apiKey: string): Promise<LiveModel[]> {
   }
 
   const data = (await res.json()) as AnthropicModelsResponse;
-  return (data.data ?? [])
-    .filter((m) => m.id)
-    .map((m) => ({
-      id: m.id,
-      label: m.display_name?.trim() || prettyId(m.id),
-      hint: m.created_at
-        ? `Disponible depuis ${m.created_at.slice(0, 10)}`
-        : undefined,
-      vendor: "anthropic",
-    }));
+  return dedupeById(
+    (data.data ?? [])
+      .filter((m) => m.id)
+      .map((m) => ({
+        id: m.id,
+        label: m.display_name?.trim() || prettyId(m.id),
+        hint: m.created_at
+          ? `Disponible depuis ${m.created_at.slice(0, 10)}`
+          : undefined,
+        vendor: "anthropic",
+      }))
+  );
 }
 
 interface OpenRouterModelsResponse {
@@ -227,23 +248,25 @@ async function fetchOpenRouter(): Promise<LiveModel[]> {
   }
 
   const data = (await res.json()) as OpenRouterModelsResponse;
-  return (data.data ?? [])
-    .filter((m) => m.id)
-    .map((m) => {
-      const vendor = m.id.includes("/") ? m.id.split("/")[0] : undefined;
-      const priceHint = formatOpenRouterPricing(m.pricing);
-      const ctxHint = m.context_length
-        ? `${(m.context_length / 1000).toFixed(0)}k ctx`
-        : undefined;
-      const hints = [vendor, ctxHint, priceHint].filter(Boolean);
-      return {
-        id: m.id,
-        label: m.name?.trim() || prettyId(m.id),
-        hint: hints.length > 0 ? hints.join(" · ") : undefined,
-        contextWindow: m.context_length,
-        vendor,
-      };
-    });
+  return dedupeById(
+    (data.data ?? [])
+      .filter((m) => m.id)
+      .map((m) => {
+        const vendor = m.id.includes("/") ? m.id.split("/")[0] : undefined;
+        const priceHint = formatOpenRouterPricing(m.pricing);
+        const ctxHint = m.context_length
+          ? `${(m.context_length / 1000).toFixed(0)}k ctx`
+          : undefined;
+        const hints = [vendor, ctxHint, priceHint].filter(Boolean);
+        return {
+          id: m.id,
+          label: m.name?.trim() || prettyId(m.id),
+          hint: hints.length > 0 ? hints.join(" · ") : undefined,
+          contextWindow: m.context_length,
+          vendor,
+        };
+      })
+  );
 }
 
 function formatOpenRouterPricing(
