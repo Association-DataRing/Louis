@@ -41,6 +41,7 @@ import {
   IconFileTypeDocx,
   IconAlertTriangle,
   IconPencil,
+  IconBriefcase,
 } from "@tabler/icons-react";
 import {
   Select,
@@ -814,6 +815,10 @@ export function ChatShell({
       : null
   );
 
+  // (anciennement utilisé pour basculer le provider depuis un dropdown
+  // dédié — désormais le picker de modèle gère lui-même la résolution
+  // de la clé provider via handleModelChange).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function handleProviderChange(nextId: string) {
     setProviderKeyId(nextId);
     const nextType = providerKeys.find((k) => k.id === nextId)?.type;
@@ -822,20 +827,60 @@ export function ChatShell({
 
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
   const selectedType: ProviderType = selectedKey?.type ?? "mistral";
-  // Source de vérité : modèles ajoutés par l'utilisateur via la
-  // bibliothèque. Fallback sur MODEL_CATALOG curé si rien ajouté pour
-  // ce provider (cas premier login / provider fraîchement configuré).
-  const userModels =
-    enabledModels?.filter((m) => m.providerType === selectedType) ?? [];
-  const modelOptions =
-    userModels.length > 0
-      ? userModels.map((m) => ({
-          id: m.modelId,
-          label: m.label,
-          hint: m.hint ?? undefined,
-        }))
-      : MODEL_CATALOG[selectedType];
   const selectedMeta = PROVIDER_CATALOG[selectedType];
+
+  // Tous les modèles activés par l'utilisateur, à travers TOUS les
+  // providers connectés. Le sélecteur unifié les présente avec le
+  // provider en hint à droite — pas besoin de double dropdown.
+  const allEnabledModels = useMemo(() => {
+    if (!enabledModels) return [];
+    // Garde uniquement les modèles dont le providerType a au moins une
+    // clé active chez l'utilisateur (sinon impossible d'appeler).
+    const activeTypes = new Set(providerKeys.map((k) => k.type));
+    return enabledModels.filter((m) => activeTypes.has(m.providerType));
+  }, [enabledModels, providerKeys]);
+
+  // Fallback historique : si l'utilisateur n'a aucun modèle ajouté
+  // (situation transitoire ou nouveau provider non encore exploré), on
+  // expose le catalogue curé du provider sélectionné — sinon picker vide.
+  const fallbackOptions = MODEL_CATALOG[selectedType].map((m) => ({
+    providerType: selectedType,
+    modelId: m.id,
+    label: m.label,
+    hint: m.hint ?? null,
+  }));
+  const unifiedModels =
+    allEnabledModels.length > 0 ? allEnabledModels : fallbackOptions;
+
+  // Pour le composer : trouve la clé provider à utiliser quand on
+  // sélectionne un modèle. Priorité à la clé par défaut, sinon la
+  // première active du même type.
+  function findKeyForModel(modelProviderType: string): string | null {
+    const matching = providerKeys.filter((k) => k.type === modelProviderType);
+    if (matching.length === 0) return null;
+    const def = matching.find((k) => k.isDefault);
+    return (def ?? matching[0]).id;
+  }
+
+  function handleModelChange(newModelId: string) {
+    // Le value du Select est "providerType:modelId" pour garantir
+    // l'unicité (un même modelId peut exister chez plusieurs providers
+    // — par exemple "claude-sonnet-4.5" en direct Anthropic ET via
+    // OpenRouter en "anthropic/claude-sonnet-4.5"). On split.
+    const sepIdx = newModelId.indexOf(":");
+    if (sepIdx < 0) {
+      setModelId(newModelId);
+      return;
+    }
+    const ptype = newModelId.slice(0, sepIdx);
+    const mid = newModelId.slice(sepIdx + 1);
+    const keyId = findKeyForModel(ptype);
+    if (keyId) setProviderKeyId(keyId);
+    setModelId(mid);
+  }
+
+  const selectedModelValue = `${selectedType}:${modelId}`;
+  const modelOptions = unifiedModels;
 
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/chat" }),
@@ -1436,14 +1481,16 @@ export function ChatShell({
                 >
                   <SelectTrigger
                     size="sm"
-                    className="h-8 border-0 bg-transparent shadow-none hover:bg-accent text-xs px-2 gap-1.5"
+                    className="h-8 rounded-full border border-border/60 bg-background/60 hover:bg-accent text-xs px-3 gap-1.5 shadow-none transition-colors"
                     aria-label="Pipeline orchestrateur"
                   >
+                    <IconBriefcase className="size-3 text-muted-foreground" />
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {pipelines.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
+                        <IconBriefcase className="size-3.5 text-muted-foreground" />
                         <span className="truncate">{p.name}</span>
                         <span className="ml-2 text-xs text-muted-foreground">
                           · {p.agentCount} agent{p.agentCount > 1 ? "s" : ""}
@@ -1455,53 +1502,49 @@ export function ChatShell({
               )}
 
               <Select
-                value={providerKeyId}
-                onValueChange={handleProviderChange}
+                value={selectedModelValue}
+                onValueChange={handleModelChange}
                 disabled={isBusy}
               >
                 <SelectTrigger
                   size="sm"
-                  className="h-8 border-0 bg-transparent shadow-none hover:bg-accent text-xs px-2 gap-1.5"
+                  className="h-8 rounded-full border border-border/60 bg-background/60 hover:bg-accent text-xs px-3 gap-1.5 shadow-none transition-colors max-w-[280px]"
+                  aria-label="Modèle"
                 >
+                  <span
+                    className="inline-flex items-center text-[10px] uppercase tracking-wider text-foreground/70 font-medium"
+                    aria-hidden
+                  >
+                    {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
+                  </span>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {providerKeys.map((k) => {
-                    const m = PROVIDER_CATALOG[k.type];
+                <SelectContent className="max-w-[420px]">
+                  {modelOptions.map((m) => {
+                    const meta = PROVIDER_CATALOG[m.providerType as ProviderType];
                     return (
-                      <SelectItem key={k.id} value={k.id}>
-                        <span className="truncate">{k.label}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          · {SOVEREIGNTY_LABEL[m.sovereignty]}
+                      <SelectItem
+                        key={`${m.providerType}:${m.modelId}`}
+                        value={`${m.providerType}:${m.modelId}`}
+                      >
+                        <span
+                          className="text-[9px] uppercase tracking-wider text-foreground/70 font-medium border border-border rounded px-1 py-px"
+                          aria-hidden
+                        >
+                          {SOVEREIGNTY_LABEL[meta.sovereignty]}
                         </span>
+                        <span className="font-medium">{m.label}</span>
+                        <span className="text-[11px] text-muted-foreground ml-1">
+                          · {meta.label}
+                        </span>
+                        {m.hint && (
+                          <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">
+                            · {m.hint}
+                          </span>
+                        )}
                       </SelectItem>
                     );
                   })}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={modelId}
-                onValueChange={(v) => setModelId(v)}
-                disabled={isBusy}
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="h-8 border-0 bg-transparent shadow-none hover:bg-accent text-xs px-2 gap-1.5"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {modelOptions.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <span>{m.label}</span>
-                      {m.hint && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          · {m.hint}
-                        </span>
-                      )}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
 

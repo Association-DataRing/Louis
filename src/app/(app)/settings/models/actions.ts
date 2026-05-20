@@ -5,7 +5,11 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { modelSettings, type ModelSetting } from "@/db/schema";
+import {
+  modelSettings,
+  providerKeys,
+  type ModelSetting,
+} from "@/db/schema";
 import { MODEL_CATALOG } from "@/lib/providers/models";
 import type { ProviderType } from "@/lib/providers/catalog";
 
@@ -148,8 +152,10 @@ export async function removeModel(payload: {
 
 /**
  * Liste les modèles activés (ajoutés) pour l'utilisateur courant.
- * Si l'utilisateur n'a JAMAIS rien ajouté (0 row), on bootstrap avec
- * MODEL_CATALOG (le pack curé) pour ne pas casser un compte existant.
+ * Auto-seed à la première visite mais UNIQUEMENT pour les providers
+ * dont l'utilisateur a déjà configuré une clé active — sinon on
+ * polluait la liste avec Mistral / Anthropic / OpenAI alors que
+ * l'utilisateur n'avait qu'OpenRouter.
  */
 export async function listEnabledModels(
   userId: string
@@ -163,8 +169,17 @@ export async function listEnabledModels(
 
   if (rows.length > 0) return rows;
 
-  // Auto-seed du pack curé à la première visite — empêche le compte
-  // existant de voir des pickers vides après le passage opt-in.
+  // Récupère les providers réellement connectés pour ne pas seed des
+  // modèles d'un type non utilisable (clé absente).
+  const activeKeys = await db
+    .select({ type: providerKeys.type })
+    .from(providerKeys)
+    .where(
+      and(eq(providerKeys.userId, userId), eq(providerKeys.isActive, true))
+    );
+  const activeTypes = new Set<ProviderType>(activeKeys.map((k) => k.type));
+  if (activeTypes.size === 0) return [];
+
   const seed: Array<{
     userId: string;
     providerType: string;
@@ -177,6 +192,7 @@ export async function listEnabledModels(
     ProviderType,
     typeof MODEL_CATALOG[ProviderType],
   ][]) {
+    if (!activeTypes.has(type)) continue;
     for (const m of models) {
       seed.push({
         userId,
@@ -212,6 +228,52 @@ export async function getEnabledModelKeys(
 ): Promise<Set<string>> {
   const rows = await listEnabledModels(userId);
   return new Set(rows.map((r) => `${r.providerType}:${r.modelId}`));
+}
+
+/**
+ * Supprime les modèles activés pour des providers que l'utilisateur n'a
+ * plus en clé active. Cas typique : seed legacy qui avait inséré tous
+ * les providers de MODEL_CATALOG, ou clé désactivée a posteriori.
+ */
+export async function pruneOrphanModels(): Promise<ActionResult> {
+  const userId = await requireUserId();
+
+  const activeKeys = await db
+    .select({ type: providerKeys.type })
+    .from(providerKeys)
+    .where(
+      and(eq(providerKeys.userId, userId), eq(providerKeys.isActive, true))
+    );
+  const activeTypes = activeKeys.map((k) => k.type);
+
+  if (activeTypes.length === 0) {
+    // Pas de provider actif → on retire tout, plus rien à utiliser.
+    await db
+      .delete(modelSettings)
+      .where(eq(modelSettings.userId, userId));
+  } else {
+    // Garde uniquement les modèles dont le providerType est encore actif.
+    const rows = await db
+      .select()
+      .from(modelSettings)
+      .where(eq(modelSettings.userId, userId));
+    const orphanIds = rows
+      .filter((r) => !activeTypes.includes(r.providerType as ProviderType))
+      .map((r) => r.id);
+    if (orphanIds.length > 0) {
+      // Drizzle ne supporte pas IN avec drizzle-orm sans helpers ici, on
+      // fait N delete séquentiels — N petit (modèles non couverts).
+      for (const id of orphanIds) {
+        await db.delete(modelSettings).where(eq(modelSettings.id, id));
+      }
+    }
+  }
+
+  revalidatePath("/settings/models");
+  revalidatePath("/settings/models/library");
+  revalidatePath("/chat");
+  revalidatePath("/bureau");
+  return { ok: true };
 }
 
 /** Compat : conserve l'ancienne API pour les pages déjà branchées. */

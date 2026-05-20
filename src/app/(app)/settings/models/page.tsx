@@ -13,6 +13,7 @@ import { PROVIDER_CATALOG, type ProviderType } from "@/lib/providers/catalog";
 import { Button } from "@/components/ui/button";
 import { listEnabledModels } from "./actions";
 import { RemoveModelButton } from "./model-toggle";
+import { OrphansBanner } from "./orphans-banner";
 
 export default async function MyModelsPage() {
   const session = await auth();
@@ -22,16 +23,27 @@ export default async function MyModelsPage() {
   const [enabled, keys] = await Promise.all([
     listEnabledModels(userId),
     db
-      .select({ type: providerKeys.type })
+      .select({ type: providerKeys.type, isActive: providerKeys.isActive })
       .from(providerKeys)
       .where(eq(providerKeys.userId, userId)),
   ]);
 
-  const activeTypes = new Set<ProviderType>(keys.map((k) => k.type));
+  const activeTypes = new Set<ProviderType>(
+    keys.filter((k) => k.isActive).map((k) => k.type)
+  );
+
+  // Ne montre que les modèles ajoutés POUR un provider actuellement
+  // connecté. Si l'utilisateur a désactivé sa clé Mistral, ses modèles
+  // Mistral n'apparaissent plus dans la liste — on les considère
+  // orphelins (gérés via le bouton "Nettoyer les modèles orphelins").
+  const liveEnabled = enabled.filter((m) =>
+    activeTypes.has(m.providerType as ProviderType)
+  );
+  const orphanCount = enabled.length - liveEnabled.length;
 
   // Groupe par provider type pour l'affichage.
-  const byType = new Map<ProviderType, typeof enabled>();
-  for (const m of enabled) {
+  const byType = new Map<ProviderType, typeof liveEnabled>();
+  for (const m of liveEnabled) {
     const t = m.providerType as ProviderType;
     if (!byType.has(t)) byType.set(t, []);
     byType.get(t)!.push(m);
@@ -66,7 +78,7 @@ export default async function MyModelsPage() {
         <StatCard
           icon={IconCircleCheck}
           label="Modèles ajoutés"
-          value={enabled.length}
+          value={liveEnabled.length}
           hint="disponibles dans Chat & Bureau"
         />
         <StatCard
@@ -77,19 +89,20 @@ export default async function MyModelsPage() {
         />
         <StatCard
           icon={IconCircleDashed}
-          label="Sans provider"
-          value={enabled.filter((m) => !activeTypes.has(m.providerType as ProviderType)).length}
-          hint="orphelins — clé provider retirée"
+          label="Orphelins"
+          value={orphanCount}
+          hint="clé provider retirée — à nettoyer"
         />
       </div>
 
-      {enabled.length === 0 ? (
+      {orphanCount > 0 && <OrphansBanner count={orphanCount} />}
+
+      {liveEnabled.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="space-y-6">
           {[...byType.entries()].map(([type, models]) => {
             const meta = PROVIDER_CATALOG[type];
-            const isActive = activeTypes.has(type);
             return (
               <section key={type}>
                 <div className="mb-3 flex items-baseline justify-between gap-2 flex-wrap">
@@ -100,11 +113,6 @@ export default async function MyModelsPage() {
                     <span className="text-[10px] uppercase tracking-wider text-foreground/70 border border-border rounded-full px-1.5 py-0.5">
                       {meta.sovereignty.toUpperCase()}
                     </span>
-                    {!isActive && (
-                      <span className="text-[10px] uppercase tracking-wider text-destructive border border-destructive/40 rounded-full px-1.5 py-0.5">
-                        Clé manquante
-                      </span>
-                    )}
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {models.length} modèle{models.length > 1 ? "s" : ""}
