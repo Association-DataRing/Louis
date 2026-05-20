@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -8,7 +9,8 @@ import { McpRow } from "./mcp-row";
 
 export default async function McpPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
 
   const servers = await db
     .select()

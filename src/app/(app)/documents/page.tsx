@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { asc, desc, eq, and } from "drizzle-orm";
 import { IconFolder, IconChevronRight } from "@tabler/icons-react";
@@ -24,7 +25,8 @@ export default async function DocumentsPage({
   searchParams: Promise<SP>;
 }) {
   const session = await auth();
-  const userId = session!.user.id;
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
   const { folder: folderParam } = await searchParams;
   const currentFolderId = folderParam ?? null;
 

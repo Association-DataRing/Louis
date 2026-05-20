@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { desc, eq, sql } from "drizzle-orm";
 import {
   IconArrowUpRight,
@@ -12,7 +13,11 @@ import { AddProjectDialog } from "./add-project-dialog";
 
 export default async function ProjectsPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  // Garde défensive : si la session est null (cookie expiré, secret
+  // changé, premier accès non authentifié), on redirige vers /login
+  // plutôt que de crasher sur session.user.id.
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
 
   const list = await db
     .select({

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { desc } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -10,7 +11,8 @@ import { UserRow } from "./user-row";
 export default async function AdminUsersPage() {
   await requireAdmin();
   const session = await auth();
-  const currentId = session!.user.id;
+  if (!session?.user) redirect("/login");
+  const currentId = session.user.id;
 
   const rows = await db
     .select({

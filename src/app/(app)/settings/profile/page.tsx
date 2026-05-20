@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { count } from "drizzle-orm";
 import {
@@ -21,7 +22,8 @@ import { PasswordForm } from "./password-form";
 
 export default async function ProfilePage() {
   const session = await auth();
-  const userId = session!.user.id;
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
 
   const [user] = await db
     .select({

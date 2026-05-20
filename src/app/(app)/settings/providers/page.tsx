@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { IconShieldLock, IconInfoCircle } from "@tabler/icons-react";
 import { auth } from "@/auth";
@@ -37,7 +38,8 @@ const groups: Group[] = [
 
 export default async function ProvidersPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
 
   const allKeys = await db
     .select()

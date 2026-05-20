@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { IconArrowUpRight, IconPlus } from "@tabler/icons-react";
@@ -8,7 +9,8 @@ import { tabularReviews, tabularReviewRows } from "@/db/schema";
 
 export default async function TabularReviewsPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
 
   const list = await db
     .select({

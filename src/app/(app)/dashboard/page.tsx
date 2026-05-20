@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import {
@@ -23,7 +24,8 @@ import {
 
 export default async function DashboardPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
   const firstName = session?.user?.name?.split(/[\s.]/)[0] ?? "";
 
   const monthStart = new Date();

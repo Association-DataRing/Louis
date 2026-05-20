@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -11,7 +12,8 @@ import {
 
 export default async function UsagePage() {
   const session = await auth();
-  const userId = session!.user.id;
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
