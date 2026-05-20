@@ -22,6 +22,8 @@ import { AnimatedEdge } from "./animated-edge";
 import {
   removeAgentFromPipeline,
   reorderPipelineAgents,
+  resetPipelineLayout,
+  updateAgentCanvasPosition,
 } from "../actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -207,14 +209,28 @@ function PipelineWorkflowInner({
     });
   }
 
-  // Drag-to-reorder en mode sequential : lit la position X de chaque
-  // node après le drop, calcule le nouvel ordre, persiste via Server
-  // Action. Désactivé en council/parallel où la position 2D ne mappe
-  // pas trivialement à un ordre linéaire.
-  const dragReorderEnabled = editable && mode === "sequential" && agents.length > 1;
+  // Drag libre : tout pipeline éditable accepte le déplacement de ses
+  // nodes. Le mode (sequential/council/parallel) reste sémantique pour
+  // l'exécution, mais visuellement l'utilisateur dispose les agents
+  // comme il veut. On persiste les coordonnées canvasX/canvasY en DB
+  // à chaque drop.
+  const dragEnabled = editable && agents.length > 1;
   const handleNodeDragStop = useCallback(
-    (_e: React.MouseEvent | React.TouchEvent | unknown, _node: Node, nodesAfterDrag: Node[]) => {
-      if (!dragReorderEnabled) return;
+    (
+      _e: React.MouseEvent | React.TouchEvent | unknown,
+      node: Node,
+      nodesAfterDrag: Node[]
+    ) => {
+      if (!dragEnabled) return;
+
+      // (1) Persiste la position custom du node déplacé (toujours).
+      void updateAgentCanvasPosition(node.id, node.position.x, node.position.y);
+
+      // (2) En mode sequential, on garde le re-ordering automatique
+      // selon X — l'utilisateur peut continuer à réordonner par drag,
+      // mais le node garde aussi sa position custom. C'est le sens
+      // sémantique attendu : "je déplace = je veux que ce soit l'ordre".
+      if (mode !== "sequential") return;
       const sortedByX = [...nodesAfterDrag].sort(
         (a, b) => a.position.x - b.position.x
       );
@@ -224,19 +240,27 @@ function PipelineWorkflowInner({
       startTransition(async () => {
         const result = await reorderPipelineAgents(pipeline.id, newOrder);
         router.refresh();
-        if (result.ok) {
-          toast.success("Ordre mis à jour");
-        } else {
+        if (!result.ok) {
           toast.error("Réordonnancement impossible", {
             description: result.error,
           });
         }
       });
     },
-    [agents, dragReorderEnabled, pipeline.id, router]
+    [agents, dragEnabled, mode, pipeline.id, router]
   );
 
-  const positions = useMemo(() => layoutNodes(agents, mode), [agents, mode]);
+  // Coordonnées finales : canvasX/Y si l'user a déplacé un node,
+  // sinon fallback sur layoutNodes selon le mode.
+  const autoPositions = useMemo(() => layoutNodes(agents, mode), [agents, mode]);
+  const positions = useMemo(
+    () =>
+      agents.map((agent, i) => ({
+        x: agent.canvasX ?? autoPositions[i].x,
+        y: agent.canvasY ?? autoPositions[i].y,
+      })),
+    [agents, autoPositions]
+  );
 
   const initialNodes: Node[] = useMemo(
     () =>
@@ -259,11 +283,28 @@ function PipelineWorkflowInner({
           type: "agent",
           position: positions[i],
           data,
-          draggable: dragReorderEnabled,
+          draggable: dragEnabled,
         };
       }),
-    [agents, providerKeys, liveStates, editable, handleDelete, positions, dragReorderEnabled]
+    [agents, providerKeys, liveStates, editable, handleDelete, positions, dragEnabled]
   );
+
+  const hasCustomLayout = agents.some(
+    (a) => a.canvasX !== null || a.canvasY !== null
+  );
+  const handleResetLayout = useCallback(() => {
+    startTransition(async () => {
+      const result = await resetPipelineLayout(pipeline.id);
+      router.refresh();
+      if (result.ok) {
+        toast.success("Disposition réinitialisée");
+      } else {
+        toast.error("Réinitialisation impossible", {
+          description: result.error,
+        });
+      }
+    });
+  }, [pipeline.id, router]);
 
   const initialEdges = useMemo(
     () => buildEdges(agents, mode, liveStates),
@@ -333,29 +374,43 @@ function PipelineWorkflowInner({
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,transparent,oklch(var(--color-foreground)/0.02)_70%,oklch(var(--color-foreground)/0.04))]"
         />
 
-        {/* Toggle plein écran. Posé en absolute pour ne pas perturber
-            le layout du ReactFlow. Au-dessus des Controls (qui sont en
-            bottom-right) et de la MiniMap. */}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setExpanded((v) => !v)}
-          className="absolute top-3 right-3 z-10 gap-1.5 bg-card/95 backdrop-blur-sm shadow-sm"
-          aria-label={expanded ? "Réduire le canvas" : "Agrandir le canvas"}
-        >
-          {expanded ? (
-            <>
-              <IconMinimize className="size-3.5" />
-              Réduire <kbd className="ml-1 text-[10px] text-muted-foreground font-mono">Esc</kbd>
-            </>
-          ) : (
-            <>
-              <IconMaximize className="size-3.5" />
-              Plein écran
-            </>
+        {/* Toolbar canvas — toggle plein écran + reset layout. Posée
+            en absolute pour ne pas perturber le layout React Flow. */}
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+          {editable && hasCustomLayout && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleResetLayout}
+              disabled={pending}
+              className="gap-1.5 bg-card/95 backdrop-blur-sm shadow-sm"
+              title="Remet les nodes à leur position automatique selon le mode"
+            >
+              Réinitialiser la disposition
+            </Button>
           )}
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setExpanded((v) => !v)}
+            className="gap-1.5 bg-card/95 backdrop-blur-sm shadow-sm"
+            aria-label={expanded ? "Réduire le canvas" : "Agrandir le canvas"}
+          >
+            {expanded ? (
+              <>
+                <IconMinimize className="size-3.5" />
+                Réduire <kbd className="ml-1 text-[10px] text-muted-foreground font-mono">Esc</kbd>
+              </>
+            ) : (
+              <>
+                <IconMaximize className="size-3.5" />
+                Plein écran
+              </>
+            )}
+          </Button>
+        </div>
         <ReactFlow
           nodes={initialNodes}
           edges={initialEdges}
@@ -369,7 +424,7 @@ function PipelineWorkflowInner({
           panOnDrag
           zoomOnScroll
           zoomOnPinch
-          nodesDraggable={dragReorderEnabled}
+          nodesDraggable={dragEnabled}
           nodesConnectable={false}
           edgesFocusable={false}
           onNodeClick={onNodeClick}

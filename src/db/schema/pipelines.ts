@@ -8,6 +8,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { providerKeys } from "./provider-keys";
@@ -82,6 +83,11 @@ export const pipelineAgents = pgTable(
     systemPrompt: text("system_prompt"),
     toolAllowlist: jsonb("tool_allowlist").$type<string[] | null>(),
     position: integer("position").notNull().default(0),
+    // Coordonnées custom sur le canvas React Flow. NULL = layout
+    // automatique (calculé selon le mode du pipeline). Dès que l'user
+    // drag un node, on persiste ses coordonnées.
+    canvasX: doublePrecision("canvas_x"),
+    canvasY: doublePrecision("canvas_y"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

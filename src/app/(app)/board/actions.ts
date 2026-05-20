@@ -380,6 +380,65 @@ export async function reorderPipelineAgents(
   return { ok: true };
 }
 
+/**
+ * Persiste les coordonnées custom d'un agent sur le canvas. Appelé en
+ * onNodeDragStop. Pas de revalidate (le client a déjà la nouvelle
+ * position en state local) : on évite un round-trip et un flash visuel.
+ */
+export async function updateAgentCanvasPosition(
+  agentId: string,
+  x: number,
+  y: number
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const [agent] = await db
+    .select({
+      id: pipelineAgents.id,
+      pipelineUserId: pipelines.userId,
+      isPreset: pipelines.isPreset,
+    })
+    .from(pipelineAgents)
+    .innerJoin(pipelines, eq(pipelines.id, pipelineAgents.pipelineId))
+    .where(eq(pipelineAgents.id, agentId))
+    .limit(1);
+  if (!agent || agent.pipelineUserId !== userId) {
+    return { ok: false, error: "Agent introuvable." };
+  }
+  if (agent.isPreset) {
+    return { ok: false, error: "Pipeline système — clonez avant d'éditer." };
+  }
+  await db
+    .update(pipelineAgents)
+    .set({ canvasX: x, canvasY: y, updatedAt: new Date() })
+    .where(eq(pipelineAgents.id, agentId));
+  return { ok: true };
+}
+
+/**
+ * Remet à zéro les positions custom de tous les agents → ils reprennent
+ * le layout automatique calculé selon le mode du pipeline.
+ */
+export async function resetPipelineLayout(
+  pipelineId: string
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const [pipeline] = await db
+    .select({ id: pipelines.id, isPreset: pipelines.isPreset })
+    .from(pipelines)
+    .where(and(eq(pipelines.id, pipelineId), eq(pipelines.userId, userId)))
+    .limit(1);
+  if (!pipeline) return { ok: false, error: "Pipeline introuvable." };
+  if (pipeline.isPreset) {
+    return { ok: false, error: "Pipeline système — clonez avant d'éditer." };
+  }
+  await db
+    .update(pipelineAgents)
+    .set({ canvasX: null, canvasY: null, updatedAt: new Date() })
+    .where(eq(pipelineAgents.pipelineId, pipelineId));
+  revalidatePath("/board");
+  return { ok: true };
+}
+
 async function uniqueSlug(userId: string, base: string): Promise<string> {
   let slug = base;
   let n = 2;
