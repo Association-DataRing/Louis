@@ -24,6 +24,11 @@ const groups: Group[] = [
     types: ["anthropic", "openai"],
   },
   {
+    title: "Agrégateurs",
+    subtitle: "Une seule clé pour accéder au catalogue multi-providers (Claude, GPT, Mistral, Llama, Gemini…). Pratique comme fallback en cas de saturation d'un fournisseur.",
+    types: ["openrouter"],
+  },
+  {
     title: "Self-hosted",
     subtitle: "Serveurs d'inférence auto-hébergés (Ollama, vLLM, llama.cpp, LiteLLM…) via API OpenAI-compatible.",
     types: ["openai_compatible"],
