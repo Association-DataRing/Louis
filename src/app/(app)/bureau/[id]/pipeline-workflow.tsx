@@ -39,8 +39,13 @@ interface PipelineWorkflowProps {
   pipeline: Pipeline;
   agents: PipelineAgent[];
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
-  /** Set des couples providerType:modelId désactivés (settings/models). */
-  disabledModelKeys?: Set<string>;
+  /** Modèles ajoutés via /settings/models/library. */
+  enabledModels?: Array<{
+    providerType: string;
+    modelId: string;
+    label: string;
+    hint?: string | null;
+  }>;
   liveStates?: Record<string, "idle" | "active" | "done" | "error">;
 }
 
@@ -168,7 +173,7 @@ function PipelineWorkflowInner({
   pipeline,
   agents,
   providerKeys,
-  disabledModelKeys,
+  enabledModels,
   liveStates,
 }: PipelineWorkflowProps) {
   const router = useRouter();
@@ -342,7 +347,7 @@ function PipelineWorkflowInner({
         <AgentEditSheet
           agent={editingAgent}
           providerKeys={providerKeys}
-          disabledModelKeys={disabledModelKeys}
+          enabledModels={enabledModels}
           open={!!editingAgent}
           onOpenChange={(open) => {
             if (!open) setEditingAgent(null);

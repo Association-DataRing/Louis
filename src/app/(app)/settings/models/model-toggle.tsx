@@ -3,48 +3,54 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
-import { toggleModel } from "./actions";
+import { IconTrash } from "@tabler/icons-react";
+import { Button } from "@/components/ui/button";
+import { removeModel } from "./actions";
 
-interface ModelToggleProps {
+interface RemoveModelButtonProps {
   providerType: string;
   modelId: string;
-  enabled: boolean;
+  label: string;
 }
 
-export function ModelToggle({
+/**
+ * Bouton "retirer de ma plateforme" — utilisé dans la liste des modèles
+ * activés. Confirmation via toast plutôt qu'AlertDialog parce que l'action
+ * est facilement annulable (re-cocher dans la bibliothèque).
+ */
+export function RemoveModelButton({
   providerType,
   modelId,
-  enabled,
-}: ModelToggleProps) {
+  label,
+}: RemoveModelButtonProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  function handleChange(next: boolean) {
+  function handleClick() {
     startTransition(async () => {
-      const result = await toggleModel({
-        providerType,
-        modelId,
-        enabled: next,
-      });
+      const result = await removeModel({ providerType, modelId });
       if (result.ok) {
         router.refresh();
-        toast.success(
-          next ? "Modèle activé" : "Modèle désactivé",
-          { description: `${providerType} · ${modelId}` }
-        );
+        toast.success("Modèle retiré", {
+          description: `${label} ne sera plus disponible dans les pickers.`,
+        });
       } else {
-        toast.error("Mise à jour impossible", { description: result.error });
+        toast.error("Suppression impossible", { description: result.error });
       }
     });
   }
 
   return (
-    <Switch
-      checked={enabled}
-      onCheckedChange={handleChange}
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      onClick={handleClick}
       disabled={pending}
-      aria-label={`${enabled ? "Désactiver" : "Activer"} le modèle ${modelId}`}
-    />
+      aria-label={`Retirer ${label}`}
+      className="text-muted-foreground hover:text-destructive"
+    >
+      <IconTrash className="size-3.5" />
+    </Button>
   );
 }

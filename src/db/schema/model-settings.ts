@@ -29,7 +29,18 @@ export const modelSettings = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     providerType: text("provider_type").notNull(),
     modelId: text("model_id").notNull(),
+    /**
+     * Sémantique opt-in : `true` = modèle ajouté à la plateforme et donc
+     * disponible dans les pickers. `false` = explicitement retiré (les
+     * legacy rows du système opt-out d'avant gardent leur sens : non
+     * disponibles). Le defaut DB est false pour compat, le UX nouveau
+     * insert toujours en true.
+     */
     enabled: boolean("enabled").notNull().default(false),
+    /** Label humain stocké au moment de l'ajout (snapshot). */
+    label: text("label"),
+    /** Hint optionnel (« Rapide, peu coûteux »…). */
+    hint: text("hint"),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => [

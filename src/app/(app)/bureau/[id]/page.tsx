@@ -12,7 +12,7 @@ import { CloneToEditButton } from "./clone-to-edit-button";
 import { PipelineModeBar } from "./pipeline-mode-bar";
 import { AddAgentDialog } from "./add-agent-dialog";
 import { InlineRename } from "./inline-rename";
-import { getDisabledModelKeys } from "../../settings/models/actions";
+import { listEnabledModels } from "../../settings/models/actions";
 
 export default async function PipelineEditorPage({
   params,
@@ -37,7 +37,13 @@ export default async function PipelineEditorPage({
     .where(eq(providerKeys.userId, userId))
     .orderBy(asc(providerKeys.label));
 
-  const disabledModelKeys = await getDisabledModelKeys(userId);
+  const enabledRows = await listEnabledModels(userId);
+  const enabledModels = enabledRows.map((r) => ({
+    providerType: r.providerType,
+    modelId: r.modelId,
+    label: r.label ?? r.modelId,
+    hint: r.hint,
+  }));
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10 md:px-8 md:py-14">
@@ -103,14 +109,14 @@ export default async function PipelineEditorPage({
           pipeline={data.pipeline}
           agents={data.agents}
           providerKeys={keys}
-          disabledModelKeys={disabledModelKeys}
+          enabledModels={enabledModels}
         />
         {!data.pipeline.isPreset && (
           <div className="absolute left-4 bottom-4 z-10">
             <AddAgentDialog
               pipelineId={data.pipeline.id}
               providerKeys={keys}
-              disabledModelKeys={disabledModelKeys}
+              enabledModels={enabledModels}
             />
           </div>
         )}

@@ -14,7 +14,8 @@ import {
   workflows,
 } from "@/db/schema";
 import { seedPresetsForUser } from "@/lib/orchestrator";
-import { getDisabledModelKeys } from "../settings/models/actions";
+import { listEnabledModels } from "../settings/models/actions";
+import type { ProviderType } from "@/lib/providers/catalog";
 import { ChatShell } from "./chat-shell";
 
 type Search = {
@@ -97,10 +98,16 @@ export default async function ChatPage({
           .orderBy(asc(pipelineAgents.position))
       : [];
 
-  // Modèles désactivés par l'utilisateur dans /settings/models — passés
-  // au shell pour filtrer les sélecteurs côté client.
-  const disabledKeysSet = await getDisabledModelKeys(userId);
-  const disabledModelKeys = Array.from(disabledKeysSet);
+  // Modèles ajoutés par l'utilisateur dans /settings/models/library —
+  // source de vérité du picker. Si l'utilisateur a 0 row, listEnabled
+  // auto-seed avec MODEL_CATALOG (cas premier login).
+  const enabledRows = await listEnabledModels(userId);
+  const enabledModels = enabledRows.map((r) => ({
+    providerType: r.providerType as ProviderType,
+    modelId: r.modelId,
+    label: r.label ?? r.modelId,
+    hint: r.hint,
+  }));
 
   const pipelineList = pipelineRows.map((p) => {
     const agents = allAgents.filter((a) => a.pipelineId === p.id);
@@ -221,7 +228,7 @@ export default async function ChatPage({
       availableDocuments={docList}
       workflows={workflowList}
       pipelines={pipelineList}
-      disabledModelKeys={disabledModelKeys}
+      enabledModels={enabledModels}
       initialUsage={{
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,

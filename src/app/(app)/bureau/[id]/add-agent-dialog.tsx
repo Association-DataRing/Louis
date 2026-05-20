@@ -33,8 +33,13 @@ import { addAgentToPipeline } from "../actions";
 interface AddAgentDialogProps {
   pipelineId: string;
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
-  /** Set des couples providerType:modelId désactivés (settings/models). */
-  disabledModelKeys?: Set<string>;
+  /** Modèles ajoutés par l'utilisateur via /settings/models/library. */
+  enabledModels?: Array<{
+    providerType: string;
+    modelId: string;
+    label: string;
+    hint?: string | null;
+  }>;
 }
 
 type Role =
@@ -65,7 +70,7 @@ const NONE_VALUE = "__none__";
 export function AddAgentDialog({
   pipelineId,
   providerKeys,
-  disabledModelKeys,
+  enabledModels,
 }: AddAgentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -89,12 +94,20 @@ export function AddAgentDialog({
   }
 
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
-  const allModelOptions = selectedKey ? MODEL_CATALOG[selectedKey.type] : [];
-  const modelOptions = disabledModelKeys
-    ? allModelOptions.filter(
-        (m) => !disabledModelKeys.has(`${selectedKey?.type ?? ""}:${m.id}`)
-      )
-    : allModelOptions;
+  const userModels =
+    selectedKey && enabledModels
+      ? enabledModels.filter((m) => m.providerType === selectedKey.type)
+      : [];
+  const modelOptions =
+    userModels.length > 0
+      ? userModels.map((m) => ({
+          id: m.modelId,
+          label: m.label,
+          hint: m.hint ?? undefined,
+        }))
+      : selectedKey
+        ? MODEL_CATALOG[selectedKey.type]
+        : [];
   const roleM = roleMeta(role);
 
   function reset() {

@@ -106,6 +106,13 @@ type PipelineOption = {
   agents: PipelineAgentOption[];
 };
 
+export type EnabledModel = {
+  providerType: ProviderType;
+  modelId: string;
+  label: string;
+  hint?: string | null;
+};
+
 type Props = {
   providerKeys: KeyOption[];
   initialProviderKeyId: string;
@@ -125,11 +132,11 @@ type Props = {
   workflows: WorkflowOption[];
   pipelines: PipelineOption[];
   /**
-   * Liste des couples providerType:modelId désactivés par l'utilisateur
-   * dans /settings/models. Filtre les options du picker modèle pour ne
-   * proposer que ceux qu'il veut voir.
+   * Modèles ajoutés par l'utilisateur dans /settings/models/library —
+   * source de vérité du picker modèle. Le hardcoded MODEL_CATALOG est
+   * utilisé en fallback uniquement si la liste est vide pour ce type.
    */
-  disabledModelKeys?: string[];
+  enabledModels?: EnabledModel[];
   initialUsage: Usage;
   userName: string;
 };
@@ -704,14 +711,10 @@ export function ChatShell({
   availableDocuments,
   workflows,
   pipelines,
-  disabledModelKeys,
+  enabledModels,
   initialUsage,
   userName,
 }: Props) {
-  const disabledKeySet = useMemo(
-    () => new Set(disabledModelKeys ?? []),
-    [disabledModelKeys]
-  );
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
   // Sélection de pipeline orchestrateur. Priorité :
@@ -819,15 +822,19 @@ export function ChatShell({
 
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
   const selectedType: ProviderType = selectedKey?.type ?? "mistral";
-  // Filtre les modèles désactivés par l'utilisateur dans /settings/models.
-  // Si tout est désactivé, on retombe sur le catalogue complet pour ne
-  // pas le bloquer (cas pathologique).
-  const allModelOptions = MODEL_CATALOG[selectedType];
-  const filteredOptions = allModelOptions.filter(
-    (m) => !disabledKeySet.has(`${selectedType}:${m.id}`)
-  );
+  // Source de vérité : modèles ajoutés par l'utilisateur via la
+  // bibliothèque. Fallback sur MODEL_CATALOG curé si rien ajouté pour
+  // ce provider (cas premier login / provider fraîchement configuré).
+  const userModels =
+    enabledModels?.filter((m) => m.providerType === selectedType) ?? [];
   const modelOptions =
-    filteredOptions.length > 0 ? filteredOptions : allModelOptions;
+    userModels.length > 0
+      ? userModels.map((m) => ({
+          id: m.modelId,
+          label: m.label,
+          hint: m.hint ?? undefined,
+        }))
+      : MODEL_CATALOG[selectedType];
   const selectedMeta = PROVIDER_CATALOG[selectedType];
 
   const transport = useMemo(

@@ -28,11 +28,18 @@ import { MODEL_CATALOG } from "@/lib/providers/models";
 import { roleMeta } from "./agent-role-meta";
 import { updatePipelineAgent } from "./actions";
 
+export interface AgentEditModelOption {
+  providerType: string;
+  modelId: string;
+  label: string;
+  hint?: string | null;
+}
+
 interface AgentEditSheetProps {
   agent: PipelineAgent;
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
-  /** Set des couples providerType:modelId désactivés (settings/models). */
-  disabledModelKeys?: Set<string>;
+  /** Modèles ajoutés par l'utilisateur via /settings/models/library. */
+  enabledModels?: AgentEditModelOption[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -48,7 +55,7 @@ const NONE_VALUE = "__none__";
 export function AgentEditSheet({
   agent,
   providerKeys,
-  disabledModelKeys,
+  enabledModels,
   open,
   onOpenChange,
 }: AgentEditSheetProps) {
@@ -69,12 +76,22 @@ export function AgentEditSheet({
   const meta = roleMeta(agent.role);
   const Icon = meta.icon;
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
-  const allModelOptions = selectedKey ? MODEL_CATALOG[selectedKey.type] : [];
-  const modelOptions = disabledModelKeys
-    ? allModelOptions.filter(
-        (m) => !disabledModelKeys.has(`${selectedKey?.type ?? ""}:${m.id}`)
-      )
-    : allModelOptions;
+  // Source de vérité = modèles ajoutés via la bibliothèque. Fallback
+  // sur MODEL_CATALOG curé pour ce type si rien ajouté.
+  const userModels =
+    selectedKey && enabledModels
+      ? enabledModels.filter((m) => m.providerType === selectedKey.type)
+      : [];
+  const modelOptions =
+    userModels.length > 0
+      ? userModels.map((m) => ({
+          id: m.modelId,
+          label: m.label,
+          hint: m.hint ?? undefined,
+        }))
+      : selectedKey
+        ? MODEL_CATALOG[selectedKey.type]
+        : [];
 
   function handleSave() {
     setError(null);
