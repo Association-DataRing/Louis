@@ -12,7 +12,7 @@ Parcours recommandé pour une première installation et pour le développement.
 ## Étapes
 
 ```bash
-git clone https://github.com/D4kooo/louis.git
+git clone https://github.com/Association-DataRing/Louis.git
 cd louis
 
 # 1. Configuration

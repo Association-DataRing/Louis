@@ -84,7 +84,7 @@ export function modelFromKey(
         // ASCII pur obligatoire dans les headers HTTP (l'em-dash —
         // U+2014 fait throw fetch « character > 255 »).
         headers: {
-          "HTTP-Referer": "https://github.com/D4kooo/louis",
+          "HTTP-Referer": "https://github.com/Association-DataRing/Louis",
           "X-Title": "Louis - orchestrateur IA souverain",
         },
       })(modelId);

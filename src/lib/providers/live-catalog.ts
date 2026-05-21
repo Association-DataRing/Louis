@@ -244,7 +244,7 @@ async function fetchOpenRouter(apiKey: string): Promise<LiveModel[]> {
   const res = await fetch("https://openrouter.ai/api/v1/models", {
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://github.com/D4kooo/louis",
+      "HTTP-Referer": "https://github.com/Association-DataRing/Louis",
       "X-Title": "Louis - orchestrateur IA souverain",
       Accept: "application/json",
     },

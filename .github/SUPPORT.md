@@ -5,7 +5,7 @@ où trouver de l'aide selon votre besoin.
 
 ## J'ai une question sur l'utilisation
 
-→ Ouvrez une discussion sur [GitHub Discussions](https://github.com/D4kooo/louis/discussions)
+→ Ouvrez une discussion sur [GitHub Discussions](https://github.com/Association-DataRing/Louis/discussions)
 (à activer après la publication v0.1).
 
 Avant d'ouvrir, vérifiez :
@@ -15,7 +15,7 @@ Avant d'ouvrir, vérifiez :
 
 ## J'ai trouvé un bug
 
-→ Ouvrez une [issue](https://github.com/D4kooo/louis/issues/new/choose) avec
+→ Ouvrez une [issue](https://github.com/Association-DataRing/Louis/issues/new/choose) avec
 le template "Bug". Précisez :
 
 - Système (macOS / Linux / Windows + version)

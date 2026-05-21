@@ -5,7 +5,7 @@
 ### L'orchestrateur d'IA souverain pour les professions juridiques.
 ### Pas un chatbot. Un cabinet d'IA.
 
-[![CI](https://github.com/D4kooo/louis/actions/workflows/ci.yml/badge.svg)](https://github.com/D4kooo/louis/actions/workflows/ci.yml)
+[![CI](https://github.com/Association-DataRing/Louis/actions/workflows/ci.yml/badge.svg)](https://github.com/Association-DataRing/Louis/actions/workflows/ci.yml)
 [![Licence : AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-000091)](./LICENSE)
 [![Status : Alpha](https://img.shields.io/badge/Status-Alpha-orange)](#état-réel-des-fonctionnalités)
 [![Made in France](https://img.shields.io/badge/Made_in-France-000091?labelColor=FFFFFF)]()
@@ -252,7 +252,7 @@ et [`docs/architecture/data-model.md`](./docs/architecture/data-model.md).
 **1. Cloner et préparer les secrets**
 
 ```bash
-git clone https://github.com/D4kooo/louis.git
+git clone https://github.com/Association-DataRing/Louis.git
 cd louis
 cp .env.example .env
 
@@ -324,7 +324,7 @@ l'étape 4.
 | Liveness | `curl http://localhost:3000/api/health` | `{"status":"ok",...}` |
 | Readiness | `curl http://localhost:3000/api/ready` | `{"status":"ready",...}` (503 si Postgres ou Redis down) |
 | Login | naviguer sur `/login`, taper les credentials | redirection `/dashboard` |
-| Workflows pré-importés | `Cmd+K` puis « workflow » | 5 résultats |
+| Palette globale | dans l'app, presser `⌘K` (macOS) ou `Ctrl+K` | ouverture de la palette de navigation |
 
 ### Démarrage avec démo pré-remplie
 

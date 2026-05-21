@@ -24,7 +24,7 @@ Pointer Louis vers chacun via les variables d'env — cf.
 ## Build et démarrage
 
 ```bash
-git clone https://github.com/D4kooo/louis.git
+git clone https://github.com/Association-DataRing/Louis.git
 cd louis
 
 # Configuration
