@@ -75,8 +75,8 @@ export function SkillTemplatesDialog({ templates }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2 text-sm">
-          <IconInfoCircle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="mb-3 rounded-lg border border-warning/30 bg-warning/5 p-3 flex items-start gap-2 text-sm">
+          <IconInfoCircle className="size-4 text-warning shrink-0 mt-0.5" />
           <p className="text-muted-foreground">
             Ces exemples sont fournis comme <strong>points de départ</strong>.
             Relisez-les et adaptez-les à la pratique de votre cabinet — Louis

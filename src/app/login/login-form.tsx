@@ -64,6 +64,10 @@ export function LoginForm() {
                 {pending ? "Connexion…" : "Se connecter"}
               </Button>
             </form>
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              Mot de passe oublié ? Contactez l&apos;administrateur de votre
+              cabinet.
+            </p>
           </CardContent>
         </Card>
 

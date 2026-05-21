@@ -53,7 +53,7 @@ export default async function PipelineEditorPage({
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
         >
           <IconArrowLeft className="size-3.5" />
-          Board
+          Bureau
         </Link>
 
         <div className="flex items-start justify-between gap-4 flex-wrap">

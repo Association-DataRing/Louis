@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,6 +73,7 @@ export function ConnectorCard({ type, keys }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [error, setError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   function openDialog() {
     setDialogMode(isConfigured ? "edit" : "create");
@@ -219,11 +221,7 @@ export function ConnectorCard({ type, keys }: Props) {
                   <DropdownMenuItem
                     variant="destructive"
                     disabled={pending}
-                    onSelect={() => {
-                      if (confirm(`Supprimer "${primary.label}" ?`)) {
-                        startTransition(() => deleteConnectorKey(primary.id));
-                      }
-                    }}
+                    onSelect={() => setDeleteOpen(true)}
                   >
                     <IconTrash className="size-4" />
                     Supprimer
@@ -232,6 +230,28 @@ export function ConnectorCard({ type, keys }: Props) {
               </DropdownMenu>
             )}
           </div>
+
+          {isConfigured && (
+            <ConfirmDeleteDialog
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              title="Supprimer ce connecteur ?"
+              description={
+                <>
+                  « {primary.label} » sera supprimé. La clé chiffrée est
+                  retirée — l&apos;intégration ne fonctionnera plus tant
+                  qu&apos;une nouvelle clé n&apos;est pas saisie.
+                </>
+              }
+              pending={pending}
+              onConfirm={() => {
+                startTransition(async () => {
+                  await deleteConnectorKey(primary.id);
+                  setDeleteOpen(false);
+                });
+              }}
+            />
+          )}
 
           <p className="text-xs text-muted-foreground leading-relaxed">
             {meta.description}

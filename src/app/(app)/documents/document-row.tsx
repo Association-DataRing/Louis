@@ -29,6 +29,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import type { Document, DocumentFolder } from "@/db/schema";
 import { deleteDocument, moveDocumentToFolder } from "./actions";
 import { moveDocumentToProject } from "../projects/actions";
@@ -52,6 +53,7 @@ export function DocumentRow({
   const replaceRef = useRef<HTMLInputElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [replaceError, setReplaceError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   function moveTo(projectId: string | null) {
     startTransition(async () => {
@@ -243,11 +245,7 @@ export function DocumentRow({
           <DropdownMenuItem
             variant="destructive"
             disabled={pending}
-            onSelect={() => {
-              if (confirm(`Supprimer "${entry.filename}" ?`)) {
-                startTransition(() => deleteDocument(entry.id));
-              }
-            }}
+            onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
             Supprimer
@@ -255,6 +253,27 @@ export function DocumentRow({
         </DropdownMenuContent>
       </DropdownMenu>
       </div>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Supprimer ce document ?"
+        description={
+          <>
+            « {entry.filename} » et toutes ses versions antérieures seront
+            définitivement supprimés. Le texte extrait et les chunks RAG
+            associés seront retirés.
+          </>
+        }
+        pending={pending}
+        onConfirm={() => {
+          startTransition(async () => {
+            await deleteDocument(entry.id);
+            setDeleteOpen(false);
+            router.refresh();
+          });
+        }}
+      />
 
       <input
         ref={replaceRef}

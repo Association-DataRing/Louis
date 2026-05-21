@@ -31,7 +31,7 @@ const navItems = [
   { href: "/documents", label: "Documents", icon: IconFolder },
   { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
   { href: "/workflows", label: "Workflows", icon: IconLibrary },
-  { href: "/board", label: "Board", icon: IconBriefcase },
+  { href: "/board", label: "Bureau", icon: IconBriefcase },
 ];
 
 const settingsNav = {
@@ -213,10 +213,10 @@ export function SidebarContent({
                 href="/chat"
                 onClick={onNavigate}
                 title="Nouvelle conversation"
-                className="size-6 inline-flex items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors"
+                className="size-8 inline-flex items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors"
                 aria-label="Nouvelle conversation"
               >
-                <IconPlus className="size-3.5" />
+                <IconPlus className="size-4" />
               </Link>
             </div>
 

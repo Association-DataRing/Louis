@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { deleteProject, renameProject } from "../actions";
 
 type Props = {
@@ -34,6 +35,7 @@ type Props = {
 
 export function ProjectActions({ id, name }: Props) {
   const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [draft, setDraft] = useState(name);
   const [pending, startTransition] = useTransition();
 
@@ -47,12 +49,6 @@ export function ProjectActions({ id, name }: Props) {
   }
 
   function handleDelete() {
-    if (
-      !confirm(
-        `Supprimer le projet "${name}" ? Les conversations et documents seront détachés mais conservés.`
-      )
-    )
-      return;
     startTransition(() => deleteProject(id));
   }
 
@@ -77,7 +73,10 @@ export function ProjectActions({ id, name }: Props) {
             Renommer
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setDeleteOpen(true)}
+          >
             <IconTrash className="size-4" />
             Supprimer le projet
           </DropdownMenuItem>
@@ -123,6 +122,21 @@ export function ProjectActions({ id, name }: Props) {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Supprimer ce projet ?"
+        description={
+          <>
+            « {name} » sera supprimé. Les conversations et documents seront
+            détachés mais conservés — vous les retrouverez dans leur emplacement
+            d&apos;origine.
+          </>
+        }
+        pending={pending}
+        onConfirm={handleDelete}
+      />
     </>
   );
 }

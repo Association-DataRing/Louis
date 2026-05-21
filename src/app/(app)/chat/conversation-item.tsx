@@ -26,6 +26,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import {
   renameConversation,
   deleteConversation,
@@ -55,6 +56,7 @@ export function ConversationItem({
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function commitRename() {
@@ -70,9 +72,9 @@ export function ConversationItem({
   }
 
   function handleDelete() {
-    if (!confirm(`Supprimer la conversation "${title}" ?`)) return;
     startTransition(async () => {
       await deleteConversation(id, { redirectToFresh: isCurrent });
+      setDeleteOpen(false);
       if (!isCurrent) router.refresh();
     });
   }
@@ -148,7 +150,7 @@ export function ConversationItem({
       </Link>
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="shrink-0 size-7 inline-flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-background/60 transition-opacity mr-1"
+          className="shrink-0 size-8 inline-flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-background/60 transition-opacity mr-1"
           aria-label="Actions"
         >
           <IconDots className="size-4" />
@@ -225,12 +227,29 @@ export function ConversationItem({
           )}
 
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setDeleteOpen(true)}
+          >
             <IconTrash className="size-4" />
             Supprimer
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Supprimer cette conversation ?"
+        description={
+          <>
+            « {title} » sera définitivement supprimée. Les messages ne
+            pourront pas être récupérés.
+          </>
+        }
+        pending={pending}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

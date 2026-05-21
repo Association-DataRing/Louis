@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { IconSparkles } from "@tabler/icons-react";
 import { auth } from "@/auth";
@@ -62,6 +63,17 @@ function EmptyState() {
         dans une conversation. Créez-en un depuis votre pratique — Louis ne
         livre pas de templates par défaut, c&apos;est votre cabinet qui définit
         sa bibliothèque.
+      </p>
+      <p className="mt-3 text-sm text-muted-foreground max-w-md">
+        Besoin d&apos;inspiration ?{" "}
+        <Link
+          href="/settings/skills"
+          className="text-primary hover:underline underline-offset-2"
+        >
+          Importez des modèles de skills juridiques
+        </Link>{" "}
+        comme point de départ — relisez-les et adaptez-les avant de les
+        utiliser.
       </p>
     </div>
   );

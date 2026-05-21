@@ -58,7 +58,7 @@ export function LiveWorkflowPanel({
           role="status"
           aria-live="polite"
           aria-atomic="false"
-          className="pointer-events-auto w-full max-w-3xl rounded-2xl border border-border bg-card/95 backdrop-blur shadow-lg overflow-hidden"
+          className="pointer-events-auto w-full max-w-3xl rounded-2xl border border-border bg-card shadow-lg overflow-hidden"
         >
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/30">
             <div className="size-7 rounded-md grid place-items-center bg-foreground/10">
@@ -66,7 +66,7 @@ export function LiveWorkflowPanel({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Board en action
+                Bureau en action
               </div>
               <div className="text-sm font-medium truncate">{pipelineName}</div>
             </div>
@@ -155,7 +155,7 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
           >
             <span className="inline-flex items-center gap-1">
               <span className="relative flex size-1.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-foreground/40 opacity-75" />
+                <span className="absolute inline-flex size-full animate-pulse rounded-full bg-foreground/30 opacity-75" />
                 <span className="relative inline-flex size-1.5 rounded-full bg-foreground/80" />
               </span>
               {verb}…

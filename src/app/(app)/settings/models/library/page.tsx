@@ -49,7 +49,7 @@ export default async function ModelLibraryPage() {
           Choisissez un provider, parcourez son catalogue live, cochez les
           modèles que vous voulez rendre disponibles dans Louis. Seuls les
           modèles ajoutés ici apparaîtront dans les pickers du Chat et du
-          Board.
+          Bureau.
         </p>
       </header>
 

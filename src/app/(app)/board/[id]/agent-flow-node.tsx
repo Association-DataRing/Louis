@@ -55,7 +55,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
           className="absolute top-2 right-2 z-10 flex size-2"
           aria-label="Agent actif"
         >
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-foreground/40 opacity-75" />
+          <span className="absolute inline-flex size-full animate-pulse rounded-full bg-foreground/30 opacity-75" />
           <span className="relative inline-flex size-2 rounded-full bg-foreground/80" />
         </span>
       )}

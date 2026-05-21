@@ -33,7 +33,6 @@ export default async function ChatPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
-  const userName = session.user.name;
 
   const sp = await searchParams;
   const currentId = sp.id;
@@ -153,6 +152,7 @@ export default async function ChatPage({
     role: string;
     content: string;
     parts: import("@/db/schema").SavedPart[] | null;
+    metadata: unknown;
   }[] = [];
   let initialProviderKeyId = activeKeys[0].id;
   let initialModelId: string | null = null;
@@ -190,6 +190,7 @@ export default async function ChatPage({
         role: messages.role,
         content: messages.content,
         parts: messages.parts,
+        metadata: messages.metadata,
         inputTokens: messages.inputTokens,
         outputTokens: messages.outputTokens,
       })
@@ -201,6 +202,7 @@ export default async function ChatPage({
       role: r.role,
       content: r.content,
       parts: r.parts ?? null,
+      metadata: r.metadata ?? null,
     }));
     totalInputTokens = rows.reduce((n, r) => n + (r.inputTokens ?? 0), 0);
     totalOutputTokens = rows.reduce((n, r) => n + (r.outputTokens ?? 0), 0);
@@ -233,7 +235,6 @@ export default async function ChatPage({
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,
       }}
-      userName={userName}
     />
   );
 }

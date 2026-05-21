@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import type { DocumentFolder } from "@/db/schema";
 import { deleteFolder, renameFolder } from "./actions";
 
@@ -26,6 +27,7 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(folder.name);
   const [pending, startTransition] = useTransition();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   function commitRename() {
     const next = draft.trim();
@@ -42,14 +44,9 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
   }
 
   function handleDelete() {
-    if (
-      !confirm(
-        `Supprimer le dossier "${folder.name}" ? Les documents qu'il contient remonteront à la racine.`
-      )
-    )
-      return;
     startTransition(async () => {
       await deleteFolder(folder.id);
+      setDeleteOpen(false);
       router.refresh();
     });
   }
@@ -79,7 +76,7 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
             <button
               type="button"
               onClick={commitRename}
-              className="size-7 inline-flex items-center justify-center rounded-md text-primary hover:bg-accent"
+              className="size-8 inline-flex items-center justify-center rounded-md text-primary hover:bg-accent"
               title="Valider"
             >
               <IconCheck className="size-4" />
@@ -90,7 +87,7 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
                 setEditing(false);
                 setDraft(folder.name);
               }}
-              className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+              className="size-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
               title="Annuler"
             >
               <IconX className="size-4" />
@@ -124,12 +121,29 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
             Renommer
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setDeleteOpen(true)}
+          >
             <IconTrash className="size-4" />
             Supprimer
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Supprimer ce dossier ?"
+        description={
+          <>
+            « {folder.name} » sera supprimé. Les documents qu&apos;il contient
+            remonteront à la racine — ils ne sont pas perdus.
+          </>
+        }
+        pending={pending}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

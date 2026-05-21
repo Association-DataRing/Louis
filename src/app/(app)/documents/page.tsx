@@ -16,6 +16,7 @@ import { UploadButton } from "./upload-button";
 import { DocumentRow } from "./document-row";
 import { FolderRow } from "./folder-row";
 import { NewFolderButton } from "./new-folder-button";
+import { DocumentsDropzone } from "./documents-dropzone";
 
 type SP = { folder?: string };
 
@@ -171,24 +172,26 @@ export default async function DocumentsPage({
         </div>
       )}
 
-      {isEmpty ? (
-        <EmptyState isRoot={!currentFolderId} />
-      ) : (
-        <div className="border border-border rounded-lg divide-y divide-border bg-card">
-          {subFolders.map((f) => (
-            <FolderRow key={f.id} folder={f} />
-          ))}
-          {familyViews.map((fv) => (
-            <DocumentRow
-              key={fv.latest.id}
-              entry={fv.latest}
-              projects={projectList}
-              folders={allFolders}
-              versions={fv.older}
-            />
-          ))}
-        </div>
-      )}
+      <DocumentsDropzone folderId={currentFolderId}>
+        {isEmpty ? (
+          <EmptyState isRoot={!currentFolderId} />
+        ) : (
+          <div className="border border-border rounded-lg divide-y divide-border bg-card">
+            {subFolders.map((f) => (
+              <FolderRow key={f.id} folder={f} />
+            ))}
+            {familyViews.map((fv) => (
+              <DocumentRow
+                key={fv.latest.id}
+                entry={fv.latest}
+                projects={projectList}
+                folders={allFolders}
+                versions={fv.older}
+              />
+            ))}
+          </div>
+        )}
+      </DocumentsDropzone>
 
       <FormatsNote />
     </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   IconBolt,
   IconCheck,
@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import type { McpServer } from "@/db/schema/mcp-servers";
 import {
   deleteMcpServer,
@@ -28,6 +29,7 @@ import {
 
 export function McpRow({ entry }: { entry: McpServer }) {
   const [pending, startTransition] = useTransition();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const toolCount = entry.toolsJson?.length ?? 0;
 
   return (
@@ -105,17 +107,33 @@ export function McpRow({ entry }: { entry: McpServer }) {
           <DropdownMenuItem
             variant="destructive"
             disabled={pending}
-            onSelect={() => {
-              if (confirm(`Supprimer "${entry.label}" ?`)) {
-                startTransition(() => deleteMcpServer(entry.id));
-              }
-            }}
+            onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
             Supprimer
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Supprimer ce serveur MCP ?"
+        description={
+          <>
+            « {entry.label} » sera supprimé. Les outils qu&apos;il expose ne
+            seront plus disponibles dans les conversations. La configuration
+            (URL, secrets) est définitivement perdue.
+          </>
+        }
+        pending={pending}
+        onConfirm={() => {
+          startTransition(async () => {
+            await deleteMcpServer(entry.id);
+            setDeleteOpen(false);
+          });
+        }}
+      />
     </div>
   );
 }

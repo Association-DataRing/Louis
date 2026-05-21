@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   IconCheck,
-  IconLoader2,
   IconAlertTriangle,
   IconClock,
   IconRefresh,
@@ -73,13 +72,10 @@ export function dedupeAgentEvents(
   const retriesByAgent = new Map<string, number>();
 
   for (const part of parts) {
-    // Collecte les attempts de retry par agent en parallèle des events.
     if (part.type === "data-agent-retry") {
       const r = part.data as AgentRetryData | undefined;
       if (!r?.agentId) continue;
       const cur = retriesByAgent.get(r.agentId) ?? 0;
-      // attempt fourni = numéro de la tentative ayant échoué, donc on
-      // affiche la SUIVANTE qui démarre (attempt + 1).
       if (r.attempt + 1 > cur) {
         retriesByAgent.set(r.agentId, r.attempt + 1);
       }
@@ -97,7 +93,6 @@ export function dedupeAgentEvents(
     }
   }
 
-  // Injecte retryAttempt sur les agents encore en agent_start.
   return order.map((id) => {
     const evt = map.get(id)!;
     const attempt = retriesByAgent.get(id);
@@ -117,15 +112,26 @@ interface AgentEventBadgeProps {
    * a été interrompue et qui n'ont jamais reçu de finish.
    */
   isLive?: boolean;
+  /**
+   * Affiche un trait vertical reliant ce step au suivant. Le dernier step
+   * d'une séquence passe `false`. Crée la sensation timeline continue.
+   */
+  showConnector?: boolean;
 }
 
 /**
- * Pill compacte affichée inline dans le message assistant pour visualiser
- * un agent qui démarre, finit ou échoue. Conçue pour être rendue UNE
- * fois par agent — utiliser `dedupeAgentEvents` en amont pour fusionner
- * les multiples events d'un même agent en une seule représentation.
+ * Step rendu dans la timeline d'une `AgentStepsWrapper`. Format chronologique
+ * vertical : bullet 6px (spinner en cours / vert terminé / rouge erreur) +
+ * label + connecteur vertical optionnel vers le step suivant.
+ *
+ * Utiliser `dedupeAgentEvents` en amont pour fusionner les multiples events
+ * d'un même agent en une seule représentation.
  */
-export function AgentEventBadge({ event, isLive = false }: AgentEventBadgeProps) {
+export function AgentEventBadge({
+  event,
+  isLive = false,
+  showConnector = false,
+}: AgentEventBadgeProps) {
   const meta = roleMeta(event.role ?? "default-chat");
   const Icon = meta.icon;
   const label = event.label ?? meta.label;
@@ -134,79 +140,114 @@ export function AgentEventBadge({ event, isLive = false }: AgentEventBadgeProps)
   useEffect(() => {
     if (event.type !== "agent_start" || !isLive) return;
     const t0 = Date.now();
-    // 1er tick à 200ms — pas d'init à 0 dans l'effet (lint
-    // react-hooks/set-state-in-effect). Le composant a déjà 0 comme
-    // valeur initiale via useState.
     const id = setInterval(() => setElapsed(Date.now() - t0), 200);
     return () => clearInterval(id);
   }, [event.type, isLive]);
 
-  if (event.type === "agent_start") {
-    // Cas live : loader anim + chrono qui tourne.
-    if (isLive) {
-      const inRetry = (event.retryAttempt ?? 0) > 1;
+  // Bullet : spinner border-t-transparent quand en cours, plein sinon.
+  const bullet = (() => {
+    if (event.type === "agent_start" && isLive) {
       return (
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
-            inRetry
-              ? "border-foreground/30 bg-muted/60 text-foreground"
-              : "border-border bg-muted/40 text-muted-foreground"
-          }`}
-        >
-          {inRetry ? (
-            <IconRefresh className="size-3 animate-spin" />
-          ) : (
-            <IconLoader2 className="size-3 animate-spin" />
-          )}
-          <Icon className="size-3" />
-          <span className="font-medium text-foreground">{label}</span>
-          <span className="opacity-70">
-            {inRetry
-              ? `retry · tentative ${event.retryAttempt}`
-              : `travaille${elapsed > 1500 ? ` · ${(elapsed / 1000).toFixed(1)}s` : "…"}`}
-          </span>
-        </span>
+        <span className="mt-[5px] size-1.5 shrink-0 rounded-full border border-muted-foreground/70 border-t-transparent animate-spin" />
       );
     }
-    // Cas orphelin : un agent a démarré mais on n'a jamais reçu son
-    // finish/error et le message n'est plus en cours. Probable
-    // interruption (navigation, reset, erreur réseau). On signale
-    // l'incomplet sans chrono pour ne pas mentir sur la durée.
+    if (event.type === "agent_finish") {
+      return (
+        <span className="mt-[5px] size-1.5 shrink-0 rounded-full bg-success" />
+      );
+    }
+    if (event.type === "agent_error") {
+      return (
+        <span className="mt-[5px] size-1.5 shrink-0 rounded-full bg-destructive" />
+      );
+    }
+    // agent_start orphelin (non-live)
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2 py-0.5 text-[11px] text-muted-foreground">
-        <IconClock className="size-3" />
-        <Icon className="size-3" />
-        <span className="font-medium text-foreground">{label}</span>
-        <span className="opacity-60">interrompu</span>
-      </span>
+      <span className="mt-[5px] size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
     );
-  }
+  })();
 
-  if (event.type === "agent_finish") {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
-        <IconCheck className="size-3 text-success" />
-        <Icon className="size-3" />
-        <span className="font-medium text-foreground">{label}</span>
-        {typeof event.latencyMs === "number" && (
-          <span className="opacity-60">{formatLatency(event.latencyMs)}</span>
-        )}
-        {typeof event.outputTokens === "number" && (
-          <span className="opacity-60">· {event.outputTokens} tokens</span>
-        )}
-      </span>
-    );
-  }
+  // Verbe : présent pendant le streaming, passé une fois terminé.
+  // L'asymétrie verbale crée la sensation de progression dans la timeline.
+  const verb = (() => {
+    if (event.type === "agent_start") {
+      if (!isLive) return "Interrompu";
+      const inRetry = (event.retryAttempt ?? 0) > 1;
+      if (inRetry) return `Nouvelle tentative ${event.retryAttempt}`;
+      return "Travaille";
+    }
+    if (event.type === "agent_finish") return "Terminé";
+    return "Échec";
+  })();
+
+  const isError = event.type === "agent_error";
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[11px] text-destructive">
-      <IconAlertTriangle className="size-3" />
-      <Icon className="size-3" />
-      <span className="font-medium">{label}</span>
-      {event.error && (
-        <span className="opacity-80 truncate max-w-[200px]">· {event.error}</span>
+    <div className="relative flex items-start text-sm">
+      {/* Connecteur vertical entre le bullet et celui du step suivant. */}
+      {showConnector && (
+        <span
+          aria-hidden
+          className="absolute left-[2.5px] top-[15px] bottom-0 w-px bg-border h-[calc(100%+0.75rem)]"
+        />
       )}
-    </span>
+
+      {bullet}
+
+      <div className="ml-2.5 min-w-0 flex-1 flex items-center gap-1.5 flex-wrap text-muted-foreground">
+        <Icon className="size-3 shrink-0 opacity-60" />
+        <span
+          className={`font-medium ${isError ? "text-destructive" : "text-foreground"}`}
+        >
+          {label}
+        </span>
+        <span className="opacity-70">·</span>
+        <span className={isError ? "text-destructive/80" : "opacity-80"}>
+          {verb}
+          {event.type === "agent_start" && isLive && elapsed > 1500 && (
+            <span className="opacity-70">
+              {" "}
+              · {(elapsed / 1000).toFixed(1)}s
+            </span>
+          )}
+          {event.type === "agent_finish" &&
+            typeof event.latencyMs === "number" && (
+              <span className="opacity-70">
+                {" "}
+                · {formatLatency(event.latencyMs)}
+              </span>
+            )}
+          {event.type === "agent_finish" &&
+            typeof event.outputTokens === "number" && (
+              <span className="opacity-60">
+                {" "}
+                · {event.outputTokens} tokens
+              </span>
+            )}
+          {isError && event.error && (
+            <span className="opacity-80 truncate max-w-[240px]">
+              {" "}
+              · {event.error}
+            </span>
+          )}
+        </span>
+        {/* Indicateur retry isolé (badge clock) pour les orphelins */}
+        {event.type === "agent_start" && !isLive && (
+          <IconClock className="size-3 opacity-60 shrink-0" />
+        )}
+        {event.type === "agent_start" &&
+          isLive &&
+          (event.retryAttempt ?? 0) > 1 && (
+            <IconRefresh className="size-3 animate-spin opacity-70 shrink-0" />
+          )}
+        {event.type === "agent_finish" && (
+          <IconCheck className="size-3 text-success/80 shrink-0" />
+        )}
+        {isError && (
+          <IconAlertTriangle className="size-3 text-destructive shrink-0" />
+        )}
+      </div>
+    </div>
   );
 }
 

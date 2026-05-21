@@ -102,6 +102,40 @@ function parseError(err: Error): ParsedError {
     };
   }
 
+  // OpenAI Responses API : mismatch entre function_call et function_call_output
+  // dans l'historique envoyé. Le tour précédent a été interrompu pendant
+  // un tool call ou la sérialisation des messages a perdu un function_call.
+  if (/No tool call found for function call output/i.test(msg)) {
+    return {
+      title: "Historique de conversation incohérent",
+      description:
+        "Le provider attend que chaque résultat d'outil soit précédé de son appel — un tour précédent a probablement été interrompu pendant un tool call. Réessayer relance la requête avec un historique propre. Si l'erreur persiste, créez une nouvelle conversation.",
+      hintHref: "/chat",
+      hintLabel: "Nouvelle conversation",
+    };
+  }
+
+  // Erreur générique OpenRouter (le provider downstream a échoué sans
+  // détail spécifique). On reste explicite sur le diagnostic.
+  if (/Provider returned error/i.test(msg)) {
+    return {
+      title: "Le provider a refusé la requête",
+      description:
+        "Le modèle ou son agrégateur (OpenRouter, OVH, Scaleway…) a renvoyé une erreur générique. Changer de modèle dans le sélecteur du composer permet souvent de débloquer.",
+      hintHref: "/settings/models",
+      hintLabel: "Mes modèles",
+    };
+  }
+
+  // Network / timeout côté client.
+  if (/network|fetch failed|ECONNRESET|ETIMEDOUT|timeout/i.test(msg)) {
+    return {
+      title: "Problème réseau",
+      description:
+        "La connexion au provider a échoué — vérifiez votre accès Internet ou le statut du provider. Réessayez dans quelques secondes.",
+    };
+  }
+
   // Fallback générique
   return {
     title: "Une erreur est survenue",

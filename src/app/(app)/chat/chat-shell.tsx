@@ -24,12 +24,25 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { LouisLogo } from "@/components/louis-logo";
+import { Dropzone, uploadDocument } from "@/components/dropzone";
+import { useSmoothText } from "@/lib/use-smooth-text";
+import { useStickToBottom } from "@/lib/use-stick-to-bottom";
+import { ThinkingIndicator } from "./thinking-indicator";
+import { AgentStepsWrapper } from "./agent-steps-wrapper";
+import {
+  AssistantMessageActions,
+  extractTextFromParts,
+  type ModelOption,
+} from "./assistant-message-actions";
+import { ModelPicker } from "./model-picker";
+import { editUserMessageAndTrim } from "./actions";
 import { uiPartsFromSaved } from "@/lib/ai/saved-parts";
 import type { SavedPart } from "@/db/schema/messages";
 import { DocPanel } from "./doc-panel";
 import { EditCard } from "./edit-card";
 import {
   IconArrowUp,
+  IconArrowDown,
   IconPaperclip,
   IconX,
   IconTool,
@@ -42,13 +55,6 @@ import {
   IconAlertTriangle,
   IconPencil,
 } from "@tabler/icons-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
@@ -127,6 +133,7 @@ type Props = {
     role: string;
     content: string;
     parts: SavedPart[] | null;
+    metadata?: unknown;
   }[];
   availableDocuments: DocumentOption[];
   workflows: WorkflowOption[];
@@ -138,7 +145,6 @@ type Props = {
    */
   enabledModels?: EnabledModel[];
   initialUsage: Usage;
-  userName: string;
 };
 
 function toUIMessages(rows: Props["initialMessages"]): UIMessage[] {
@@ -572,13 +578,12 @@ function ToolPart({
   }
 
   return (
-    <div
-      className={`relative overflow-hidden rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs flex items-center gap-2 max-w-[80%] ${
-        isPending ? "shimmer" : ""
-      }`}
-    >
+    <div className="relative overflow-hidden rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs flex items-center gap-2 max-w-[80%]">
       {isPending ? (
-        <Spinner className="size-3" />
+        <span
+          className="size-3 rounded-full border border-muted-foreground/70 border-t-transparent animate-spin shrink-0"
+          aria-hidden
+        />
       ) : (
         <IconTool className="size-3 text-primary" />
       )}
@@ -644,6 +649,84 @@ function WorkflowPickerContent({
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * Détermine si un message assistant a déjà commencé à produire du texte
+ * affichable — utilisé pour décider si l'AgentStepsWrapper doit se replier
+ * (le texte a pris le relais sur les étapes intermédiaires).
+ */
+function hasRenderableText(
+  parts: { type: string; text?: string }[]
+): boolean {
+  return parts.some(
+    (p) =>
+      p.type === "text" &&
+      typeof p.text === "string" &&
+      p.text.trim().length > 0
+  );
+}
+
+/**
+ * Bloc markdown d'un message assistant. Quand `isLive` est vrai (dernier
+ * message, streaming en cours), le texte est lissé via useSmoothText pour
+ * un rendu char-par-char à ~60fps indépendant du débit SSE. Sur les
+ * messages historiques, render direct sans buffer.
+ */
+function AssistantMarkdownPart({
+  text,
+  isLive,
+  mergedDocuments,
+  onOpenDoc,
+}: {
+  text: string;
+  isLive: boolean;
+  mergedDocuments: DocumentOption[];
+  onOpenDoc: (documentId: string, targetText: string) => void;
+}) {
+  const smoothed = useSmoothText(text, { done: !isLive });
+  const display = isLive ? smoothed : text;
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code: ({ className, children, ...rest }) => {
+          const lang = (className ?? "").match(/language-(\w+)/)?.[1];
+          if (lang === "edit") {
+            return <EditCard raw={String(children).replace(/\n$/, "")} />;
+          }
+          return (
+            <code className={className} {...rest}>
+              {children}
+            </code>
+          );
+        },
+        a: ({ href, children, ...rest }) => {
+          if (typeof href === "string" && href.startsWith("louis-doc:")) {
+            const docId = href.slice("louis-doc:".length);
+            return (
+              <button
+                type="button"
+                onClick={() => onOpenDoc(docId, "")}
+                className="inline-flex items-center gap-1 rounded bg-muted hover:bg-accent px-1.5 py-0.5 text-[0.85em] font-medium not-prose transition-colors no-underline align-baseline"
+              >
+                <IconFileText className="size-3 shrink-0" />
+                {children}
+              </button>
+            );
+          }
+          return (
+            <a {...rest} href={href}>
+              {children}
+            </a>
+          );
+        },
+      }}
+    >
+      {linkifyDocMentions(display, mergedDocuments)}
+    </ReactMarkdown>
   );
 }
 
@@ -713,7 +796,6 @@ export function ChatShell({
   pipelines,
   enabledModels,
   initialUsage,
-  userName,
 }: Props) {
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
@@ -740,6 +822,33 @@ export function ChatShell({
   const [attachedDocIds, setAttachedDocIds] = useState<string[]>([]);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [workflowPickerOpen, setWorkflowPickerOpen] = useState(false);
+  // Map messageId → liste de docIds joints à ce message-là. Initialisé
+  // depuis le `metadata` des messages persistés en DB, puis enrichi en
+  // session via `pendingAttachmentsRef` quand l'utilisateur envoie un
+  // nouveau message avec doc joint.
+  const [attachmentsByMessageId, setAttachmentsByMessageId] = useState<
+    Record<string, string[]>
+  >(() => {
+    const initial: Record<string, string[]> = {};
+    for (const m of initialMessages) {
+      const meta = m.metadata as { documentIds?: string[] } | null;
+      if (meta?.documentIds && meta.documentIds.length > 0) {
+        initial[m.id] = meta.documentIds;
+      }
+    }
+    return initial;
+  });
+  // Tampon des docIds en attente d'être associés au prochain message user
+  // qui apparaît dans le store useChat (l'AI SDK génère l'ID côté client,
+  // on ne le connaît pas avant que le message ne soit pushé).
+  const pendingAttachmentsRef = useRef<string[]>([]);
+  // Documents téléversés à la volée via drag-and-drop. Ajoutés à
+  // `availableDocuments` côté UI (picker + badges) sans round-trip au
+  // server component. Au prochain render server (nouvelle conv, refresh)
+  // ils repasseront naturellement par `availableDocuments`.
+  const [localDocs, setLocalDocs] = useState<DocumentOption[]>([]);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   // Panneau document à droite (citation cliquée OU document auto-ouvert
   // après generate/edit_document). Persisté en sessionStorage pour survivre
   // au remount qui se produit quand l'URL passe de /chat à /chat?id=xxx.
@@ -867,19 +976,92 @@ export function ChatShell({
     const keyId = findKeyForModel(ptype);
     if (keyId) setProviderKeyId(keyId);
     setModelId(mid);
+    // Persiste le dernier choix pour qu'une nouvelle conversation
+    // reparte sur ce modèle au lieu du DEFAULT_MODEL hardcodé.
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("louis:lastModel", newModelId);
+      } catch {
+        // Quota / private mode — ignore silencieusement.
+      }
+    }
   }
+
+  // Restaure le dernier modèle utilisé au montage UNIQUEMENT pour les
+  // nouvelles conversations (pas de currentId → initialModelId null).
+  // Pour les conversations existantes on respecte le modelId stocké en DB
+  // — sinon on écraserait un choix volontaire passé.
+  //
+  // Pattern one-shot client-side : on ne peut pas lire localStorage en
+  // SSR (sinon hydration mismatch), donc on défère via queueMicrotask
+  // pour ne pas violer la règle react-hooks/set-state-in-effect (les
+  // setState ne sont pas exécutés dans le body de l'effet mais dans un
+  // microtask suivant).
+  useEffect(() => {
+    if (initialConversationId) return;
+    if (initialModelId) return;
+    if (typeof window === "undefined") return;
+    const last = window.localStorage.getItem("louis:lastModel");
+    if (!last) return;
+    const sepIdx = last.indexOf(":");
+    if (sepIdx < 0) return;
+    const ptype = last.slice(0, sepIdx);
+    const mid = last.slice(sepIdx + 1);
+    // Vérifie que le provider de ce modèle a toujours une clé active —
+    // sinon le restore aboutirait sur un état non utilisable.
+    const keyId =
+      providerKeys.filter((k) => k.type === ptype).find((k) => k.isDefault)
+        ?.id ??
+      providerKeys.find((k) => k.type === ptype)?.id ??
+      null;
+    if (!keyId) return;
+    queueMicrotask(() => {
+      setProviderKeyId(keyId);
+      setModelId(mid);
+    });
+    // Exec une seule fois au mount — pas de deps dynamiques.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectedModelValue = `${selectedType}:${modelId}`;
   const modelOptions = unifiedModels;
+
+  // Liste des modèles présentée dans le sous-menu d'actions « Régénérer
+  // avec un autre modèle ». Format identique au selectedModelValue pour
+  // qu'un même handler parse provider+model.
+  const assistantActionModels: ModelOption[] = useMemo(
+    () =>
+      unifiedModels.map((m) => ({
+        id: `${m.providerType}:${m.modelId}`,
+        label: m.label,
+        hint: m.hint ?? null,
+      })),
+    [unifiedModels]
+  );
 
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/chat" }),
     []
   );
 
-  const { messages, sendMessage, status, error, stop, regenerate } = useChat({
+  const {
+    messages,
+    setMessages,
+    sendMessage,
+    status,
+    error,
+    stop,
+    regenerate,
+  } = useChat({
     messages: toUIMessages(initialMessages),
     transport,
+    // Throttle les re-renders du store de messages à 50ms (20Hz). En
+    // dessous, l'AI SDK déclenche un setState par chunk SSE — pour des
+    // modèles rapides (Mistral, Claude Haiku) ça peut atteindre 100+
+    // re-renders/s, ce qui sature le main thread et fait trembler le
+    // markdown. Couplé avec useSmoothText sur le rendu, on a un débit
+    // d'affichage stable indépendant du rythme du provider.
+    experimental_throttle: 50,
     onFinish: ({ message }) => {
       const meta = message?.metadata as
         | { conversationId?: string; usage?: Usage }
@@ -911,16 +1093,242 @@ export function ChatShell({
   // On le pré-remplit comme valeur initiale du composer, l'utilisateur
   // peut éditer/envoyer ou l'effacer.
   const [input, setInput] = useState(initialPrompt ?? "");
-  const isBusy = status === "submitted" || status === "streaming";
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
 
+  // Auto-resize du composer : la hauteur suit le contenu jusqu'à
+  // ~10 lignes, au-delà un scroll interne apparaît. Re-mesure à chaque
+  // changement de `input` — couvre la saisie manuelle, les workflows
+  // insérés, le reset post-envoi.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, status]);
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    // Cap visuel à 240 px ≈ 10 lignes de text-[15px] leading-[1.55].
+    // CSS max-h sur la textarea joue aussi le filet — ici on cale juste
+    // la valeur calculée pour qu'inline match le visuel.
+    const next = Math.min(el.scrollHeight, 240);
+    el.style.height = `${next}px`;
+  }, [input]);
+  const isBusy = status === "submitted" || status === "streaming";
+  const {
+    containerRef: messagesScrollRef,
+    isStuck,
+    scrollToBottom,
+  } = useStickToBottom<HTMLDivElement>();
+
+  // Concaténation des documents disponibles côté serveur + ceux téléversés
+  // pendant la session via drag-and-drop. Utilisé partout où on doit
+  // résoudre un docId en filename (badges, picker, linkify).
+  const mergedDocuments = useMemo(
+    () => [...availableDocuments, ...localDocs],
+    [availableDocuments, localDocs]
+  );
+
+  const handleDroppedFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+    setUploadError(null);
+    setUploadingCount((n) => n + files.length);
+    // Upload séquentiel volontaire : l'API /upload fait extraction + RAG
+    // embedding (synchrone côté serveur). Plusieurs uploads en parallèle
+    // saturent l'embedding provider. Le volume drag-drop typique reste
+    // modeste (1-5 fichiers), la latence cumulée est acceptable.
+    for (const file of files) {
+      const result = await uploadDocument(file);
+      if (result.ok) {
+        setLocalDocs((prev) =>
+          prev.some((d) => d.id === result.id)
+            ? prev
+            : [
+                ...prev,
+                {
+                  id: result.id,
+                  filename: result.filename,
+                  sizeBytes: result.sizeBytes,
+                },
+              ]
+        );
+        setAttachedDocIds((ids) =>
+          ids.includes(result.id) ? ids : [...ids, result.id]
+        );
+      } else {
+        setUploadError(`${file.name} — ${result.error}`);
+      }
+      setUploadingCount((n) => Math.max(0, n - 1));
+    }
+  }, []);
+
+  // Édition d'un message utilisateur antérieur. State du message en cours
+  // d'édition + draft du textarea inline. Le save persiste côté serveur
+  // (drop des messages suivants en DB) puis tronque les messages côté
+  // client et relance la génération.
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Raccourcis clavier globaux sur l'écran chat. Aligne le feeling sur
+  // claude.ai / chatgpt :
+  //  - Esc : stop la génération si en cours
+  //  - ⌘/ ou Ctrl+/ : toggle sidebar (dialogue avec sidebar-content.tsx
+  //    via localStorage + Event custom)
+  //  - ⌘↑ ou Ctrl+↑ : ouvre l'édition sur le dernier message user
+  // On n'override pas ⌘N (raccourci browser natif "nouvelle fenêtre" qu'on
+  // ne peut pas intercepter en isolation).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const inField =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.getAttribute("contenteditable") === "true";
+
+      if (e.key === "Escape" && isBusy) {
+        e.preventDefault();
+        stop();
+        return;
+      }
+
+      if (e.key === "/" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const current =
+          window.localStorage.getItem("louis:sidebarOpen") ?? "true";
+        const next = current === "false" ? "true" : "false";
+        window.localStorage.setItem("louis:sidebarOpen", next);
+        window.dispatchEvent(new Event("louis:sidebarOpen-change"));
+        return;
+      }
+
+      if (
+        e.key === "ArrowUp" &&
+        (e.metaKey || e.ctrlKey) &&
+        !inField &&
+        !isBusy
+      ) {
+        const lastUser = [...messages]
+          .reverse()
+          .find((mm) => mm.role === "user");
+        if (!lastUser) return;
+        const textPart = lastUser.parts.find(
+          (p) =>
+            p.type === "text" &&
+            typeof (p as { text?: string }).text === "string"
+        );
+        if (!textPart) return;
+        e.preventDefault();
+        setEditingMessageId(lastUser.id);
+        setEditingDraft((textPart as { text: string }).text);
+        setEditError(null);
+      }
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isBusy, stop, messages]);
+
+  function startEditing(messageId: string, currentText: string) {
+    setEditingMessageId(messageId);
+    setEditingDraft(currentText);
+    setEditError(null);
+  }
+
+  function cancelEditing() {
+    setEditingMessageId(null);
+    setEditingDraft("");
+    setEditError(null);
+  }
+
+  async function saveEditing(messageId: string) {
+    const trimmed = editingDraft.trim();
+    if (!trimmed) return;
+    if (!conversationId) {
+      setEditError("Aucune conversation active.");
+      return;
+    }
+    setEditError(null);
+    const result = await editUserMessageAndTrim(
+      conversationId,
+      messageId,
+      trimmed
+    );
+    if (!result.ok) {
+      setEditError(result.error);
+      return;
+    }
+    // Tronque côté client : on garde tout jusqu'au message édité inclus,
+    // on met à jour son texte, puis on relance regenerate avec le contexte
+    // actuel. L'AI SDK enchainera comme s'il s'agissait du dernier message.
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === messageId);
+      if (idx < 0) return prev;
+      const kept = prev.slice(0, idx + 1).map((m, i) =>
+        i === idx
+          ? {
+              ...m,
+              parts: [{ type: "text", text: trimmed }] as typeof m.parts,
+            }
+          : m
+      );
+      return kept;
+    });
+    setEditingMessageId(null);
+    setEditingDraft("");
+    regenerate({
+      body: {
+        providerKeyId,
+        conversationId,
+        documentIds: attachedDocIds,
+        modelOverride: modelId,
+        projectId: initialProjectId,
+        pipelineId,
+      },
+    });
+  }
+
+  // Régénère le dernier message assistant avec le modèle actuel — équivalent
+  // d'un retry de la même requête. Les events agents, tool calls et docs
+  // joints sont conservés via les paramètres body que l'orchestrateur lit.
+  function handleRegenerateCurrent() {
+    regenerate({
+      body: {
+        providerKeyId,
+        conversationId,
+        documentIds: attachedDocIds,
+        modelOverride: modelId,
+        projectId: initialProjectId,
+        pipelineId,
+      },
+    });
+  }
+
+  // Régénère avec un autre modèle. Switch le state model+provider à la
+  // volée (pour que les futurs messages utilisent aussi ce modèle) puis
+  // relance la requête avec les overrides body.
+  function handleRegenerateWithModel(modelKey: string) {
+    const sepIdx = modelKey.indexOf(":");
+    if (sepIdx < 0) return;
+    const ptype = modelKey.slice(0, sepIdx);
+    const mid = modelKey.slice(sepIdx + 1);
+    const keyId = findKeyForModel(ptype);
+    if (keyId) setProviderKeyId(keyId);
+    setModelId(mid);
+    regenerate({
+      body: {
+        providerKeyId: keyId ?? providerKeyId,
+        conversationId,
+        documentIds: attachedDocIds,
+        modelOverride: mid,
+        projectId: initialProjectId,
+        pipelineId,
+      },
+    });
+  }
 
   function handleSubmit() {
     const trimmed = input.trim();
     if (!trimmed || isBusy) return;
+    // Mémorise les attachements pour les associer au message user qui
+    // va apparaître dans `messages` au prochain tick (cf useEffect plus
+    // bas qui consume cette ref).
+    pendingAttachmentsRef.current = attachedDocIds;
     sendMessage(
       { text: trimmed },
       {
@@ -935,7 +1343,26 @@ export function ChatShell({
       }
     );
     setInput("");
+    // Les documents joints valent pour CE message uniquement — vider la
+    // pile pour le tour suivant, à la manière de claude.ai / chatgpt.
+    // Le doc reste accessible via le picker / la sidebar /documents s'il
+    // est nécessaire pour un prochain message.
+    setAttachedDocIds([]);
   }
+
+  // Associe les attachements pending au dernier message user dès qu'il
+  // apparaît dans le store useChat. On compare l'ID pour ne pas écraser
+  // une association précédente — pendingAttachmentsRef est vidé après
+  // pour ne pas ré-attacher aux retries / regénérations.
+  useEffect(() => {
+    if (pendingAttachmentsRef.current.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "user") return;
+    if (attachmentsByMessageId[last.id]) return;
+    const docs = pendingAttachmentsRef.current;
+    pendingAttachmentsRef.current = [];
+    setAttachmentsByMessageId((prev) => ({ ...prev, [last.id]: docs }));
+  }, [messages, attachmentsByMessageId]);
 
   const isEmpty = messages.length === 0;
 
@@ -1063,7 +1490,13 @@ export function ChatShell({
   }, [messages, setOpenDoc]);
 
   return (
-    <div className="flex-1 flex h-full min-w-0 w-full">
+    <Dropzone
+      onFiles={handleDroppedFiles}
+      disabled={isBusy}
+      overlayLabel="Déposez pour joindre à la conversation"
+      overlayHint="PDF, DOCX ou texte — 25 Mo max par fichier"
+      className="flex-1 flex h-full min-w-0 w-full"
+    >
     <div className="flex-1 flex flex-col h-full min-w-0 bg-background">
       {/* Top header — light, breadcrumb project + usage + sovereignty */}
       <header className="border-b border-border px-6 py-3 flex items-center gap-3 text-xs h-[52px]">
@@ -1077,33 +1510,64 @@ export function ChatShell({
             <span className="truncate max-w-[200px]">{projectContext.name}</span>
           </Link>
         )}
-        <div className="ml-auto flex items-center gap-3">
-        {(usage.inputTokens > 0 || usage.outputTokens > 0) && (
-          <>
-            <span
-              className="text-muted-foreground tabular-nums"
-              title={`${usage.inputTokens} tokens entrée, ${usage.outputTokens} tokens sortie`}
-            >
-              {formatTokens(usage.inputTokens)}↗ {formatTokens(usage.outputTokens)}↘
-            </span>
-            {(() => {
-              const cost = computeCost(
-                modelId,
-                usage.inputTokens,
-                usage.outputTokens
-              );
-              if (!cost) return null;
-              return (
-                <span
-                  className="text-muted-foreground tabular-nums"
-                  title="Coût estimé selon les tarifs publics du provider"
-                >
-                  {formatCost(cost)}
-                </span>
-              );
-            })()}
-          </>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+        {(usage.inputTokens > 0 || usage.outputTokens > 0) && (() => {
+          // Header allégé : un seul pill « coût », cliquable pour révéler
+          // le détail tokens d'entrée/sortie. Évite la triplette
+          // tokens↗ / tokens↘ / coût qui surchargeait le header sans
+          // valeur ajoutée — un avocat veut savoir « combien ça coûte »,
+          // les tokens sont du détail métier accessoire.
+          const cost = computeCost(
+            modelId,
+            usage.inputTokens,
+            usage.outputTokens
+          );
+          return (
+            <Popover>
+              <PopoverTrigger
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 px-2 py-0.5 text-[11px] text-muted-foreground tabular-nums hover:bg-accent hover:text-foreground transition-colors"
+                aria-label="Détails d'usage de la conversation"
+              >
+                {cost ? formatCost(cost) : `${formatTokens(usage.inputTokens + usage.outputTokens)} tokens`}
+              </PopoverTrigger>
+              <PopoverContent
+                side="bottom"
+                align="end"
+                className="w-64 p-3"
+              >
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+                  Usage de la conversation
+                </p>
+                <dl className="space-y-1.5 text-xs">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">Tokens entrée</dt>
+                    <dd className="tabular-nums">
+                      {usage.inputTokens.toLocaleString("fr-FR")}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">Tokens sortie</dt>
+                    <dd className="tabular-nums">
+                      {usage.outputTokens.toLocaleString("fr-FR")}
+                    </dd>
+                  </div>
+                  {cost && (
+                    <div className="flex justify-between gap-3 pt-1.5 border-t border-border">
+                      <dt className="font-medium">Coût estimé</dt>
+                      <dd className="tabular-nums font-medium">
+                        {formatCost(cost)}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                <p className="mt-2 text-[10px] text-muted-foreground">
+                  Tarifs publics du provider — facturation réelle peut
+                  varier.
+                </p>
+              </PopoverContent>
+            </Popover>
+          );
+        })()}
         <Badge
           variant={
             selectedMeta.sovereignty === "fr"
@@ -1121,14 +1585,15 @@ export function ChatShell({
 
       {/* Messages or empty state */}
       <div
-        className="flex-1 overflow-y-auto"
+        ref={messagesScrollRef}
+        className="flex-1 overflow-y-auto relative"
         role="log"
         aria-live="polite"
         aria-busy={isBusy}
         aria-label="Conversation avec Louis"
       >
         {isEmpty ? (
-          <EmptyState userName={userName} />
+          <EmptyState />
         ) : (
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
             {messages.map((m, msgIdx) => {
@@ -1149,17 +1614,34 @@ export function ChatShell({
               return (
                 <div
                   key={m.id}
-                  className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}
+                  className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start group/msg"}`}
                 >
-                  {dedupedAgentEvents.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {dedupedAgentEvents.map((evt) => (
-                        <AgentEventBadge
-                          key={evt.agentId}
-                          event={evt}
-                          isLive={isLiveMessage}
-                        />
-                      ))}
+                  {/* Wrapper d'étapes : utile UNIQUEMENT pour pipelines
+                      multi-agents (2+ agents distincts). En mode chat-simple
+                      mono-agent, le seul step serait « Assistant Louis ·
+                      Travaille / Terminé » — redondant avec le markdown qui
+                      se déroule et le ThinkingIndicator. On revient au
+                      stream IA classique. */}
+                  {dedupedAgentEvents.length > 1 && (
+                    <div className="w-full max-w-xl">
+                      <AgentStepsWrapper
+                        stepCount={dedupedAgentEvents.length}
+                        shouldMinimize={hasRenderableText(
+                          m.parts as { type: string; text?: string }[]
+                        )}
+                        isStreaming={isLiveMessage}
+                      >
+                        {dedupedAgentEvents.map((evt, i) => (
+                          <AgentEventBadge
+                            key={evt.agentId}
+                            event={evt}
+                            isLive={isLiveMessage}
+                            showConnector={
+                              i < dedupedAgentEvents.length - 1
+                            }
+                          />
+                        ))}
+                      </AgentStepsWrapper>
                     </div>
                   )}
                   {m.parts.map((part, i) => {
@@ -1170,72 +1652,127 @@ export function ChatShell({
                     }
                     if (part.type === "text") {
                       if (isUser) {
+                        const isEditing = editingMessageId === m.id;
+                        if (isEditing) {
+                          return (
+                            <div
+                              key={i}
+                              className="w-full max-w-[85%] flex flex-col gap-2"
+                            >
+                              <textarea
+                                value={editingDraft}
+                                onChange={(e) =>
+                                  setEditingDraft(e.target.value)
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Escape") cancelEditing();
+                                  if (
+                                    (e.key === "Enter" &&
+                                      (e.metaKey || e.ctrlKey)) ||
+                                    (e.key === "Enter" && !e.shiftKey)
+                                  ) {
+                                    e.preventDefault();
+                                    saveEditing(m.id);
+                                  }
+                                }}
+                                autoFocus
+                                rows={Math.min(
+                                  6,
+                                  Math.max(2, editingDraft.split("\n").length)
+                                )}
+                                className="w-full resize-none rounded-2xl border border-input bg-card px-4 py-3 text-[15px] leading-[1.55] focus:outline-none focus:ring-2 focus:ring-ring/40"
+                              />
+                              {editError && (
+                                <p className="text-xs text-destructive">
+                                  {editError}
+                                </p>
+                              )}
+                              <div className="flex justify-end items-center gap-2 text-xs">
+                                <span className="text-muted-foreground mr-auto">
+                                  Entrée pour envoyer · Échap pour annuler
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={cancelEditing}
+                                  className="px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                >
+                                  Annuler
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => saveEditing(m.id)}
+                                  disabled={!editingDraft.trim() || isBusy}
+                                  className="px-2.5 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                                >
+                                  Envoyer
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        const msgAttachments =
+                          attachmentsByMessageId[m.id] ?? [];
                         return (
                           <div
                             key={i}
-                            className="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap bg-secondary text-foreground"
+                            className="group/user relative max-w-[85%] flex flex-col items-end gap-1.5"
                           >
-                            {part.text}
+                            {msgAttachments.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 justify-end">
+                                {msgAttachments.map((docId) => {
+                                  const doc = mergedDocuments.find(
+                                    (d) => d.id === docId
+                                  );
+                                  return (
+                                    <Badge
+                                      key={docId}
+                                      variant="secondary"
+                                      className="gap-1 text-[11px]"
+                                    >
+                                      <IconPaperclip className="size-3" />
+                                      <span className="max-w-[200px] truncate">
+                                        {doc?.filename ??
+                                          `Document ${docId.slice(0, 8)}`}
+                                      </span>
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            <div className="flex items-start gap-1 w-full justify-end">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  startEditing(m.id, part.text ?? "")
+                                }
+                                disabled={isBusy}
+                                title="Modifier cette question"
+                                aria-label="Modifier cette question"
+                                className="opacity-0 group-hover/user:opacity-100 focus:opacity-100 inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-opacity disabled:opacity-0 mt-1"
+                              >
+                                <IconPencil className="size-3.5" />
+                              </button>
+                              <div className="rounded-2xl px-4 py-3 text-[15px] leading-[1.55] whitespace-pre-wrap bg-secondary text-foreground">
+                                {part.text}
+                              </div>
+                            </div>
                           </div>
                         );
                       }
                       return (
                         <div
                           key={i}
-                          className="w-full text-sm leading-relaxed prose prose-sm prose-neutral dark:prose-invert max-w-none prose-pre:my-2 prose-headings:font-heading prose-headings:tracking-tight prose-p:my-1.5 prose-ul:my-2 prose-li:my-0.5"
+                          className="w-full text-[15px] leading-[1.65] prose prose-neutral dark:prose-invert max-w-none prose-base prose-pre:my-2 prose-headings:font-heading prose-headings:tracking-tight prose-p:my-2 prose-ul:my-2.5 prose-li:my-0.5"
                         >
                           {part.text ? (
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                code: ({ className, children, ...rest }) => {
-                                  const lang =
-                                    (className ?? "").match(/language-(\w+)/)?.[1];
-                                  if (lang === "edit") {
-                                    return (
-                                      <EditCard
-                                        raw={String(children).replace(/\n$/, "")}
-                                      />
-                                    );
-                                  }
-                                  return (
-                                    <code className={className} {...rest}>
-                                      {children}
-                                    </code>
-                                  );
-                                },
-                                a: ({ href, children, ...rest }) => {
-                                  if (
-                                    typeof href === "string" &&
-                                    href.startsWith("louis-doc:")
-                                  ) {
-                                    const docId = href.slice("louis-doc:".length);
-                                    return (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setOpenDoc({
-                                            documentId: docId,
-                                            targetText: "",
-                                          })
-                                        }
-                                        className="inline-flex items-center gap-1 rounded bg-muted hover:bg-accent px-1.5 py-0.5 text-[0.85em] font-medium not-prose transition-colors no-underline align-baseline"
-                                      >
-                                        <IconFileText className="size-3 shrink-0" />
-                                        {children}
-                                      </button>
-                                    );
-                                  }
-                                  return (
-                                    <a {...rest} href={href}>
-                                      {children}
-                                    </a>
-                                  );
-                                },
-                              }}
-                            >
-                              {linkifyDocMentions(part.text, availableDocuments)}
-                            </ReactMarkdown>
+                            <AssistantMarkdownPart
+                              text={part.text}
+                              isLive={isLiveMessage}
+                              mergedDocuments={mergedDocuments}
+                              onOpenDoc={(documentId, targetText) =>
+                                setOpenDoc({ documentId, targetText })
+                              }
+                            />
                           ) : (
                             <Spinner className="size-4" />
                           )}
@@ -1267,6 +1804,22 @@ export function ChatShell({
                     }
                     return null;
                   })}
+                  {/* Actions au survol du message assistant — masquées
+                      pendant le streaming et sur les messages user. */}
+                  {!isUser && !isLiveMessage && (
+                    <div className="opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity -mt-1">
+                      <AssistantMessageActions
+                        text={extractTextFromParts(
+                          m.parts as { type: string; text?: string }[]
+                        )}
+                        currentModelId={selectedModelValue}
+                        availableModels={assistantActionModels}
+                        onRegenerate={handleRegenerateCurrent}
+                        onRegenerateWith={handleRegenerateWithModel}
+                        disabled={isBusy}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1286,14 +1839,7 @@ export function ChatShell({
                     (p as { text: string }).text.trim().length > 0
                 );
               if (lastHasRenderableText) return null;
-              return (
-                <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <LouisLogo className="size-4 text-primary mt-0.5 shrink-0" />
-                  <span className="shimmer relative overflow-hidden rounded-md bg-muted/40 px-3 py-1.5 text-xs font-medium">
-                    Réflexion en cours…
-                  </span>
-                </div>
-              );
+              return <ThinkingIndicator />;
             })()}
 
             {error && (
@@ -1314,18 +1860,55 @@ export function ChatShell({
               />
             )}
 
-            <div ref={bottomRef} />
           </div>
+        )}
+        {/* Bouton flottant « Revenir en bas » — apparaît seulement quand
+            l'utilisateur a scrollé vers le haut. Re-active le stick au clic. */}
+        {!isStuck && !isEmpty && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="sticky bottom-4 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-md hover:text-foreground hover:bg-accent transition-colors"
+            aria-label="Revenir au bas de la conversation"
+          >
+            <IconArrowDown className="size-3.5" />
+            Revenir en bas
+          </button>
         )}
       </div>
 
       {/* Composer */}
       <div className="px-4 pb-4 md:px-6 md:pb-6">
         <div className="max-w-3xl mx-auto">
+          {(uploadingCount > 0 || uploadError) && (
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+              {uploadingCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                  <Spinner className="size-3" />
+                  Téléversement de {uploadingCount} fichier
+                  {uploadingCount > 1 ? "s" : ""}…
+                </span>
+              )}
+              {uploadError && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/5 px-2 py-0.5 text-destructive">
+                  <IconAlertTriangle className="size-3" />
+                  {uploadError}
+                  <button
+                    type="button"
+                    onClick={() => setUploadError(null)}
+                    className="ml-1 rounded-sm hover:bg-destructive/10 p-0.5"
+                    aria-label="Ignorer l'erreur"
+                  >
+                    <IconX className="size-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
           {attachedDocIds.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-1.5">
               {attachedDocIds.map((id) => {
-                const doc = availableDocuments.find((d) => d.id === id);
+                const doc = mergedDocuments.find((d) => d.id === id);
                 if (!doc) return null;
                 return (
                   <Badge
@@ -1388,6 +1971,7 @@ export function ChatShell({
             className="rounded-2xl border border-input bg-card shadow-sm focus-within:ring-2 focus-within:ring-ring/40 transition-shadow"
           >
             <textarea
+              ref={composerRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -1397,9 +1981,9 @@ export function ChatShell({
                 }
               }}
               placeholder="Posez votre question…"
-              rows={2}
+              rows={1}
               disabled={isBusy}
-              className="w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3 pb-1 text-sm placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3 pb-1 text-[15px] leading-[1.55] placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-h-[240px] overflow-y-auto"
             />
 
             <div className="flex items-center gap-1 px-2 pb-2 flex-wrap">
@@ -1439,7 +2023,7 @@ export function ChatShell({
                   className="w-80 p-0"
                 >
                   <DocPickerContent
-                    documents={availableDocuments}
+                    documents={mergedDocuments}
                     selected={attachedDocIds}
                     onToggle={(id) =>
                       setAttachedDocIds((ids) =>
@@ -1479,59 +2063,22 @@ export function ChatShell({
                 </PopoverContent>
               </Popover>
 
-              <Select
+              <ModelPicker
                 value={selectedModelValue}
-                onValueChange={handleModelChange}
+                onChange={handleModelChange}
+                models={modelOptions}
+                activeProviderTypes={
+                  new Set(providerKeys.map((k) => k.type))
+                }
                 disabled={isBusy}
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="h-8 rounded-full border border-border/60 bg-background/60 hover:bg-accent text-xs px-3 gap-1.5 shadow-none transition-colors max-w-[280px]"
-                  aria-label="Modèle"
-                >
-                  <span
-                    className="inline-flex items-center text-[10px] uppercase tracking-wider text-foreground/70 font-medium"
-                    aria-hidden
-                  >
-                    {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
-                  </span>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-w-[420px]">
-                  {modelOptions.map((m) => {
-                    const meta = PROVIDER_CATALOG[m.providerType as ProviderType];
-                    return (
-                      <SelectItem
-                        key={`${m.providerType}:${m.modelId}`}
-                        value={`${m.providerType}:${m.modelId}`}
-                      >
-                        <span
-                          className="text-[9px] uppercase tracking-wider text-foreground/70 font-medium border border-border rounded px-1 py-px"
-                          aria-hidden
-                        >
-                          {SOVEREIGNTY_LABEL[meta.sovereignty]}
-                        </span>
-                        <span className="font-medium">{m.label}</span>
-                        <span className="text-[11px] text-muted-foreground ml-1">
-                          · {meta.label}
-                        </span>
-                        {m.hint && (
-                          <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">
-                            · {m.hint}
-                          </span>
-                        )}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              />
 
               <div className="ml-auto">
                 {isBusy ? (
                   <button
                     type="button"
                     onClick={() => stop()}
-                    className="inline-flex items-center justify-center size-11 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
+                    className="inline-flex items-center justify-center size-11 rounded-full bg-foreground text-background hover:opacity-90 active:scale-95 transition-[opacity,transform] duration-150"
                     aria-label="Arrêter"
                   >
                     <IconPlayerStop className="size-4" />
@@ -1540,7 +2087,7 @@ export function ChatShell({
                   <button
                     type="submit"
                     disabled={!input.trim()}
-                    className="inline-flex items-center justify-center size-11 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                    className="inline-flex items-center justify-center size-11 rounded-full bg-primary text-primary-foreground hover:opacity-90 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 transition-[opacity,transform] duration-150"
                     aria-label="Envoyer"
                   >
                     <IconArrowUp className="size-5" />
@@ -1565,25 +2112,30 @@ export function ChatShell({
         onClose={() => setOpenDoc(null)}
       />
     )}
-    </div>
+    </Dropzone>
   );
 }
 
-function EmptyState({ userName }: { userName: string }) {
-  const firstName = userName.split(/[\s.]/)[0] || "";
+function EmptyState() {
+  // Stagger d'entrée subtile : le logo fade rapide, le titre slide-up
+  // doux, les 3 points d'entrée arrivent l'un après l'autre. Wrappé
+  // sous `motion-safe` pour respecter prefers-reduced-motion.
   return (
     <div className="h-full flex flex-col items-center justify-center px-6">
       <div className="max-w-xl w-full">
-        <LouisLogo className="size-10 text-primary mb-6" />
-        <h1 className="font-heading text-4xl md:text-5xl tracking-tight">
-          Bonjour{firstName ? `, ${firstName}` : ""}.
+        <LouisLogo className="size-10 text-primary mb-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500" />
+        <h1 className="font-heading text-4xl md:text-5xl tracking-tight motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700">
+          Une nouvelle conversation.
         </h1>
-        <p className="mt-3 text-base text-muted-foreground">
-          Quelques pistes pour démarrer — ou tapez directement votre
-          question dans le composer ci-dessous.
+        <p className="mt-3 text-base text-muted-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-700 motion-safe:delay-150">
+          Tapez votre question dans le composer ci-dessous — ou parcourez
+          ces points d&apos;entrée.
         </p>
         <ul className="mt-8 space-y-3 text-sm">
-          <li className="flex gap-3">
+          <li
+            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
+            style={{ animationDelay: "260ms", animationFillMode: "both" }}
+          >
             <span className="text-muted-foreground tabular-nums">·</span>
             <span>
               <strong className="text-foreground">Joindre un document</strong>
@@ -1594,7 +2146,10 @@ function EmptyState({ userName }: { userName: string }) {
               </span>
             </span>
           </li>
-          <li className="flex gap-3">
+          <li
+            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
+            style={{ animationDelay: "340ms", animationFillMode: "both" }}
+          >
             <span className="text-muted-foreground tabular-nums">·</span>
             <span>
               <strong className="text-foreground">Insérer un workflow</strong>
@@ -1605,7 +2160,10 @@ function EmptyState({ userName }: { userName: string }) {
               </span>
             </span>
           </li>
-          <li className="flex gap-3">
+          <li
+            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
+            style={{ animationDelay: "420ms", animationFillMode: "both" }}
+          >
             <span className="text-muted-foreground tabular-nums">·</span>
             <span>
               <strong className="text-foreground">Choisir un modèle</strong>

@@ -13,6 +13,8 @@
   --color-highlight-foreground: var(--highlight-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --font-sans: var(--font-sans), "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono), "Geist Mono", ui-monospace, monospace;
   --font-heading: var(--font-heading), "EB Garamond", ui-serif, Georgia, serif;
@@ -85,6 +87,9 @@
   /* Success badge / état actif — vert sobre. Lisible sur bg-success/10. */
   --success: oklch(0.55 0.13 160);
   --success-foreground: oklch(0.98 0.01 160);
+  /* Warning info-banner / état non bloquant — ambre sobre, hue 75. */
+  --warning: oklch(0.65 0.15 75);
+  --warning-foreground: oklch(0.25 0.04 75);
 }
 
 .dark {
@@ -120,30 +125,8 @@
   --highlight-foreground: oklch(0.95 0.04 90);
   --success: oklch(0.7 0.14 160);
   --success-foreground: oklch(0.18 0.02 160);
-}
-
-/* Shimmer pendant l'exécution d'un tool / la réflexion IA — bande
-   lumineuse qui traverse l'élément de gauche à droite. Override en
-   reduced-motion : pas d'animation, garde juste l'opacity. */
-@keyframes louis-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-.shimmer::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in oklch, var(--primary) 15%, transparent) 50%,
-    transparent 100%
-  );
-  animation: louis-shimmer 1.6s ease-in-out infinite;
-  pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .shimmer::before { animation: none; }
+  --warning: oklch(0.78 0.14 75);
+  --warning-foreground: oklch(0.18 0.03 75);
 }
 
 @layer base {

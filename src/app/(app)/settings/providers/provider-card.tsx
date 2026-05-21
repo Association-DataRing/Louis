@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,6 +80,7 @@ export function ProviderCard({ type, keys }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [error, setError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   function openDialog() {
     setDialogMode(isConfigured ? "edit" : "create");
@@ -247,11 +249,7 @@ export function ProviderCard({ type, keys }: Props) {
                   <DropdownMenuItem
                     variant="destructive"
                     disabled={pending}
-                    onSelect={() => {
-                      if (confirm(`Supprimer "${primary.label}" ?`)) {
-                        startTransition(() => deleteProviderKey(primary.id));
-                      }
-                    }}
+                    onSelect={() => setDeleteOpen(true)}
                   >
                     <IconTrash className="size-4" />
                     Supprimer
@@ -400,6 +398,28 @@ export function ProviderCard({ type, keys }: Props) {
           </form>
         </DialogContent>
       </Dialog>
+
+      {primary && (
+        <ConfirmDeleteDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title="Supprimer cette clé ?"
+          description={
+            <>
+              « {primary.label} » sera supprimée. La clé chiffrée est retirée
+              de votre instance — les conversations utilisant ce provider
+              échoueront tant qu&apos;une nouvelle clé n&apos;est pas saisie.
+            </>
+          }
+          pending={pending}
+          onConfirm={() => {
+            startTransition(async () => {
+              await deleteProviderKey(primary.id);
+              setDeleteOpen(false);
+            });
+          }}
+        />
+      )}
     </>
   );
 }

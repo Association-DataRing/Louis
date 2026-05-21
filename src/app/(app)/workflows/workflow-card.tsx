@@ -26,12 +26,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import type { Workflow } from "@/db/schema";
 import { deleteWorkflow, updateWorkflow } from "./actions";
 
 export function WorkflowCard({ workflow }: { workflow: Workflow }) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -49,9 +51,9 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
   }
 
   function handleDelete() {
-    if (!confirm(`Supprimer le workflow "${workflow.name}" ?`)) return;
     startTransition(async () => {
       await deleteWorkflow(workflow.id);
+      setDeleteOpen(false);
       router.refresh();
     });
   }
@@ -86,7 +88,10 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
               Modifier
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => setDeleteOpen(true)}
+            >
               <IconTrash className="size-4" />
               Supprimer
             </DropdownMenuItem>
@@ -157,6 +162,20 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Supprimer ce workflow ?"
+        description={
+          <>
+            « {workflow.name} » sera définitivement supprimé. Le prompt ne
+            pourra pas être récupéré.
+          </>
+        }
+        pending={pending}
+        onConfirm={handleDelete}
+      />
     </li>
   );
 }
