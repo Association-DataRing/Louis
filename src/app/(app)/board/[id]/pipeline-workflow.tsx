@@ -8,13 +8,14 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
   type Edge,
   type EdgeTypes,
   type Node,
   type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { IconMaximize, IconMinimize } from "@tabler/icons-react";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
 import { AgentEditSheet } from "../agent-edit-sheet";
 import { AgentFlowNode, type AgentFlowNodeData } from "./agent-flow-node";
@@ -28,7 +29,6 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -187,6 +187,7 @@ function PipelineWorkflowInner({
   const [pending, startTransition] = useTransition();
   const editable = !pipeline.isPreset && !pending;
   const mode = (pipeline.mode as "sequential" | "council" | "parallel") ?? "sequential";
+  const dragEnabled = editable && agents.length > 1;
 
   const handleDelete = useCallback((agent: PipelineAgent) => {
     setPendingDelete(agent);
@@ -209,12 +210,59 @@ function PipelineWorkflowInner({
     });
   }
 
-  // Drag libre : tout pipeline éditable accepte le déplacement de ses
-  // nodes. Le mode (sequential/council/parallel) reste sémantique pour
-  // l'exécution, mais visuellement l'utilisateur dispose les agents
-  // comme il veut. On persiste les coordonnées canvasX/canvasY en DB
-  // à chaque drop.
-  const dragEnabled = editable && agents.length > 1;
+  // Coordonnées finales : canvasX/Y custom si présent, sinon layoutNodes.
+  // Recalculé uniquement quand la liste d'agents (DB) change — pas pendant
+  // le drag, qui est géré en interne par useNodesState.
+  const computedNodes: Node[] = useMemo(() => {
+    const auto = layoutNodes(agents, mode);
+    return agents.map((agent, i) => {
+      const data: AgentFlowNodeData = {
+        agent,
+        providerKeys,
+        position: i,
+        isFinal: i === agents.length - 1,
+        state: liveStates?.[agent.id] ?? "idle",
+        editable,
+        onEdit: editable ? () => setEditingAgent(agent) : undefined,
+        onDelete:
+          editable && agents.length > 1
+            ? () => handleDelete(agent)
+            : undefined,
+      };
+      return {
+        id: agent.id,
+        type: "agent",
+        position: {
+          x: agent.canvasX ?? auto[i].x,
+          y: agent.canvasY ?? auto[i].y,
+        },
+        data,
+        draggable: dragEnabled,
+      };
+    });
+  }, [agents, providerKeys, liveStates, editable, mode, dragEnabled, handleDelete]);
+
+  const computedEdges = useMemo(
+    () => buildEdges(agents, mode, liveStates),
+    [agents, mode, liveStates]
+  );
+
+  // useNodesState/useEdgesState : nodes mutables gérés en interne par
+  // React Flow → le drag bouge le node en temps réel sous le curseur.
+  // Avant on passait `nodes={memo}` sans onNodesChange = mode controlled
+  // figé, donc rien ne bougeait pendant le drag.
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(computedNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(computedEdges);
+
+  // Re-sync nodes/edges quand la source de vérité (DB / agents prop)
+  // change : ajout/retrait d'agent, reset layout, refresh router.
+  useEffect(() => {
+    setNodes(computedNodes);
+  }, [computedNodes, setNodes]);
+  useEffect(() => {
+    setEdges(computedEdges);
+  }, [computedEdges, setEdges]);
+
   const handleNodeDragStop = useCallback(
     (
       _e: React.MouseEvent | React.TouchEvent | unknown,
@@ -223,13 +271,14 @@ function PipelineWorkflowInner({
     ) => {
       if (!dragEnabled) return;
 
-      // (1) Persiste la position custom du node déplacé (toujours).
+      // (1) Persiste la position custom (le node a déjà bougé en local
+      // via useNodesState pendant le drag, on persiste juste la valeur
+      // finale en DB — sans revalidate pour éviter un flash).
       void updateAgentCanvasPosition(node.id, node.position.x, node.position.y);
 
-      // (2) En mode sequential, on garde le re-ordering automatique
-      // selon X — l'utilisateur peut continuer à réordonner par drag,
-      // mais le node garde aussi sa position custom. C'est le sens
-      // sémantique attendu : "je déplace = je veux que ce soit l'ordre".
+      // (2) En mode sequential, ré-ordonne par X pour que l'ordre
+      // d'exécution suive la disposition visuelle. Le node garde sa
+      // position custom (plus de snap à la grille).
       if (mode !== "sequential") return;
       const sortedByX = [...nodesAfterDrag].sort(
         (a, b) => a.position.x - b.position.x
@@ -250,45 +299,6 @@ function PipelineWorkflowInner({
     [agents, dragEnabled, mode, pipeline.id, router]
   );
 
-  // Coordonnées finales : canvasX/Y si l'user a déplacé un node,
-  // sinon fallback sur layoutNodes selon le mode.
-  const autoPositions = useMemo(() => layoutNodes(agents, mode), [agents, mode]);
-  const positions = useMemo(
-    () =>
-      agents.map((agent, i) => ({
-        x: agent.canvasX ?? autoPositions[i].x,
-        y: agent.canvasY ?? autoPositions[i].y,
-      })),
-    [agents, autoPositions]
-  );
-
-  const initialNodes: Node[] = useMemo(
-    () =>
-      agents.map((agent, i) => {
-        const data: AgentFlowNodeData = {
-          agent,
-          providerKeys,
-          position: i,
-          isFinal: i === agents.length - 1,
-          state: liveStates?.[agent.id] ?? "idle",
-          editable,
-          onEdit: editable ? () => setEditingAgent(agent) : undefined,
-          onDelete:
-            editable && agents.length > 1
-              ? () => handleDelete(agent)
-              : undefined,
-        };
-        return {
-          id: agent.id,
-          type: "agent",
-          position: positions[i],
-          data,
-          draggable: dragEnabled,
-        };
-      }),
-    [agents, providerKeys, liveStates, editable, handleDelete, positions, dragEnabled]
-  );
-
   const hasCustomLayout = agents.some(
     (a) => a.canvasX !== null || a.canvasY !== null
   );
@@ -306,38 +316,11 @@ function PipelineWorkflowInner({
     });
   }, [pipeline.id, router]);
 
-  const initialEdges = useMemo(
-    () => buildEdges(agents, mode, liveStates),
-    [agents, mode, liveStates]
-  );
-
-  // Padding plus serré que la valeur historique 0.2 — les cartes
-  // d'agent occupent désormais ~85% de la zone visible au lieu de ~60%.
   const fitViewOptions = useMemo(
-    () => ({ padding: 0.08, duration: 600 }),
+    () => ({ padding: 0.12, duration: 400 }),
     []
   );
   const proOptions = useMemo(() => ({ hideAttribution: true }), []);
-
-  // Toggle plein écran : le wrapper devient `fixed inset-4 z-50`. Le
-  // canvas occupe alors quasi tout le viewport, ce qui rend les nodes
-  // beaucoup plus lisibles pour un workflow à 5+ agents.
-  const [expanded, setExpanded] = useState(false);
-  useEffect(() => {
-    if (!expanded) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setExpanded(false);
-    }
-    window.addEventListener("keydown", onKey);
-    // Bloque le scroll du body pendant l'expansion pour que la roulette
-    // zoome sur le canvas et pas la page derrière.
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [expanded]);
 
   const onNodeClick = useCallback(
     (_e: React.MouseEvent, node: Node) => {
@@ -348,24 +331,19 @@ function PipelineWorkflowInner({
     [agents, editable]
   );
 
-  // Hauteur du canvas : on dimensionne en viewport units pour que les
-  // nodes (280×200) gardent une taille lisible même avec 5+ agents en
-  // ligne. En plein écran, on prend tout le viewport restant.
-  // - sequential : 60vh (min 480px) — une ligne haute
-  // - council/parallel : 70vh (min 580px) — deux lignes + arc
-  const canvasStyle: React.CSSProperties = expanded
-    ? { height: "calc(100vh - 2rem)" }
-    : mode === "sequential"
-    ? { height: "60vh", minHeight: 480 }
-    : { height: "70vh", minHeight: 580 };
+  // Hauteur du canvas en viewport units pour que les nodes (280×200)
+  // gardent une taille lisible même avec 5+ agents en ligne.
+  // - sequential : 60vh (min 480px)
+  // - council/parallel : 70vh (min 580px)
+  const canvasStyle: React.CSSProperties =
+    mode === "sequential"
+      ? { height: "60vh", minHeight: 480 }
+      : { height: "70vh", minHeight: 580 };
 
   return (
     <>
       <div
-        className={cn(
-          "relative w-full rounded-2xl border border-border bg-muted/10 overflow-hidden",
-          expanded && "fixed inset-4 z-50 shadow-2xl"
-        )}
+        className="relative w-full rounded-2xl border border-border bg-muted/10 overflow-hidden"
         style={canvasStyle}
       >
         {/* Vignette radiale subtile pour donner du caractère au canvas */}
@@ -374,10 +352,10 @@ function PipelineWorkflowInner({
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,transparent,oklch(var(--color-foreground)/0.02)_70%,oklch(var(--color-foreground)/0.04))]"
         />
 
-        {/* Toolbar canvas — toggle plein écran + reset layout. Posée
-            en absolute pour ne pas perturber le layout React Flow. */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-          {editable && hasCustomLayout && (
+        {/* Bouton reset : visible dès qu'au moins un agent a des
+            coordonnées custom (canvasX/Y non null). */}
+        {editable && hasCustomLayout && (
+          <div className="absolute top-3 right-3 z-10">
             <Button
               type="button"
               variant="ghost"
@@ -389,31 +367,14 @@ function PipelineWorkflowInner({
             >
               Réinitialiser la disposition
             </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setExpanded((v) => !v)}
-            className="gap-1.5 bg-card/95 backdrop-blur-sm shadow-sm"
-            aria-label={expanded ? "Réduire le canvas" : "Agrandir le canvas"}
-          >
-            {expanded ? (
-              <>
-                <IconMinimize className="size-3.5" />
-                Réduire <kbd className="ml-1 text-[10px] text-muted-foreground font-mono">Esc</kbd>
-              </>
-            ) : (
-              <>
-                <IconMaximize className="size-3.5" />
-                Plein écran
-              </>
-            )}
-          </Button>
-        </div>
+          </div>
+        )}
+
         <ReactFlow
-          nodes={initialNodes}
-          edges={initialEdges}
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
