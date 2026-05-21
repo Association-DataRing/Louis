@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/db";
@@ -101,6 +101,116 @@ export async function deleteUser(id: string): Promise<void> {
     target: target?.email ?? id,
   });
   revalidatePath("/admin/users");
+}
+
+/**
+ * Bascule le rôle d'un utilisateur (member ↔ admin). Garde-fou : un admin
+ * ne peut pas se rétrograder lui-même — anti-lockout côté serveur en
+ * complément du masquage du menu sur sa propre ligne côté UI.
+ *
+ * Garde-fou supplémentaire : on refuse de rétrograder le DERNIER admin
+ * actif du cabinet — sans quoi plus personne ne peut administrer
+ * l'instance.
+ */
+export async function setUserRole(
+  id: string,
+  role: "admin" | "member"
+): Promise<ActionResult> {
+  const { userId: adminId } = await requireAdmin();
+  if (id === adminId) {
+    return {
+      ok: false,
+      error: "Vous ne pouvez pas changer votre propre rôle.",
+    };
+  }
+
+  const [target] = await db
+    .select({
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+    })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  if (!target) return { ok: false, error: "Utilisateur introuvable." };
+  if (target.role === role) return { ok: true };
+
+  // Si on rétrograde un admin → vérifier qu'il reste au moins un autre
+  // admin actif. Sinon le cabinet serait orphelin.
+  if (role === "member" && target.role === "admin") {
+    const otherAdmins = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "admin"),
+          eq(users.isActive, true),
+          ne(users.id, id)
+        )
+      );
+    if ((otherAdmins[0]?.n ?? 0) === 0) {
+      return {
+        ok: false,
+        error: "Au moins un administrateur actif doit rester.",
+      };
+    }
+  }
+
+  await db.update(users).set({ role }).where(eq(users.id, id));
+  await recordAudit({
+    userId: adminId,
+    action: role === "admin" ? "user.role.promote" : "user.role.demote",
+    target: target.email,
+    meta: { from: target.role, to: role },
+  });
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+/**
+ * Modifie le quota mensuel d'un user (en centimes d'euros). `null` =
+ * pas de limite. À 0 = bloqué de fait. Audit log enregistre la valeur
+ * avant/après pour traçabilité cabinet.
+ */
+export async function updateUserQuota(
+  id: string,
+  monthlyQuotaCents: number | null
+): Promise<ActionResult> {
+  const { userId: adminId } = await requireAdmin();
+  if (monthlyQuotaCents != null) {
+    if (!Number.isInteger(monthlyQuotaCents) || monthlyQuotaCents < 0) {
+      return {
+        ok: false,
+        error: "Montant invalide — saisissez un nombre d'euros positif.",
+      };
+    }
+    if (monthlyQuotaCents > 1_000_000_00) {
+      return { ok: false, error: "Quota trop élevé (max 1 000 000 €)." };
+    }
+  }
+  const [target] = await db
+    .select({ email: users.email, monthlyQuotaCents: users.monthlyQuotaCents })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  if (!target) return { ok: false, error: "Utilisateur introuvable." };
+
+  await db
+    .update(users)
+    .set({ monthlyQuotaCents })
+    .where(eq(users.id, id));
+  await recordAudit({
+    userId: adminId,
+    action: "user.quota.update",
+    target: target.email,
+    meta: {
+      from: target.monthlyQuotaCents,
+      to: monthlyQuotaCents,
+    },
+  });
+  revalidatePath("/admin/users");
+  return { ok: true };
 }
 
 export async function resetUserPassword(

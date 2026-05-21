@@ -3,7 +3,7 @@ import {
   createUIMessageStreamResponse,
   type UIMessage,
 } from "ai";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -11,9 +11,11 @@ import {
   conversations,
   documents,
   messages,
+  users,
   type SavedPart,
 } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
+import { aggregateCosts } from "@/lib/providers/pricing";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { getEnabledSkills } from "@/app/(app)/settings/skills/actions";
 import {
@@ -47,6 +49,53 @@ export async function POST(req: Request) {
 
   const rl = await rateLimit("chat", userId);
   if (!rl.allowed) return tooManyRequests(rl);
+
+  // Enforcement du quota mensuel admin. Si le user a un plafond défini,
+  // on calcule sa dépense IA depuis le 1er du mois et on refuse toute
+  // nouvelle requête si le seuil est atteint. Audit/usage continue d'être
+  // tracé via les colonnes messages.inputTokens/outputTokens habituelles.
+  const [userRow] = await db
+    .select({ monthlyQuotaCents: users.monthlyQuotaCents })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (userRow?.monthlyQuotaCents != null) {
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const usageRows = await db
+      .select({
+        modelId: messages.modelId,
+        inputTokens: messages.inputTokens,
+        outputTokens: messages.outputTokens,
+      })
+      .from(messages)
+      .innerJoin(conversations, eq(conversations.id, messages.conversationId))
+      .where(
+        and(
+          eq(conversations.userId, userId),
+          eq(messages.role, "assistant"),
+          gte(messages.createdAt, monthStart)
+        )
+      );
+    const totals = aggregateCosts(usageRows);
+    const spentCents = Math.round((totals.EUR + totals.USD) * 100);
+    if (spentCents >= userRow.monthlyQuotaCents) {
+      return new Response(
+        JSON.stringify({
+          error: "quota_exceeded",
+          spentCents,
+          quotaCents: userRow.monthlyQuotaCents,
+          message:
+            "Quota mensuel atteint. Contactez l'administrateur de votre cabinet pour le relever ou attendez le mois suivant.",
+        }),
+        {
+          status: 402,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+  }
 
   const body = (await req.json()) as Body;
   const {
@@ -110,6 +159,13 @@ export async function POST(req: Request) {
         conversationId: finalConversationId,
         role: "user",
         content: text,
+        // Trace des documents joints à CE tour, pour ré-afficher les pills
+        // au re-load. Le contenu des docs est injecté dans le system prompt
+        // plus bas — ici on garde juste la liste d'IDs pour l'UI.
+        metadata:
+          documentIds && documentIds.length > 0
+            ? { documentIds }
+            : null,
       });
     }
   }
