@@ -25,6 +25,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   // Force le cookie non-Secure en dev pour qu'il fonctionne en HTTP.
   useSecureCookies: isProd,
+  // Silence les JWTSessionError : c'est l'erreur "no matching decryption
+  // secret" qui survient quand un cookie a été chiffré avec une valeur
+  // précédente d'AUTH_SECRET. Auth.js gère déjà l'erreur (retourne null
+  // pour la session, l'app redirige vers /login, le proxy.ts purge le
+  // cookie). Le log d'erreur n'apporte rien — l'utilisateur le voit
+  // comme une panne alors que c'est juste un cookie périmé.
+  logger: {
+    error(error) {
+      if (error?.name === "JWTSessionError") return;
+      console.error("[auth]", error);
+    },
+    warn(code) {
+      console.warn("[auth][warn]", code);
+    },
+    debug() {
+      // Pas de log debug par défaut.
+    },
+  },
   pages: {
     signIn: "/login",
   },
