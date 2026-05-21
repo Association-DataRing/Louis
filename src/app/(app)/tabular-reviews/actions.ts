@@ -302,3 +302,136 @@ async function extractRow({
       .where(eq(tabularReviewRows.id, row.id));
   }
 }
+
+// ---------------------------------------------------------------------------
+// Column edition
+// ---------------------------------------------------------------------------
+
+const columnFormatSchema = z.enum([
+  "text",
+  "bulleted_list",
+  "date",
+  "money",
+  "boolean",
+]);
+
+const updateColumnSchema = z.object({
+  label: z.string().trim().min(1).max(80),
+  prompt: z.string().trim().min(1).max(500),
+  format: columnFormatSchema.optional(),
+});
+
+/**
+ * Met à jour le libellé / prompt / format d'une colonne d'analyse tabulaire.
+ * Les colonnes sont stockées en jsonb sur la review, donc on lit, on
+ * patche le tableau, puis on réécrit l'ensemble. Idempotent.
+ *
+ * Ne touche pas aux valeurs déjà extraites — si l'utilisateur modifie le
+ * prompt, il devra relancer l'extraction depuis l'UI pour mettre à jour
+ * les cellules.
+ */
+export async function updateReviewColumn(
+  reviewId: string,
+  columnId: string,
+  patch: { label: string; prompt: string; format?: string }
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const parsed = updateColumnSchema.safeParse(patch);
+  if (!parsed.success) return { ok: false, error: "Champs invalides." };
+
+  const [review] = await db
+    .select({
+      id: tabularReviews.id,
+      userId: tabularReviews.userId,
+      columns: tabularReviews.columns,
+    })
+    .from(tabularReviews)
+    .where(eq(tabularReviews.id, reviewId))
+    .limit(1);
+  if (!review || review.userId !== userId) {
+    return { ok: false, error: "Analyse introuvable." };
+  }
+
+  const idx = review.columns.findIndex((c) => c.id === columnId);
+  if (idx < 0) return { ok: false, error: "Colonne introuvable." };
+
+  const nextColumns: ReviewColumn[] = review.columns.map((c, i) =>
+    i === idx
+      ? {
+          ...c,
+          label: parsed.data.label,
+          prompt: parsed.data.prompt,
+          format: parsed.data.format as ReviewColumn["format"],
+        }
+      : c
+  );
+
+  await db
+    .update(tabularReviews)
+    .set({ columns: nextColumns, updatedAt: new Date() })
+    .where(eq(tabularReviews.id, reviewId));
+
+  revalidatePath(`/tabular-reviews/${reviewId}`);
+  return { ok: true };
+}
+
+/**
+ * Supprime une colonne d'analyse. Retire aussi les valeurs déjà extraites
+ * pour cette colonne dans toutes les lignes — sinon des clés orphelines
+ * s'accumulent dans le jsonb `values` des rows.
+ */
+export async function deleteReviewColumn(
+  reviewId: string,
+  columnId: string
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+
+  const [review] = await db
+    .select({
+      id: tabularReviews.id,
+      userId: tabularReviews.userId,
+      columns: tabularReviews.columns,
+    })
+    .from(tabularReviews)
+    .where(eq(tabularReviews.id, reviewId))
+    .limit(1);
+  if (!review || review.userId !== userId) {
+    return { ok: false, error: "Analyse introuvable." };
+  }
+  if (review.columns.length <= 1) {
+    return {
+      ok: false,
+      error: "Une analyse doit avoir au moins une colonne.",
+    };
+  }
+
+  const nextColumns = review.columns.filter((c) => c.id !== columnId);
+
+  await db
+    .update(tabularReviews)
+    .set({ columns: nextColumns, updatedAt: new Date() })
+    .where(eq(tabularReviews.id, reviewId));
+
+  // Nettoie les valeurs orphelines des rows. Le jsonb n'a pas d'opérateur
+  // Drizzle pour DELETE d'une clé, on charge les rows puis on re-set.
+  const rowsAffected = await db
+    .select({
+      id: tabularReviewRows.id,
+      values: tabularReviewRows.values,
+    })
+    .from(tabularReviewRows)
+    .where(eq(tabularReviewRows.reviewId, reviewId));
+
+  for (const row of rowsAffected) {
+    if (!row.values || !(columnId in row.values)) continue;
+    const { [columnId]: _removed, ...rest } = row.values;
+    void _removed;
+    await db
+      .update(tabularReviewRows)
+      .set({ values: rest, updatedAt: new Date() })
+      .where(eq(tabularReviewRows.id, row.id));
+  }
+
+  revalidatePath(`/tabular-reviews/${reviewId}`);
+  return { ok: true };
+}

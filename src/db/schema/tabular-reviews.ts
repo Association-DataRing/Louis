@@ -11,6 +11,13 @@ import { projects } from "./projects";
 import { documents } from "./documents";
 import { providerKeys } from "./provider-keys";
 
+export type ReviewColumnFormat =
+  | "text"
+  | "bulleted_list"
+  | "date"
+  | "money"
+  | "boolean";
+
 export type ReviewColumn = {
   /** Stable identifier used as JSON key in extracted values. */
   id: string;
@@ -18,6 +25,13 @@ export type ReviewColumn = {
   label: string;
   /** Instruction donnée au LLM pour extraire la valeur de cette colonne. */
   prompt: string;
+  /**
+   * Format attendu pour la valeur extraite. Sert d'indice au prompt système
+   * du run d'extraction (« réponds en liste à puces », « réponds au format
+   * JJ/MM/AAAA »…). Optionnel — les colonnes pré-existantes n'ont pas ce
+   * champ et sont traitées comme "text".
+   */
+  format?: ReviewColumnFormat;
 };
 
 export const tabularReviews = pgTable("tabular_reviews", {

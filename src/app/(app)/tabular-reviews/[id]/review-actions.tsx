@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   IconPlayerPlay,
@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { deleteTabularReview, runTabularReview } from "../actions";
 
 type Props = {
@@ -28,6 +29,8 @@ type Props = {
 export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [rerunOpen, setRerunOpen] = useState(false);
 
   function run() {
     startTransition(async () => {
@@ -40,12 +43,6 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
   }
 
   function handleDelete() {
-    if (
-      !confirm(
-        "Supprimer cette analyse ? Les valeurs extraites seront perdues. Les documents originaux sont conservés."
-      )
-    )
-      return;
     startTransition(() => deleteTabularReview(reviewId));
   }
 
@@ -77,25 +74,55 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             disabled={pending || totalRows === 0}
-            onSelect={() => {
-              if (
-                confirm(
-                  "Relancer l'extraction sur les lignes en erreur ou en attente ?"
-                )
-              )
-                run();
-            }}
+            onSelect={() => setRerunOpen(true)}
           >
             <IconRefresh className="size-4" />
             Relancer l&apos;extraction
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setDeleteOpen(true)}
+          >
             <IconTrash className="size-4" />
             Supprimer l&apos;analyse
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ConfirmDeleteDialog
+        open={rerunOpen}
+        onOpenChange={setRerunOpen}
+        variant="default"
+        title="Relancer l'extraction ?"
+        description={
+          <>
+            Les lignes en attente ou en erreur seront re-soumises au modèle.
+            Les lignes déjà extraites avec succès ne sont pas affectées.
+          </>
+        }
+        actionLabel="Relancer"
+        pendingLabel="Démarrage…"
+        pending={pending}
+        onConfirm={() => {
+          setRerunOpen(false);
+          run();
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Supprimer cette analyse ?"
+        description={
+          <>
+            Le tableau et toutes les valeurs extraites seront définitivement
+            supprimés. Les documents originaux restent dans votre bibliothèque.
+          </>
+        }
+        pending={pending}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

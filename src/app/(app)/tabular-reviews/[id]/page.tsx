@@ -112,7 +112,7 @@ export default async function TabularReviewDetailPage({
         />
       </header>
 
-      <ReviewGrid columns={columns} rows={rows} />
+      <ReviewGrid columns={columns} rows={rows} reviewId={review.id} />
       <AutoRefresh hasRunning={runningCount > 0} />
     </main>
   );
