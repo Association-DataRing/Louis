@@ -1,0 +1,54 @@
+name: Bug
+description: Quelque chose ne fonctionne pas comme attendu
+labels: ["bug"]
+body:
+  - type: textarea
+    attributes:
+      label: Description
+      description: Que s'est-il passé ? Que vous attendiez-vous à voir ?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Étapes de reproduction
+      description: Liste numérotée pour reproduire le bug sur une instance fraîche
+      placeholder: |
+        1. Ajouter une clé Mistral
+        2. Aller sur /chat
+        3. Taper "bonjour"
+        4. Observer …
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Version Louis (commit SHA)
+      placeholder: ex. 12a3ff6
+    validations:
+      required: false
+
+  - type: dropdown
+    attributes:
+      label: Environnement
+      options:
+        - macOS
+        - Linux (Debian/Ubuntu)
+        - Linux (autre)
+        - Windows (WSL2)
+        - Windows (natif)
+        - Docker (préciser dans Description)
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Version Node
+      placeholder: ex. v24.0.0
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Logs pertinents
+      render: shell

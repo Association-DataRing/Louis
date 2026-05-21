@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / discussion ouverte
+    url: https://github.com/Association-DataRing/Louis/discussions
+    about: Pour discuter d'un cas d'usage, partager un retour d'expérience, ou poser une question qui ne décrit pas un bug précis
+  - name: Vulnérabilité de sécurité
+    url: https://github.com/Association-DataRing/Louis/security/policy
+    about: Les vulnérabilités sont signalées en privé — voir SECURITY.md

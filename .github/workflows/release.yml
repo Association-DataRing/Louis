@@ -1,0 +1,82 @@
+name: Release
+
+# Déclenche automatiquement la création d'un GitHub Release quand un tag
+# `v*` est poussé, et y attache le SBOM CycloneDX comme artefact officiel.
+#
+# Workflow type :
+#   git tag -s v0.1.0 -m "Louis v0.1.0"
+#   git push origin v0.1.0
+#   => GitHub Release créée avec sbom.cdx.json en asset
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build SBOM and publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # `npm sbom` exige que l'arbre complet soit installé avant export,
+      # même si on filtre les devDeps en sortie via `--omit=dev`.
+      - name: Install all dependencies
+        run: npm ci
+
+      - name: Generate SBOM CycloneDX (prod components only)
+        run: npm run sbom
+
+      - name: Rename SBOM with version tag
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          mv sbom.cdx.json "louis-sbom-${REF_NAME}.cdx.json"
+          ls -la "louis-sbom-${REF_NAME}.cdx.json"
+
+      - name: Compute SHA-256 checksum
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          sha256sum "louis-sbom-${REF_NAME}.cdx.json" > "louis-sbom-${REF_NAME}.cdx.json.sha256"
+          cat "louis-sbom-${REF_NAME}.cdx.json.sha256"
+
+      - name: Create GitHub Release with SBOM
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Louis ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            louis-sbom-${{ github.ref_name }}.cdx.json
+            louis-sbom-${{ github.ref_name }}.cdx.json.sha256
+          body: |
+            ## Software Bill of Materials (SBOM)
+
+            Cette release inclut un SBOM au format CycloneDX 1.x listant
+            toutes les dépendances de production (hors devDependencies).
+
+            - `louis-sbom-<tag>.cdx.json` : SBOM CycloneDX (JSON)
+            - `louis-sbom-<tag>.cdx.json.sha256` : checksum SHA-256
+
+            Vérification d'intégrité :
+
+                sha256sum -c louis-sbom-<tag>.cdx.json.sha256
+
+            Le SBOM peut être consommé par tout scanner compatible CycloneDX
+            (Trivy, Grype, Dependency-Track, Snyk, etc.) pour cartographier
+            la chaîne d'approvisionnement et corréler aux CVE publiées.
+
+            ## Notes de release
