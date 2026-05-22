@@ -56,38 +56,31 @@ export function modelFromKey(
       return createOpenAI({
         apiKey,
         baseURL: "https://api.scaleway.ai/v1",
-      })(modelId);
+      }).chat(modelId);
     case "albert":
       return createOpenAI({
         apiKey,
         baseURL: "https://albert.api.etalab.gouv.fr/v1",
-      })(modelId);
+      }).chat(modelId);
     case "ovh": {
-      // OVH AI Endpoints have one URL per model. Users override via baseUrl.
       const base =
         key.baseUrl?.trim() ||
         `https://${modelId.toLowerCase().replace(/[^a-z0-9]/g, "-")}.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1`;
-      return createOpenAI({ apiKey, baseURL: base })(modelId);
+      return createOpenAI({ apiKey, baseURL: base }).chat(modelId);
     }
     case "openai_compatible": {
       if (!key.baseUrl) throw new Error("baseUrl required for openai_compatible");
-      return createOpenAI({ apiKey, baseURL: key.baseUrl })(modelId);
+      return createOpenAI({ apiKey, baseURL: key.baseUrl }).chat(modelId);
     }
     case "openrouter": {
-      // OpenRouter expose une API OpenAI-compatible avec un catalogue
-      // multi-providers (claude-3.5-sonnet, gpt-4o, llama-3.1-405b…). Les
-      // headers HTTP-Referer / X-Title sont optionnels mais recommandés
-      // pour figurer dans les attributions sur openrouter.ai.
       return createOpenAI({
         apiKey,
         baseURL: "https://openrouter.ai/api/v1",
-        // ASCII pur obligatoire dans les headers HTTP (l'em-dash —
-        // U+2014 fait throw fetch « character > 255 »).
         headers: {
           "HTTP-Referer": "https://github.com/Association-DataRing/Louis",
           "X-Title": "Louis - orchestrateur IA souverain",
         },
-      })(modelId);
+      }).chat(modelId);
     }
     default: {
       const exhaustive: never = key.type;
