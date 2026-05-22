@@ -119,6 +119,20 @@ export async function POST(req: Request) {
     return new Response(msg, { status: 400 });
   }
 
+  // Verify ownership of existing conversation to prevent cross-user injection
+  if (conversationId) {
+    const [conv] = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(
+        and(eq(conversations.id, conversationId), eq(conversations.userId, userId))
+      )
+      .limit(1);
+    if (!conv) {
+      return new Response("Conversation not found", { status: 404 });
+    }
+  }
+
   // Résout la pipeline : soit celle pointée par pipelineId (et l'on vérifie
   // qu'elle appartient bien à l'utilisateur), soit le preset mono-agent
   // chat-simple par défaut.
