@@ -45,6 +45,12 @@ export function modelFromKey(
 
   const modelId = modelOverride || DEFAULT_MODEL[key.type];
 
+  // Note `.chat(modelId)` sur tous les providers OpenAI-compatible
+  // (scaleway, albert, ovh, openai_compatible, openrouter) : depuis
+  // @ai-sdk/openai v3 (AI SDK v6), l'appel direct `(modelId)` route
+  // par défaut vers /v1/responses (Responses API, OpenAI-only). Les
+  // providers compatibles renvoient alors 422 « ROUTE NOT SUPPORTED ».
+  // `.chat(modelId)` force /v1/chat/completions, qui est universel.
   switch (key.type) {
     case "mistral":
       return createMistral({ apiKey })(modelId);
@@ -63,6 +69,9 @@ export function modelFromKey(
         baseURL: "https://albert.api.etalab.gouv.fr/v1",
       }).chat(modelId);
     case "ovh": {
+      // OVH AI Endpoints expose une URL différente PAR modèle. Les
+      // utilisateurs peuvent surcharger via baseUrl ; sinon on déduit
+      // l'URL depuis le modelId (kebab-case, suffixe `.endpoints.kepler...`).
       const base =
         key.baseUrl?.trim() ||
         `https://${modelId.toLowerCase().replace(/[^a-z0-9]/g, "-")}.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1`;
@@ -73,9 +82,16 @@ export function modelFromKey(
       return createOpenAI({ apiKey, baseURL: key.baseUrl }).chat(modelId);
     }
     case "openrouter": {
+      // OpenRouter expose une API OpenAI-compatible avec un catalogue
+      // multi-providers (claude-3.5-sonnet, gpt-4o, llama-3.1-405b…).
+      // Les headers HTTP-Referer / X-Title sont optionnels mais
+      // recommandés pour figurer dans les attributions sur openrouter.ai.
       return createOpenAI({
         apiKey,
         baseURL: "https://openrouter.ai/api/v1",
+        // ASCII pur obligatoire dans les headers HTTP — l'em-dash —
+        // (U+2014) fait throw fetch « character > 255 ». Tiret simple
+        // suffit pour l'attribution.
         headers: {
           "HTTP-Referer": "https://github.com/Association-DataRing/Louis",
           "X-Title": "Louis - orchestrateur IA souverain",
