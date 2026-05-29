@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { providerKeys, type ProviderKey } from "@/db/schema";
 import { type ProviderType } from "@/lib/providers/catalog";
+import { ModuleHelp } from "@/components/module-help";
 import { ProviderCard } from "./provider-card";
 
 type Group = {
@@ -56,7 +57,14 @@ export default async function ProvidersPage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-6">
-        <h1 className="font-heading text-3xl tracking-tight">Gestion des clés API</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="font-heading text-3xl tracking-tight">Gestion des clés API</h1>
+          <ModuleHelp slug="configuration/providers" title="Connecter un provider IA">
+            Louis fonctionne en Bring Your Own Key : ajoutez votre clé,
+            activez-la, testez la connexion. Commencez par <strong>Mistral</strong>
+            {" "}(🇫🇷) — c&apos;est lui qui alimente la recherche dans vos documents.
+          </ModuleHelp>
+        </div>
         <p className="mt-2 text-muted-foreground max-w-2xl">
           Connectez vos propres clés. Une seule règle : <strong>vos clés ne
           quittent jamais votre instance</strong>.
