@@ -21,6 +21,7 @@ import {
   aggregateCosts,
   formatTotals,
 } from "@/lib/providers/pricing";
+import { ModuleHelp } from "@/components/module-help";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -96,9 +97,16 @@ export default async function DashboardPage() {
         <p className="text-xs text-muted-foreground uppercase tracking-wider">
           Tableau de bord
         </p>
-        <h1 className="mt-2 font-heading text-4xl md:text-5xl tracking-tight">
-          Bonjour{firstName ? `, ${firstName}` : ""}.
-        </h1>
+        <div className="mt-2 flex items-center gap-2">
+          <h1 className="font-heading text-4xl md:text-5xl tracking-tight">
+            Bonjour{firstName ? `, ${firstName}` : ""}.
+          </h1>
+          <ModuleHelp slug="user/getting-started" title="Prise en main">
+            Nouveau sur Louis ? Le parcours de mise en route en 5 étapes :
+            connecter une clé provider, vos sources juridiques, puis lancer
+            votre première conversation.
+          </ModuleHelp>
+        </div>
       </header>
 
       {!hasProvider && <SetupBanner />}
