@@ -24,6 +24,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { LouisLogo } from "@/components/louis-logo";
+import { ModuleHelp } from "@/components/module-help";
 import { Dropzone, uploadDocument } from "@/components/dropzone";
 import { useSmoothText } from "@/lib/use-smooth-text";
 import { useStickToBottom } from "@/lib/use-stick-to-bottom";
@@ -2124,9 +2125,16 @@ function EmptyState() {
     <div className="h-full flex flex-col items-center justify-center px-6">
       <div className="max-w-xl w-full">
         <LouisLogo className="size-10 text-primary mb-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500" />
-        <h1 className="font-heading text-4xl md:text-5xl tracking-tight motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700">
-          Une nouvelle conversation.
-        </h1>
+        <div className="flex items-center gap-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700">
+          <h1 className="font-heading text-4xl md:text-5xl tracking-tight">
+            Une nouvelle conversation.
+          </h1>
+          <ModuleHelp slug="user/chat" title="Utiliser le chat">
+            Choisissez un modèle, posez votre question. Joignez un document
+            (trombone) ou insérez un workflow (étoiles). Chaque appel
+            d&apos;outil est inspectable.
+          </ModuleHelp>
+        </div>
         <p className="mt-3 text-base text-muted-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-700 motion-safe:delay-150">
           Tapez votre question dans le composer ci-dessous — ou parcourez
           ces points d&apos;entrée.

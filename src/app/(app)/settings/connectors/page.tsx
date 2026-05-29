@@ -9,6 +9,7 @@ import {
   type ConnectorType,
 } from "@/lib/connectors/catalog";
 import { ConnectorCard } from "./connector-card";
+import { ModuleHelp } from "@/components/module-help";
 
 // Connecteurs prévus dans la roadmap mais pas encore implémentés. Affichés
 // en cartes "Bientôt" pour montrer où va le produit.
@@ -59,9 +60,16 @@ export default async function ConnectorsPage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-6">
-        <h1 className="font-heading text-3xl tracking-tight">
-          Connecteurs juridiques
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="font-heading text-3xl tracking-tight">
+            Connecteurs juridiques
+          </h1>
+          <ModuleHelp slug="configuration/connectors" title="Brancher vos sources de droit">
+            PISTE donne accès à Légifrance ; Pappers aux données entreprises.
+            Vos identifiants restent chiffrés sur votre instance. Vous pouvez
+            aussi brancher n&apos;importe quel serveur MCP.
+          </ModuleHelp>
+        </div>
         <p className="mt-2 text-muted-foreground max-w-2xl">
           Branchez vos accès aux sources de droit français. Vos identifiants,
           vos quotas, vos contrats — Louis ne s&apos;interpose pas.
