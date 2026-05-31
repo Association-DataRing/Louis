@@ -154,6 +154,7 @@ function SelectScrollUpButton({
       {...props}
     >
       <IconChevronUp
+        aria-hidden
       />
     </SelectPrimitive.ScrollUpButton>
   )
@@ -173,6 +174,7 @@ function SelectScrollDownButton({
       {...props}
     >
       <IconChevronDown
+        aria-hidden
       />
     </SelectPrimitive.ScrollDownButton>
   )

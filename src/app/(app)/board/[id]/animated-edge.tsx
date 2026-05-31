@@ -1,6 +1,7 @@
 "use client";
 
 import { BaseEdge, getSmoothStepPath, type EdgeProps } from "@xyflow/react";
+import { useReducedMotion } from "motion/react";
 
 /**
  * Edge custom React Flow avec animation "particule" qui voyage du source
@@ -35,6 +36,7 @@ export function AnimatedEdge(props: EdgeProps) {
 
   const isActive = Boolean(data?.active);
   const isDashed = Boolean(data?.dashed);
+  const reducedMotion = useReducedMotion();
 
   return (
     <>
@@ -50,7 +52,7 @@ export function AnimatedEdge(props: EdgeProps) {
         }}
         markerEnd={markerEnd}
       />
-      {isActive && (
+      {isActive && !reducedMotion && (
         <circle
           r="3"
           fill="var(--color-foreground)"

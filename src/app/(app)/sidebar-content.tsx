@@ -147,7 +147,7 @@ export function SidebarContent({
 
       {/* Nav + conversations */}
       <div className="flex-1 overflow-y-auto px-2.5 pb-3">
-        <nav className="space-y-0.5">
+        <nav aria-label="Navigation principale" className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -159,6 +159,8 @@ export function SidebarContent({
                 href={item.href}
                 onClick={onNavigate}
                 title={!open ? item.label : undefined}
+                aria-label={!open ? item.label : undefined}
+                aria-current={isActive ? "page" : undefined}
                 className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors ${
                   isActive
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -175,6 +177,8 @@ export function SidebarContent({
             href={settingsNav.href}
             onClick={onNavigate}
             title={!open ? settingsNav.label : undefined}
+            aria-label={!open ? settingsNav.label : undefined}
+            aria-current={pathname.startsWith("/settings") ? "page" : undefined}
             className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors mt-3 ${
               pathname.startsWith("/settings")
                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -190,6 +194,8 @@ export function SidebarContent({
               href="/admin/users"
               onClick={onNavigate}
               title={!open ? "Administration" : undefined}
+              aria-label={!open ? "Administration" : undefined}
+              aria-current={pathname.startsWith("/admin") ? "page" : undefined}
               className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors ${
                 pathname.startsWith("/admin")
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -206,7 +212,7 @@ export function SidebarContent({
         {open && (
           <section className="mt-5">
             <div className="flex items-center justify-between px-2.5 pb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Conversations
               </span>
               <Link
@@ -229,6 +235,7 @@ export function SidebarContent({
                     value={convQuery}
                     onChange={(e) => setConvQuery(e.target.value)}
                     placeholder="Rechercher…"
+                    aria-label="Rechercher une conversation"
                     className="w-full rounded-md border border-input bg-background pl-7 pr-2 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   />
                 </div>
@@ -269,6 +276,7 @@ export function SidebarContent({
             <Link
               href="/settings/profile"
               onClick={onNavigate}
+              aria-current={pathname.startsWith("/settings/profile") ? "page" : undefined}
               className={`flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors min-w-0 ${
                 pathname.startsWith("/settings/profile")
                   ? "bg-sidebar-accent"
@@ -281,7 +289,7 @@ export function SidebarContent({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium truncate">{user.name}</div>
-                <div className="text-[10px] text-muted-foreground truncate">
+                <div className="text-xs text-muted-foreground truncate">
                   {user.email}
                 </div>
               </div>

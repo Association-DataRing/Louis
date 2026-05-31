@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type MouseEvent } from "react";
+import { useState, useTransition } from "react";
 import {
   IconCheck,
   IconCircleDashed,
@@ -60,10 +60,6 @@ type Props = {
   keys: ConnectorKey[];
 };
 
-function stopCardClick(e: MouseEvent) {
-  e.stopPropagation();
-}
-
 export function ConnectorCard({ type, keys }: Props) {
   const meta = CONNECTOR_CATALOG[type];
   const Icon = meta.icon;
@@ -100,16 +96,6 @@ export function ConnectorCard({ type, keys }: Props) {
     <>
       <CutoutCard
         className={cn(cutoutCardSurfaceClassName, "flex flex-col")}
-        role="button"
-        tabIndex={0}
-        aria-label={`${isConfigured ? "Modifier" : "Configurer"} ${meta.label}`}
-        onClick={openDialog}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            openDialog();
-          }
-        }}
       >
         <CutoutCardMedia
           className="relative h-44 w-full"
@@ -143,7 +129,6 @@ export function ConnectorCard({ type, keys }: Props) {
           {isConfigured && (
             <CutoutCardPin
               className="right-3 top-3 flex items-center gap-2 rounded-full bg-card/85 px-2.5 py-1 backdrop-blur-sm"
-              onClick={stopCardClick}
             >
               <span className="text-[10px] font-medium text-card-foreground/80">
                 {primary.isActive ? "Activé" : "Inactif"}
@@ -197,7 +182,6 @@ export function ConnectorCard({ type, keys }: Props) {
                 href={meta.docsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={stopCardClick}
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Documentation"
               >
@@ -210,14 +194,10 @@ export function ConnectorCard({ type, keys }: Props) {
                   className="-mt-1 -mr-1 size-7 inline-flex shrink-0 items-center justify-center rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-50"
                   aria-label="Actions"
                   disabled={pending}
-                  onClick={stopCardClick}
                 >
                   <IconDots className="size-3.5" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  onClick={stopCardClick}
-                >
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     variant="destructive"
                     disabled={pending}
@@ -230,28 +210,6 @@ export function ConnectorCard({ type, keys }: Props) {
               </DropdownMenu>
             )}
           </div>
-
-          {isConfigured && (
-            <ConfirmDeleteDialog
-              open={deleteOpen}
-              onOpenChange={setDeleteOpen}
-              title="Supprimer ce connecteur ?"
-              description={
-                <>
-                  « {primary.label} » sera supprimé. La clé chiffrée est
-                  retirée — l&apos;intégration ne fonctionnera plus tant
-                  qu&apos;une nouvelle clé n&apos;est pas saisie.
-                </>
-              }
-              pending={pending}
-              onConfirm={() => {
-                startTransition(async () => {
-                  await deleteConnectorKey(primary.id);
-                  setDeleteOpen(false);
-                });
-              }}
-            />
-          )}
 
           <p className="text-xs text-muted-foreground leading-relaxed">
             {meta.description}
@@ -276,6 +234,18 @@ export function ConnectorCard({ type, keys }: Props) {
               </span>
             </p>
           )}
+
+          <div className="mt-auto pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openDialog}
+              aria-label={`${isConfigured ? "Modifier" : "Configurer"} ${meta.label}`}
+            >
+              <IconKey className="size-3.5" />
+              {isConfigured ? "Modifier" : "Configurer"}
+            </Button>
+          </div>
         </CutoutCardContent>
 
         <CutoutCardAction className="right-5 bottom-5">
@@ -285,6 +255,28 @@ export function ConnectorCard({ type, keys }: Props) {
           </span>
         </CutoutCardAction>
       </CutoutCard>
+
+      {isConfigured && (
+        <ConfirmDeleteDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title="Supprimer ce connecteur ?"
+          description={
+            <>
+              « {primary.label} » sera supprimé. La clé chiffrée est
+              retirée — l&apos;intégration ne fonctionnera plus tant
+              qu&apos;une nouvelle clé n&apos;est pas saisie.
+            </>
+          }
+          pending={pending}
+          onConfirm={() => {
+            startTransition(async () => {
+              await deleteConnectorKey(primary.id);
+              setDeleteOpen(false);
+            });
+          }}
+        />
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

@@ -349,7 +349,7 @@ function PipelineWorkflowInner({
         {/* Vignette radiale subtile pour donner du caractère au canvas */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,transparent,oklch(var(--color-foreground)/0.02)_70%,oklch(var(--color-foreground)/0.04))]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,transparent,color-mix(in_oklch,var(--color-foreground)_2%,transparent)_70%,color-mix(in_oklch,var(--color-foreground)_4%,transparent))]"
         />
 
         {/* Bouton reset : visible dès qu'au moins un agent a des
@@ -409,7 +409,7 @@ function PipelineWorkflowInner({
               pannable
               zoomable
               className="!bg-card !border !border-border"
-              maskColor="rgb(0 0 0 / 0.05)"
+              maskColor="color-mix(in oklab, var(--foreground) 6%, transparent)"
               nodeColor="var(--color-foreground)"
             />
           )}

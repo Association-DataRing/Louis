@@ -50,7 +50,11 @@ export function DocumentsDropzone({
       overlayHint="PDF, DOCX ou texte — 25 Mo max par fichier"
     >
       {(uploadingCount > 0 || error) && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-3 flex flex-wrap items-center gap-2 text-xs"
+        >
           {uploadingCount > 0 && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
               <Spinner className="size-3" />

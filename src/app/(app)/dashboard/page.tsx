@@ -264,17 +264,17 @@ function Stat({
   href?: string;
 }) {
   const inner = (
-    <>
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+    <dl>
+      <dt className="text-xs text-muted-foreground uppercase tracking-wider">
         {label}
-      </p>
-      <p className="mt-2 font-heading text-3xl tracking-tight tabular-nums">
+      </dt>
+      <dd className="mt-2 font-heading text-3xl tracking-tight tabular-nums">
         {value}
-      </p>
+      </dd>
       {hint && (
-        <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+        <dd className="mt-0.5 text-xs text-muted-foreground">{hint}</dd>
       )}
-    </>
+    </dl>
   );
   if (href) {
     return (

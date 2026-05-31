@@ -80,10 +80,7 @@ export function InlineRename({
 
   if (!editable) {
     return (
-      <h1
-        className="font-heading text-3xl md:text-4xl tracking-tight"
-        title={`slug: ${pipelineId}`}
-      >
+      <h1 className="font-heading text-3xl md:text-4xl tracking-tight">
         {initialName}
       </h1>
     );

@@ -62,6 +62,7 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
           <div className="flex items-center gap-2">
             <input
               autoFocus
+              aria-label="Nouveau nom du dossier"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -78,6 +79,7 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
               onClick={commitRename}
               className="size-8 inline-flex items-center justify-center rounded-md text-primary hover:bg-accent"
               title="Valider"
+              aria-label="Valider"
             >
               <IconCheck className="size-4" />
             </button>
@@ -89,6 +91,7 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
               }}
               className="size-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
               title="Annuler"
+              aria-label="Annuler"
             >
               <IconX className="size-4" />
             </button>

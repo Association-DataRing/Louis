@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { IconShieldLock, IconInfoCircle, IconClock } from "@tabler/icons-react";
+import { IconShieldLock, IconClock } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { connectorKeys, type ConnectorKey } from "@/db/schema";
@@ -116,16 +116,6 @@ export default async function ConnectorsPage() {
           ))}
         </div>
       </section>
-
-      <aside className="mt-12 rounded-lg border border-border bg-card p-4 flex items-start gap-3 text-sm">
-        <IconInfoCircle className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-        <p className="text-muted-foreground">
-          Les connecteurs configurés sont automatiquement disponibles comme
-          outils dans les conversations. L&apos;IA peut appeler Légifrance,
-          Judilibre ou Pappers depuis le chat et citer les sources directement
-          dans ses réponses.
-        </p>
-      </aside>
     </main>
   );
 }

@@ -3,7 +3,10 @@ import { IconLoader } from "@tabler/icons-react"
 
 function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
   return (
-    <IconLoader role="status" aria-label="Chargement" className={cn("size-4 animate-spin", className)} {...props} />
+    <span role="status" aria-live="polite" className={cn("inline-flex", className)}>
+      <IconLoader aria-hidden className="size-4 motion-safe:animate-spin" {...props} />
+      <span className="sr-only">Chargement</span>
+    </span>
   )
 }
 

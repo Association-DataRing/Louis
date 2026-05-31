@@ -203,7 +203,7 @@ export function CommandPalette({
           )}
         </CommandGroup>
       </CommandList>
-      <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground flex items-center justify-between">
+      <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground flex items-center justify-between">
         <span>↑↓ pour naviguer · ↵ pour ouvrir · ESC pour fermer</span>
         <CommandShortcut>⌘K</CommandShortcut>
       </div>

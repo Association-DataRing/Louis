@@ -33,9 +33,13 @@ export function ThinkingIndicator() {
   }, []);
 
   return (
-    <div className="flex items-start gap-2 text-sm text-muted-foreground">
+    <div
+      className="flex items-start gap-2 text-sm text-muted-foreground"
+      role="status"
+      aria-label="Louis prépare sa réponse"
+    >
       <LouisLogo className="size-4 text-primary mt-0.5 shrink-0" />
-      <span className="inline-flex items-baseline gap-1.5">
+      <span className="inline-flex items-baseline gap-1.5" aria-hidden>
         <span
           className="size-1.5 self-center rounded-full border border-muted-foreground/70 border-t-transparent animate-spin"
           aria-hidden

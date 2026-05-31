@@ -124,10 +124,10 @@ export function AssistantMessageActions({
             {availableModels.length > 12 && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem disabled className="text-[10px]">
+                <DropdownMenuLabel className="text-[10px] font-normal text-muted-foreground">
                   {availableModels.length - 12} modèles supplémentaires —
                   changez de modèle dans le composer
-                </DropdownMenuItem>
+                </DropdownMenuLabel>
               </>
             )}
           </DropdownMenuContent>

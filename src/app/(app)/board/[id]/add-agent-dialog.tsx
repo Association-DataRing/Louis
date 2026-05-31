@@ -163,7 +163,7 @@ export function AddAgentDialog({
         <Button
           type="button"
           variant="default"
-          className="shadow-lg shadow-foreground/10 rounded-full pl-3 pr-4 h-10"
+          className="shadow-sm pl-3 pr-4 h-10"
         >
           <IconPlus className="size-4" />
           Ajouter un agent

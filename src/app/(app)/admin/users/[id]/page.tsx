@@ -191,7 +191,14 @@ export default async function AdminUserDetailPage({
               </span>
             </p>
           </div>
-          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-2 w-full rounded-full bg-muted overflow-hidden"
+            role="progressbar"
+            aria-label="Consommation du quota"
+            aria-valuenow={monthCostCents}
+            aria-valuemin={0}
+            aria-valuemax={quotaCents ?? undefined}
+          >
             <div
               className={`h-full transition-all ${
                 quotaPercent! >= 100

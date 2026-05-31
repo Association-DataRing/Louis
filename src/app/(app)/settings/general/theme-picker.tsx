@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
-import { IconSun, IconMoon, IconDeviceLaptop } from "@tabler/icons-react";
+import { IconSun, IconMoon, IconDeviceLaptop, IconCheck } from "@tabler/icons-react";
 
 function useMounted(): boolean {
   return useSyncExternalStore(
@@ -47,6 +47,7 @@ export function ThemePicker() {
           >
             <Icon className="size-4" />
             {o.label}
+            {active && <IconCheck className="size-3.5" aria-hidden />}
           </button>
         );
       })}

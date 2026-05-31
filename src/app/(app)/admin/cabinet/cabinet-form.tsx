@@ -31,6 +31,7 @@ export function CabinetForm({
           maxLength={120}
           defaultValue={initial?.name ?? "Cabinet"}
           placeholder="Votre cabinet"
+          aria-invalid={state?.ok === false}
         />
         <p className="text-xs text-muted-foreground">
           Affiché dans l&apos;UI et utilisé par défaut dans le footer des

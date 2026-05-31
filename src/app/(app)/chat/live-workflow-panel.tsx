@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { IconBriefcase, IconLoader2, IconCheck, IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { roleMeta } from "../board/agent-role-meta";
@@ -47,6 +47,7 @@ export function LiveWorkflowPanel({
   onClose,
   onOpenTheatre,
 }: LiveWorkflowPanelProps) {
+  const reduceMotion = useReducedMotion();
   return (
     <AnimatePresence>
       {open && (
@@ -54,7 +55,11 @@ export function LiveWorkflowPanel({
           initial={{ opacity: 0, y: 20, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.98 }}
-          transition={{ type: "spring", damping: 24, stiffness: 280 }}
+          transition={
+            reduceMotion
+              ? { duration: 0.2, ease: [0.23, 1, 0.32, 1] }
+              : { type: "spring", damping: 24, stiffness: 280 }
+          }
           role="status"
           aria-live="polite"
           aria-atomic="false"

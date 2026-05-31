@@ -119,8 +119,11 @@ export default async function DocumentsPage({
     <main className="mx-auto w-full max-w-5xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="font-heading text-3xl tracking-tight">Documents</h1>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">
+            Fichiers · dossiers · versions
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <h1 className="font-heading text-4xl tracking-tight">Documents</h1>
             <ModuleHelp slug="user/documents" title="Gérer les documents">
               Importez vos PDF / DOCX (≤ 25 Mo), organisez-les en dossiers et
               versionnez-les. Interrogez-les ensuite depuis le chat (pièce
@@ -184,20 +187,26 @@ export default async function DocumentsPage({
         {isEmpty ? (
           <EmptyState isRoot={!currentFolderId} />
         ) : (
-          <div className="border border-border rounded-lg divide-y divide-border bg-card">
+          <ul
+            role="list"
+            className="border border-border rounded-lg divide-y divide-border bg-card"
+          >
             {subFolders.map((f) => (
-              <FolderRow key={f.id} folder={f} />
+              <li key={f.id}>
+                <FolderRow folder={f} />
+              </li>
             ))}
             {familyViews.map((fv) => (
-              <DocumentRow
-                key={fv.latest.id}
-                entry={fv.latest}
-                projects={projectList}
-                folders={allFolders}
-                versions={fv.older}
-              />
+              <li key={fv.latest.id}>
+                <DocumentRow
+                  entry={fv.latest}
+                  projects={projectList}
+                  folders={allFolders}
+                  versions={fv.older}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </DocumentsDropzone>
 

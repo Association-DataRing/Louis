@@ -112,14 +112,14 @@ export default async function UsagePage() {
 
       {/* Coût du mois — typographie large, asymétrique, pas une carte */}
       <section className="mb-14 grid lg:grid-cols-[2fr_3fr] gap-x-12 gap-y-6 items-end border-b border-border pb-12">
-        <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
+        <dl>
+          <dt className="text-xs text-muted-foreground uppercase tracking-wider">
             Coût estimé ce mois
-          </p>
-          <p className="mt-3 font-heading text-6xl md:text-7xl tracking-tight tabular-nums">
+          </dt>
+          <dd className="mt-3 font-heading text-6xl md:text-7xl tracking-tight tabular-nums">
             {formatTotals(totalsMonth)}
-          </p>
-        </div>
+          </dd>
+        </dl>
         <dl className="grid grid-cols-3 gap-x-6 gap-y-2">
           <Metric
             label="Tokens entrée"
@@ -204,7 +204,7 @@ export default async function UsagePage() {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">
         {label}
       </dt>
       <dd className="mt-1 font-heading text-xl tracking-tight tabular-nums">

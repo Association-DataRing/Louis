@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
@@ -675,7 +675,7 @@ function hasRenderableText(
  * un rendu char-par-char à ~60fps indépendant du débit SSE. Sur les
  * messages historiques, render direct sans buffer.
  */
-function AssistantMarkdownPart({
+const AssistantMarkdownPart = memo(function AssistantMarkdownPart({
   text,
   isLive,
   mergedDocuments,
@@ -729,7 +729,7 @@ function AssistantMarkdownPart({
       {linkifyDocMentions(display, mergedDocuments)}
     </ReactMarkdown>
   );
-}
+});
 
 function DocPickerContent({
   documents,
@@ -915,6 +915,14 @@ export function ChatShell({
     },
     [initialConversationId]
   );
+  // Adaptateur stable (signature ReactMarkdown/ToolPart → setOpenDoc) pour que
+  // `React.memo(AssistantMarkdownPart)` ne se ré-invalide pas à chaque token :
+  // les messages historiques ne re-rendent plus pendant le streaming.
+  const handleOpenDoc = useCallback(
+    (documentId: string, targetText: string) =>
+      setOpenDoc({ documentId, targetText }),
+    [setOpenDoc]
+  );
   // Tracking des document_id déjà auto-ouverts dans le DocPanel pour ne
   // pas réouvrir à chaque re-render. Survit au remount qui se produit
   // quand l'URL passe de /chat à /chat?id=xxx via sessionStorage.
@@ -1045,6 +1053,10 @@ export function ChatShell({
     []
   );
 
+  // Annonce de complétion pour lecteurs d'écran (région live dédiée, à part
+  // du thread streamé). Vide pendant le stream, renseigné dans onFinish.
+  const [statusText, setStatusText] = useState("");
+
   const {
     messages,
     setMessages,
@@ -1064,6 +1076,7 @@ export function ChatShell({
     // d'affichage stable indépendant du rythme du provider.
     experimental_throttle: 50,
     onFinish: ({ message }) => {
+      setStatusText("Réponse de Louis terminée.");
       const meta = message?.metadata as
         | { conversationId?: string; usage?: Usage }
         | undefined;
@@ -1235,6 +1248,8 @@ export function ChatShell({
     setEditingMessageId(null);
     setEditingDraft("");
     setEditError(null);
+    // Le textarea inline d'édition se démonte → rendre le focus au composer.
+    composerRef.current?.focus();
   }
 
   async function saveEditing(messageId: string) {
@@ -1272,6 +1287,8 @@ export function ChatShell({
     });
     setEditingMessageId(null);
     setEditingDraft("");
+    // Le textarea inline d'édition se démonte → rendre le focus au composer.
+    composerRef.current?.focus();
     regenerate({
       body: {
         providerKeyId,
@@ -1326,6 +1343,8 @@ export function ChatShell({
   function handleSubmit() {
     const trimmed = input.trim();
     if (!trimmed || isBusy) return;
+    // Reset l'annonce live pour qu'elle se re-déclenche à la fin du tour.
+    setStatusText("");
     // Mémorise les attachements pour les associer au message user qui
     // va apparaître dans `messages` au prochain tick (cf useEffect plus
     // bas qui consume cette ref).
@@ -1349,6 +1368,10 @@ export function ChatShell({
     // Le doc reste accessible via le picker / la sidebar /documents s'il
     // est nécessaire pour un prochain message.
     setAttachedDocIds([]);
+    // Rend le focus au composer après envoi (le textarea reste monté ;
+    // simplement disabled pendant le stream → focus revient au prochain
+    // tour de saisie).
+    composerRef.current?.focus();
   }
 
   // Associe les attachements pending au dernier message user dès qu'il
@@ -1585,11 +1608,16 @@ export function ChatShell({
       </header>
 
       {/* Messages or empty state */}
+      {/* Région live dédiée : annonce uniquement une string de complétion
+          courte (cf. statusText) — n'enveloppe PAS le thread streamé pour
+          éviter de ré-annoncer chaque token. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {statusText}
+      </div>
       <div
         ref={messagesScrollRef}
+        tabIndex={0}
         className="flex-1 overflow-y-auto relative"
-        role="log"
-        aria-live="polite"
         aria-busy={isBusy}
         aria-label="Conversation avec Louis"
       >
@@ -1615,6 +1643,7 @@ export function ChatShell({
               return (
                 <div
                   key={m.id}
+                  aria-label={isUser ? "Vous" : "Louis"}
                   className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start group/msg"}`}
                 >
                   {/* Wrapper d'étapes : utile UNIQUEMENT pour pipelines
@@ -1770,9 +1799,7 @@ export function ChatShell({
                               text={part.text}
                               isLive={isLiveMessage}
                               mergedDocuments={mergedDocuments}
-                              onOpenDoc={(documentId, targetText) =>
-                                setOpenDoc({ documentId, targetText })
-                              }
+                              onOpenDoc={handleOpenDoc}
                             />
                           ) : (
                             <Spinner className="size-4" />
@@ -1797,9 +1824,7 @@ export function ChatShell({
                           input={p.input}
                           output={p.output}
                           state={p.state}
-                          onOpenDoc={(documentId, targetText) =>
-                            setOpenDoc({ documentId, targetText })
-                          }
+                          onOpenDoc={handleOpenDoc}
                         />
                       );
                     }
@@ -1982,6 +2007,7 @@ export function ChatShell({
                 }
               }}
               placeholder="Posez votre question…"
+              aria-label="Votre message à Louis"
               rows={1}
               disabled={isBusy}
               className="w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3 pb-1 text-[15px] leading-[1.55] placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-h-[240px] overflow-y-auto"

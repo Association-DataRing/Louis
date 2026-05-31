@@ -69,6 +69,7 @@ export function UsersTable({ rows, currentUserId, nowMs }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher par email ou nom…"
+            aria-label="Rechercher un utilisateur"
             className="w-full rounded-md border border-input bg-background pl-8 pr-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
         </div>
@@ -78,6 +79,7 @@ export function UsersTable({ rows, currentUserId, nowMs }: Props) {
               key={f}
               type="button"
               onClick={() => setFilter(f)}
+              aria-pressed={filter === f}
               className={`px-2.5 py-1.5 rounded-md text-xs transition-colors ${
                 filter === f
                   ? "bg-foreground text-background"

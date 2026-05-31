@@ -220,6 +220,50 @@ export function UserRow({
         {feedback && (
           <div className="text-xs text-success mt-1">{feedback}</div>
         )}
+
+        {/* Résumé compact des stats sur mobile : la rangée détaillée
+            (Conv./Docs/Projets/Ce mois) est masquée < md, on reflow donc
+            les chiffres ici pour ne pas les perdre sur petit écran. */}
+        <div className="md:hidden mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] tabular-nums text-muted-foreground">
+          <span>
+            <span className="opacity-70">Conv. </span>
+            <span className="font-medium text-foreground">
+              {entry.stats.convCount}
+            </span>
+          </span>
+          <span>
+            <span className="opacity-70">Docs </span>
+            <span className="font-medium text-foreground">
+              {entry.stats.docCount}
+            </span>
+          </span>
+          <span>
+            <span className="opacity-70">Projets </span>
+            <span className="font-medium text-foreground">
+              {entry.stats.projectCount}
+            </span>
+          </span>
+          <span>
+            <span className="opacity-70">Ce mois </span>
+            <span
+              className={`font-medium ${
+                quotaCents != null &&
+                quotaCents > 0 &&
+                monthSpentCents >= quotaCents
+                  ? "text-destructive"
+                  : "text-foreground"
+              }`}
+            >
+              {formatEurFromCents(monthSpentCents)}
+              {quotaCents != null && (
+                <span className="font-normal opacity-70">
+                  {" / "}
+                  {formatEurFromCents(quotaCents)}
+                </span>
+              )}
+            </span>
+          </span>
+        </div>
       </div>
 
       {/* Stats compactes : 4 chiffres en tabular-nums. Cabinet-friendly :
@@ -250,7 +294,14 @@ export function UserRow({
             )}
           </div>
           {quotaPercent != null && (
-            <div className="mt-1 h-1 w-20 rounded-full bg-muted overflow-hidden">
+            <div
+              className="mt-1 h-1 w-20 rounded-full bg-muted overflow-hidden"
+              role="progressbar"
+              aria-label="Consommation du quota"
+              aria-valuenow={monthSpentCents}
+              aria-valuemin={0}
+              aria-valuemax={quotaCents ?? undefined}
+            >
               <div
                 className={`h-full transition-all ${
                   quotaPercent >= 100

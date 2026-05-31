@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { IconArrowLeft, IconBulb, IconInfoCircle } from "@tabler/icons-react";
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -87,7 +87,7 @@ export default async function PipelineEditorPage({
       {data.pipeline.isPreset && (
         <div className="mb-6 rounded-lg border border-dashed border-border/80 bg-muted/20 p-4 flex items-start gap-3">
           <div className="size-8 rounded-md grid place-items-center bg-foreground/5 shrink-0">
-            <span className="text-xs font-mono">i</span>
+            <IconInfoCircle className="size-4 text-foreground/70" />
           </div>
           <div className="text-sm">
             <p className="font-medium">
@@ -123,8 +123,9 @@ export default async function PipelineEditorPage({
       </div>
 
       <div className="mt-5 text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span>
-          💡 Cliquez un agent pour l&apos;éditer
+        <span className="inline-flex items-center gap-1">
+          <IconBulb className="size-3.5" />
+          Cliquez un agent pour l&apos;éditer
         </span>
         {data.pipeline.mode === "sequential" && !data.pipeline.isPreset && (
           <span>· Glissez les cartes pour réordonner</span>

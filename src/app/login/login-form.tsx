@@ -41,6 +41,8 @@ export function LoginForm() {
                   autoComplete="email"
                   required
                   placeholder="vous@cabinet.fr"
+                  aria-invalid={!!state.error}
+                  aria-describedby={state.error ? "login-error" : undefined}
                 />
               </div>
               <div className="space-y-2">
@@ -51,11 +53,13 @@ export function LoginForm() {
                   type="password"
                   autoComplete="current-password"
                   required
+                  aria-invalid={!!state.error}
+                  aria-describedby={state.error ? "login-error" : undefined}
                 />
               </div>
 
               {state.error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" id="login-error">
                   <AlertDescription>{state.error}</AlertDescription>
                 </Alert>
               )}
