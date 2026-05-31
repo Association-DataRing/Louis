@@ -44,6 +44,7 @@ export function AdminNav({ horizontal }: { horizontal?: boolean }) {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md whitespace-nowrap transition-colors ${
                 active
                   ? "bg-accent text-foreground"
@@ -63,7 +64,7 @@ export function AdminNav({ horizontal }: { horizontal?: boolean }) {
     <nav className="w-full flex flex-col gap-5">
       {sections.map((group) => (
         <div key={group.group}>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 px-2">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1 px-2">
             {group.group}
           </p>
           <ul className="space-y-0.5">
@@ -77,6 +78,7 @@ export function AdminNav({ horizontal }: { horizontal?: boolean }) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-2.5 h-9 px-2.5 rounded-md text-sm transition-colors ${
                       active
                         ? "bg-accent text-foreground font-medium"

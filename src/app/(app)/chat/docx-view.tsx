@@ -135,7 +135,7 @@ export function DocxView({
         }
         .docx-view-container .docx-wrapper > section.docx {
           margin: 1rem auto !important;
-          box-shadow: 0 0 0 1px oklch(0.92 0.008 265);
+          box-shadow: 0 0 0 1px var(--border);
         }
       `}</style>
       {loading && (
@@ -180,8 +180,8 @@ function highlightAndScroll(
         range.setEnd(node, start + needle.trim().length);
         const mark = document.createElement("mark");
         mark.className = "louis-quote-mark";
-        mark.style.backgroundColor = "oklch(0.94 0.12 90)";
-        mark.style.color = "inherit";
+        mark.style.backgroundColor = "var(--highlight)";
+        mark.style.color = "var(--highlight-foreground)";
         range.surroundContents(mark);
         const rect = mark.getBoundingClientRect();
         const scrollRect = scrollEl.getBoundingClientRect();

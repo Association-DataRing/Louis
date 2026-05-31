@@ -1,7 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import {
   Select,
   SelectContent,
@@ -38,6 +39,25 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
   }
 
   const modes: PipelineModeKey[] = ["sequential", "council", "parallel"];
+  const radioRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function handleRadioKeyDown(
+    e: React.KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) {
+    if (isPreset || pending) return;
+    let nextIndex: number | null = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      nextIndex = (index + 1) % modes.length;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      nextIndex = (index - 1 + modes.length) % modes.length;
+    }
+    if (nextIndex === null) return;
+    e.preventDefault();
+    const nextMode = modes[nextIndex];
+    radioRefs.current[nextIndex]?.focus();
+    if (nextMode !== mode) update({ mode: nextMode });
+  }
 
   return (
     <div className="py-4 border-y border-border">
@@ -73,7 +93,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
         aria-label="Mode d'orchestration"
         className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2"
       >
-        {modes.map((m) => {
+        {modes.map((m, i) => {
           const meta = MODE_META[m];
           const Icon = meta.icon;
           const selected = mode === m;
@@ -81,12 +101,17 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
           return (
             <button
               key={m}
+              ref={(el) => {
+                radioRefs.current[i] = el;
+              }}
               type="button"
               role="radio"
               aria-checked={selected}
               aria-label={`${meta.label} — ${meta.pitch}`}
+              tabIndex={selected ? 0 : -1}
               disabled={disabled}
               onClick={() => !selected && update({ mode: m })}
+              onKeyDown={(e) => handleRadioKeyDown(e, i)}
               className={cn(
                 "group relative flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition-all",
                 selected
@@ -123,15 +148,18 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
       </div>
 
       {mode === "council" && (
-        <p className="mt-3 text-[11px] text-muted-foreground border-t border-border/40 pt-2">
+        <p className="mt-3 flex items-start gap-1 text-[11px] text-muted-foreground border-t border-border/40 pt-2">
           {(() => {
             const debaters = Math.max(0, agentCount - 1);
             const calls = rounds * debaters + 1;
             return (
               <>
-                ⚠️ Coût estimé : {calls} appel{calls > 1 ? "s" : ""} LLM par
-                question — {debaters} débatteur{debaters > 1 ? "s" : ""} sur{" "}
-                {rounds} tour{rounds > 1 ? "s" : ""}, plus 1 synthèse finale.
+                <IconAlertTriangle className="size-3.5 shrink-0 mt-px text-warning" />
+                <span>
+                  Coût estimé : {calls} appel{calls > 1 ? "s" : ""} LLM par
+                  question — {debaters} débatteur{debaters > 1 ? "s" : ""} sur{" "}
+                  {rounds} tour{rounds > 1 ? "s" : ""}, plus 1 synthèse finale.
+                </span>
               </>
             );
           })()}

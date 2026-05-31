@@ -251,15 +251,26 @@ export function AgentEditSheet({
               maxLength={8000}
               aria-describedby={`prompt-help-${agent.id}`}
             />
-            {systemPrompt.length > 2000 && (
-              <p
-                id={`prompt-help-${agent.id}`}
-                className="text-xs text-muted-foreground"
-              >
-                ⚠️ Ce prompt sera répété à chaque appel de cet agent — un
-                prompt long multiplie les coûts en mode council/parallel.
-              </p>
-            )}
+            <p
+              id={`prompt-help-${agent.id}`}
+              className={
+                systemPrompt.length > 2000
+                  ? "flex items-start gap-1 text-xs text-warning"
+                  : "text-xs text-muted-foreground"
+              }
+            >
+              {systemPrompt.length > 2000 ? (
+                <>
+                  <IconAlertTriangle className="size-3.5 shrink-0 mt-px" />
+                  <span>
+                    Ce prompt sera répété à chaque appel de cet agent — un
+                    prompt long multiplie les coûts en mode council/parallel.
+                  </span>
+                </>
+              ) : (
+                "Vide = prompt « factory » du rôle. Plus le prompt est long, plus chaque appel coûte cher."
+              )}
+            </p>
           </div>
 
           <div className="space-y-2">

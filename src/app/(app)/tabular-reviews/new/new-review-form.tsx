@@ -25,15 +25,17 @@ import { createTabularReview } from "../actions";
 type KeyOption = { id: string; label: string; type: ProviderType };
 type DocOption = { id: string; filename: string };
 
-type Column = { label: string; prompt: string };
+type Column = { id: string; label: string; prompt: string };
 
 const DEFAULT_COLUMNS: Column[] = [
   {
+    id: crypto.randomUUID(),
     label: "Type de document",
     prompt:
       "Nature du document : contrat, mémo, décision, courrier, autre. Sois précis.",
   },
   {
+    id: crypto.randomUUID(),
     label: "Date principale",
     prompt:
       "Date la plus importante du document (signature, décision, etc.). Format JJ/MM/AAAA.",
@@ -72,7 +74,10 @@ export function NewReviewForm({
     setColumns((cols) => cols.filter((_, idx) => idx !== i));
   }
   function addColumn() {
-    setColumns((cols) => [...cols, { label: "", prompt: "" }]);
+    setColumns((cols) => [
+      ...cols,
+      { id: crypto.randomUUID(), label: "", prompt: "" },
+    ]);
   }
 
   function toggleDoc(id: string) {
@@ -204,7 +209,7 @@ export function NewReviewForm({
         <div className="space-y-3">
           {columns.map((c, i) => (
             <div
-              key={i}
+              key={c.id}
               className="border border-border rounded-md p-3 bg-card flex gap-3"
             >
               <div className="flex-1 space-y-2 min-w-0">
@@ -212,12 +217,14 @@ export function NewReviewForm({
                   value={c.label}
                   onChange={(e) => updateColumn(i, { label: e.target.value })}
                   placeholder="Libellé (ex. Durée du contrat)"
+                  aria-label="Libellé de la colonne"
                   maxLength={80}
                 />
                 <Input
                   value={c.prompt}
                   onChange={(e) => updateColumn(i, { prompt: e.target.value })}
                   placeholder="Instruction d'extraction (ex. Durée totale en années, format chiffré)"
+                  aria-label="Instruction d'extraction"
                   maxLength={500}
                 />
               </div>

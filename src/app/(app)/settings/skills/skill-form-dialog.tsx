@@ -168,8 +168,9 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
             value={triggerHint}
             onChange={(e) => setTriggerHint(e.target.value)}
             placeholder="ex. Quand l'utilisateur cite une jurisprudence ou un article de loi"
+            aria-describedby="skill-hint-help"
           />
-          <p className="text-[11px] text-muted-foreground">
+          <p id="skill-hint-help" className="text-[11px] text-muted-foreground">
             Phrase descriptive lue par un petit modèle qui décide d&apos;activer
             ou non la compétence selon la demande.
           </p>
@@ -186,8 +187,9 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
             onChange={(e) => setSystemPrompt(e.target.value)}
             placeholder="Le texte qui sera injecté dans le prompt système quand la compétence est activée…"
             className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm font-mono leading-relaxed shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            aria-describedby="skill-prompt-help"
           />
-          <p className="text-[11px] text-muted-foreground">
+          <p id="skill-prompt-help" className="text-[11px] text-muted-foreground">
             Soyez explicite, donnez des exemples si nécessaire. Cette
             instruction prend le pas sur le comportement par défaut.
           </p>

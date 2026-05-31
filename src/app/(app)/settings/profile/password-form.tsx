@@ -48,8 +48,9 @@ export function PasswordForm() {
           autoComplete="new-password"
           minLength={10}
           required
+          aria-describedby="newPassword-help"
         />
-        <p className="text-xs text-muted-foreground">
+        <p id="newPassword-help" className="text-xs text-muted-foreground">
           Minimum 10 caractères. Un gestionnaire de mots de passe est
           recommandé.
         </p>

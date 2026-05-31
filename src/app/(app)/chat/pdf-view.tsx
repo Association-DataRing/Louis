@@ -115,13 +115,10 @@ export function PdfView({ fileUrl, targetText }: Props) {
 
       <style>{`
         .louis-highlight {
-          background-color: rgb(254 240 138);
-          color: inherit;
+          background-color: var(--highlight);
+          color: var(--highlight-foreground);
           border-radius: 2px;
           padding: 0 1px;
-        }
-        :is(.dark) .louis-highlight {
-          background-color: rgb(202 138 4 / 0.4);
         }
       `}</style>
     </div>

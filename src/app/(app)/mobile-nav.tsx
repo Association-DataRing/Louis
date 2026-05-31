@@ -43,6 +43,7 @@ export function MobileNav({ user, conversations, projects }: Props) {
       </Sheet>
       <Link
         href="/dashboard"
+        aria-label="Accueil"
         className="flex items-center gap-2 font-heading text-base tracking-tight"
       >
         <LouisLogo className="size-5 text-primary" />

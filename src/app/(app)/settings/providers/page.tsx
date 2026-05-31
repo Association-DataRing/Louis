@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { IconShieldLock, IconInfoCircle } from "@tabler/icons-react";
+import { IconShieldLock } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { providerKeys, type ProviderKey } from "@/db/schema";
@@ -104,17 +104,6 @@ export default async function ProvidersPage() {
           </div>
         </section>
       ))}
-
-      <aside className="mt-12 rounded-lg border border-border bg-card p-4 flex items-start gap-3 text-sm">
-        <IconInfoCircle className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-        <p className="text-muted-foreground">
-          Le badge <strong>FR</strong> / <strong>UE</strong> / <strong>US</strong>{" "}
-          sur chaque carte indique où sont traitées vos requêtes. Pour les
-          dossiers soumis au secret professionnel ou au RGPD strict,
-          privilégiez les providers FR ou UE. Louis ne force aucun choix :
-          votre cabinet décide.
-        </p>
-      </aside>
     </main>
   );
 }

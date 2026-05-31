@@ -7,7 +7,6 @@ import {
   IconSparkles,
   IconBriefcase,
   IconSettings,
-  IconWorld,
   IconFileText,
   IconKey,
   IconCpu,
@@ -189,16 +188,6 @@ export function ComposerMenu({
             <IconSettings className="size-4" />
             Tous les réglages
           </Link>
-        </DropdownMenuItem>
-
-        {/* Slot futur : web search toggle, style picker… */}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled className="opacity-50">
-          <IconWorld className="size-4" />
-          Recherche web
-          <span className="ml-auto text-[10px] text-muted-foreground">
-            bientôt
-          </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

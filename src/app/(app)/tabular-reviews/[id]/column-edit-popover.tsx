@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   IconDots,
   IconTrash,
-  IconSparkles,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import {
@@ -159,20 +158,9 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor={`prompt-${column.id}`} className="text-xs">
-                  Prompt
-                </Label>
-                <button
-                  type="button"
-                  disabled
-                  title="Bientôt — proposera un prompt adapté au libellé"
-                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground opacity-50 cursor-not-allowed"
-                >
-                  <IconSparkles className="size-3" />
-                  Suggérer un prompt
-                </button>
-              </div>
+              <Label htmlFor={`prompt-${column.id}`} className="text-xs">
+                Prompt
+              </Label>
               <textarea
                 id={`prompt-${column.id}`}
                 value={prompt}

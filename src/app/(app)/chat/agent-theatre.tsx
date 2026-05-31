@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -259,6 +259,7 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
   const meta = roleMeta(turn.role);
   const Icon = meta.icon;
   const isFinal = turn.key.endsWith("-final");
+  const reduceMotion = useReducedMotion();
 
   return (
     <motion.article
@@ -266,7 +267,11 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
       aria-label={`${meta.label} : ${turn.label}${turn.round !== undefined ? ` — tour ${turn.round}` : ""}`}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", damping: 26, stiffness: 220 }}
+      transition={
+        reduceMotion
+          ? { duration: 0.2, ease: [0.23, 1, 0.32, 1] }
+          : { type: "spring", damping: 26, stiffness: 220 }
+      }
       className={cn(
         "rounded-2xl border bg-card overflow-hidden",
         isFinal ? "border-foreground/30 shadow-sm" : "border-border"

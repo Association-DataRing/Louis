@@ -61,8 +61,9 @@ export function EditCard({ raw }: { raw: string }) {
           Suggestion d&apos;édition
         </div>
         {decision === "kept" && (
-          <span className="text-[10px] uppercase tracking-wider text-primary font-medium">
-            ✓ Conservée
+          <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary font-medium">
+            <IconCheck className="size-3" />
+            Conservée
           </span>
         )}
       </header>

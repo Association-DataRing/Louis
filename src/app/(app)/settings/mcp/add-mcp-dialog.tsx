@@ -112,8 +112,9 @@ export function AddMcpDialog() {
               name="headers"
               placeholder='{"Authorization": "Bearer …"}'
               autoComplete="off"
+              aria-describedby="headers-help"
             />
-            <p className="text-xs text-muted-foreground">
+            <p id="headers-help" className="text-xs text-muted-foreground">
               Format JSON. Laisser vide si aucune authentification.
             </p>
           </div>

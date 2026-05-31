@@ -37,19 +37,30 @@ export function ReviewGrid({ columns, rows, reviewId }: Props) {
     <>
       {/* Desktop : grille type Excel — colonnes = champs extraits */}
       <div className="hidden md:block border border-border rounded-lg overflow-hidden bg-card">
+        {/* Table en lecture seule, présentationnelle : pas de tri ni de
+            navigation clavier cellule par cellule (aria-sort / grid nav non
+            requis pour un tableau statique). */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
+            <caption className="sr-only">Résultats d&apos;extraction</caption>
             <thead className="bg-muted/40">
               <tr>
-                <th className="text-left font-medium px-4 py-2.5 border-b border-border sticky left-0 bg-muted/40 min-w-[200px]">
+                <th
+                  scope="col"
+                  className="text-left font-medium px-4 py-2.5 border-b border-border sticky left-0 bg-muted/40 min-w-[200px]"
+                >
                   Document
                 </th>
-                <th className="text-center font-medium px-3 py-2.5 border-b border-border w-[80px]">
+                <th
+                  scope="col"
+                  className="text-center font-medium px-3 py-2.5 border-b border-border w-[80px]"
+                >
                   Statut
                 </th>
                 {columns.map((c) => (
                   <th
                     key={c.id}
+                    scope="col"
                     className="text-left font-medium px-4 py-2.5 border-b border-border min-w-[200px]"
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -133,7 +144,7 @@ function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
           const value = row.values?.[c.id];
           return (
             <div key={c.id}>
-              <dt className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+              <dt className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                 {c.label}
               </dt>
               <dd className="mt-0.5 text-xs leading-relaxed">
@@ -157,9 +168,12 @@ function RowItem({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
 
   return (
     <tr className="border-b border-border last:border-0 hover:bg-accent/20">
-      <td className="px-4 py-2.5 truncate max-w-xs sticky left-0 bg-card">
+      <th
+        scope="row"
+        className="font-normal text-left px-4 py-2.5 truncate max-w-xs sticky left-0 bg-card"
+      >
         {row.filename}
-      </td>
+      </th>
       <td className="px-3 py-2.5 text-center">
         <StatusBadge status={row.status} error={row.error} />
       </td>
@@ -168,7 +182,7 @@ function RowItem({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
         return (
           <td
             key={c.id}
-            className="px-4 py-2.5 align-top max-w-xs text-xs leading-relaxed"
+            className="px-4 py-2.5 align-top max-w-xs text-xs leading-relaxed whitespace-normal break-words"
           >
             {value ? (
               <span className="text-foreground">{value}</span>
@@ -223,8 +237,9 @@ function StatusBadge({
   if (status === "pending") {
     return (
       <span
-        className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"
+        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-muted text-muted-foreground"
         title="En attente"
+        aria-label="En attente"
       >
         <IconClock className="size-3" />
         En attente
@@ -233,7 +248,7 @@ function StatusBadge({
   }
   if (status === "running") {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-primary">
+      <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-primary/10 text-primary">
         <Spinner className="size-3" />
         En cours
       </span>
@@ -241,7 +256,7 @@ function StatusBadge({
   }
   if (status === "ok") {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-success">
+      <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-success/10 text-success">
         <IconCheck className="size-3" />
         OK
       </span>
@@ -249,8 +264,9 @@ function StatusBadge({
   }
   return (
     <span
-      className="inline-flex items-center gap-1 text-[10px] text-destructive"
+      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-destructive/10 text-destructive"
       title={error ?? undefined}
+      aria-label={error ?? "Erreur"}
     >
       <IconAlertTriangle className="size-3" />
       Erreur

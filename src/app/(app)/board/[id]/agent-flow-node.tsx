@@ -2,7 +2,12 @@
 
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { IconPencil, IconTrash } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconPencil,
+  IconTrash,
+} from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import type { PipelineAgent, ProviderKey } from "@/db/schema";
 import { roleMeta } from "../agent-role-meta";
@@ -55,8 +60,26 @@ function AgentFlowNodeBase({ data }: NodeProps) {
           className="absolute top-2 right-2 z-10 flex size-2"
           aria-label="Agent actif"
         >
-          <span className="absolute inline-flex size-full animate-pulse rounded-full bg-foreground/30 opacity-75" />
+          <span className="absolute inline-flex size-full motion-safe:animate-pulse rounded-full bg-foreground/30 opacity-75" />
           <span className="relative inline-flex size-2 rounded-full bg-foreground/80" />
+        </span>
+      )}
+      {state === "done" && (
+        <span
+          className="absolute top-2 right-2 z-10 inline-flex items-center gap-0.5 text-[10px] uppercase tracking-wider text-success"
+          aria-label="Agent terminé"
+        >
+          <IconCheck className="size-3.5" />
+          Terminé
+        </span>
+      )}
+      {state === "error" && (
+        <span
+          className="absolute top-2 right-2 z-10 inline-flex items-center gap-0.5 text-[10px] uppercase tracking-wider text-destructive"
+          aria-label="Agent en erreur"
+        >
+          <IconAlertTriangle className="size-3.5" />
+          Erreur
         </span>
       )}
       <Handle
@@ -107,7 +130,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
                   e.stopPropagation();
                   onDelete();
                 }}
-                className="size-7 grid place-items-center rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors"
+                className="size-9 grid place-items-center rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors"
                 aria-label={`Supprimer ${agent.label}`}
               >
                 <IconTrash className="size-3.5" />
