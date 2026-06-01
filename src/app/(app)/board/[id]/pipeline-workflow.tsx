@@ -52,6 +52,8 @@ interface PipelineWorkflowProps {
     hint?: string | null;
   }>;
   liveStates?: Record<string, "idle" | "active" | "done" | "error">;
+  /** Outils réellement disponibles pour l'utilisateur (multi-select allowlist). */
+  availableTools?: string[];
 }
 
 const nodeTypes: NodeTypes = {
@@ -180,6 +182,7 @@ function PipelineWorkflowInner({
   providerKeys,
   enabledModels,
   liveStates,
+  availableTools,
 }: PipelineWorkflowProps) {
   const router = useRouter();
   const [editingAgent, setEditingAgent] = useState<PipelineAgent | null>(null);
@@ -423,6 +426,7 @@ function PipelineWorkflowInner({
           agent={editingAgent}
           providerKeys={providerKeys}
           enabledModels={enabledModels}
+          availableTools={availableTools}
           open={!!editingAgent}
           onOpenChange={(open) => {
             if (!open) setEditingAgent(null);

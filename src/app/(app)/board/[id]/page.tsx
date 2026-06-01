@@ -13,6 +13,8 @@ import { PipelineModeBar } from "./pipeline-mode-bar";
 import { AddAgentDialog } from "./add-agent-dialog";
 import { InlineRename } from "./inline-rename";
 import { listEnabledModels } from "../../settings/models/actions";
+import { buildToolsForUser } from "@/lib/connectors/tools";
+import { buildMcpToolsForUser } from "@/lib/mcp/tools";
 
 export default async function PipelineEditorPage({
   params,
@@ -44,6 +46,19 @@ export default async function PipelineEditorPage({
     label: r.label ?? r.modelId,
     hint: r.hint,
   }));
+
+  // H11 : outils RÉELLEMENT disponibles pour cet utilisateur (connecteurs
+  // actifs + génération de documents + RAG si dispo + outils MCP synchronisés).
+  // Sert au multi-select de l'allowlist d'agent (fin du champ texte libre où
+  // une typo créait un agent sans outil, silencieusement).
+  const [connectorTools, mcpTools] = await Promise.all([
+    buildToolsForUser(userId),
+    buildMcpToolsForUser(userId),
+  ]);
+  const availableTools = [
+    ...Object.keys(connectorTools),
+    ...Object.keys(mcpTools),
+  ].sort((a, b) => a.localeCompare(b));
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10 md:px-8 md:py-14">
@@ -110,6 +125,7 @@ export default async function PipelineEditorPage({
           agents={data.agents}
           providerKeys={keys}
           enabledModels={enabledModels}
+          availableTools={availableTools}
         />
         {!data.pipeline.isPreset && (
           <div className="absolute left-4 bottom-4 z-10">

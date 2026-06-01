@@ -40,6 +40,8 @@ interface AgentEditSheetProps {
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
   /** Modèles ajoutés par l'utilisateur via /settings/models/library. */
   enabledModels?: AgentEditModelOption[];
+  /** Outils réellement disponibles (connecteurs actifs + RAG + MCP). */
+  availableTools?: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -56,6 +58,7 @@ export function AgentEditSheet({
   agent,
   providerKeys,
   enabledModels,
+  availableTools = [],
   open,
   onOpenChange,
 }: AgentEditSheetProps) {
@@ -69,9 +72,27 @@ export function AgentEditSheet({
   );
   const [modelOverride, setModelOverride] = useState(agent.modelOverride ?? "");
   const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
-  const [toolAllowlistRaw, setToolAllowlistRaw] = useState(
-    serializeAllowlist(agent.toolAllowlist)
+  // Allowlist : null = tous les outils, [] = aucun, [...] = sélection. Plus de
+  // champ texte libre (une typo donnait un agent sans outil, silencieux).
+  const [allowlistMode, setAllowlistMode] = useState<"all" | "custom">(
+    agent.toolAllowlist == null ? "all" : "custom"
   );
+  const [selectedTools, setSelectedTools] = useState<Set<string>>(
+    new Set(agent.toolAllowlist ?? [])
+  );
+  // Outils de l'allowlist héritée qui ne sont plus/pas disponibles côté user.
+  const unavailableSelected = Array.from(selectedTools).filter(
+    (t) => !availableTools.includes(t)
+  );
+
+  function toggleTool(t: string) {
+    setSelectedTools((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+  }
 
   const meta = roleMeta(agent.role);
   const Icon = meta.icon;
@@ -95,12 +116,8 @@ export function AgentEditSheet({
 
   function handleSave() {
     setError(null);
-
-    const parsed = parseAllowlist(toolAllowlistRaw);
-    if (parsed === "invalid") {
-      setError("Liste d'outils invalide. Format attendu : noms séparés par des virgules.");
-      return;
-    }
+    const allowlist =
+      allowlistMode === "all" ? null : Array.from(selectedTools);
 
     startTransition(async () => {
       const result = await updatePipelineAgent(agent.id, {
@@ -108,7 +125,7 @@ export function AgentEditSheet({
         providerKeyId: providerKeyId === NONE_VALUE ? null : providerKeyId,
         modelOverride: modelOverride.trim() || null,
         systemPrompt: systemPrompt.trim() ? systemPrompt : null,
-        toolAllowlist: parsed,
+        toolAllowlist: allowlist,
       });
       if (result.ok) {
         onOpenChange(false);
@@ -274,20 +291,87 @@ export function AgentEditSheet({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`tools-${agent.id}`}>
+            <Label>
               Outils autorisés{" "}
               <span className="text-muted-foreground text-xs">(optionnel)</span>
             </Label>
-            <Input
-              id={`tools-${agent.id}`}
-              value={toolAllowlistRaw}
-              onChange={(e) => setToolAllowlistRaw(e.target.value)}
-              placeholder="ex. legifrance_search, search_documents"
-            />
+            <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setAllowlistMode("all")}
+                className={`rounded px-2.5 py-1 transition-colors ${
+                  allowlistMode === "all"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Tous les outils
+              </button>
+              <button
+                type="button"
+                onClick={() => setAllowlistMode("custom")}
+                className={`rounded px-2.5 py-1 transition-colors ${
+                  allowlistMode === "custom"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Sélection
+              </button>
+            </div>
+            {allowlistMode === "custom" && (
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+                {availableTools.length === 0 &&
+                unavailableSelected.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Aucun outil disponible — configurez un connecteur ou un
+                    serveur MCP.
+                  </p>
+                ) : (
+                  <>
+                    {availableTools.map((t) => (
+                      <label
+                        key={t}
+                        className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedTools.has(t)}
+                          onChange={() => toggleTool(t)}
+                          className="size-4 accent-primary"
+                        />
+                        <code className="text-xs">{t}</code>
+                      </label>
+                    ))}
+                    {unavailableSelected.map((t) => (
+                      <label
+                        key={t}
+                        className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent"
+                      >
+                        <input
+                          type="checkbox"
+                          checked
+                          onChange={() => toggleTool(t)}
+                          className="size-4 accent-primary"
+                        />
+                        <code className="text-xs">{t}</code>
+                        <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-warning">
+                          <IconAlertTriangle className="size-3" /> indisponible
+                        </span>
+                      </label>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              Liste de noms d&apos;outils séparés par des virgules. Vide = tous
-              les outils disponibles. <code>—</code> = aucun outil (l&apos;agent
-              travaille uniquement sur le texte).
+              {allowlistMode === "all"
+                ? "L'agent peut utiliser tous les outils disponibles."
+                : selectedTools.size === 0
+                  ? "Aucun outil — l'agent travaille uniquement sur le texte."
+                  : `${selectedTools.size} outil${
+                      selectedTools.size > 1 ? "s" : ""
+                    } sélectionné${selectedTools.size > 1 ? "s" : ""}.`}
             </p>
           </div>
 
@@ -317,20 +401,3 @@ export function AgentEditSheet({
   );
 }
 
-function serializeAllowlist(allowlist: string[] | null | undefined): string {
-  if (allowlist === null || allowlist === undefined) return "";
-  if (allowlist.length === 0) return "—";
-  return allowlist.join(", ");
-}
-
-function parseAllowlist(raw: string): string[] | null | "invalid" {
-  const trimmed = raw.trim();
-  if (trimmed === "") return null;
-  if (trimmed === "—" || trimmed === "-") return [];
-  const parts = trimmed
-    .split(/[,\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (parts.some((p) => !/^[a-zA-Z0-9_]+$/.test(p))) return "invalid";
-  return parts;
-}
