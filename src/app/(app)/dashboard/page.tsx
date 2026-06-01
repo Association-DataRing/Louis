@@ -26,6 +26,7 @@ import {
 import { getUserMonthlyQuotaCents } from "@/lib/usage/quota";
 import { listEnabledModels } from "../settings/models/actions";
 import { listActiveConnectorTypes } from "@/lib/connectors/runtime";
+import { formatRelativeFr } from "@/lib/format/time";
 import { ModuleHelp } from "@/components/module-help";
 
 export default async function DashboardPage() {
@@ -196,7 +197,7 @@ export default async function DashboardPage() {
                   <div className="min-w-0">
                     <p className="font-medium truncate">{c.title}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {timeAgo(c.updatedAt)}
+                      {formatRelativeFr(c.updatedAt)}
                       {c.projectId && " · dans un projet"}
                     </p>
                   </div>
@@ -416,15 +417,3 @@ function Stat({
   return <div>{inner}</div>;
 }
 
-function timeAgo(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const ms = Date.now() - d.getTime();
-  const m = Math.floor(ms / 60_000);
-  if (m < 1) return "à l'instant";
-  if (m < 60) return `il y a ${m} min`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `il y a ${h} h`;
-  const days = Math.floor(h / 24);
-  if (days < 30) return `il y a ${days} j`;
-  return d.toLocaleDateString("fr-FR");
-}

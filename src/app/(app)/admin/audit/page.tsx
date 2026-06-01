@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { auditLog, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { labelForAction, AUDIT_ACTION_OPTIONS } from "@/lib/audit/labels";
+import { EmptyState } from "@/components/empty-state";
 
 const PAGE_SIZE = 50;
 
@@ -151,16 +152,15 @@ export default async function AdminAuditPage({
       </form>
 
       {rows.length === 0 ? (
-        <div className="border border-dashed border-border rounded-lg p-10 text-center">
-          <p className="font-heading text-lg">
-            {total === 0 ? "Journal vide." : "Aucun résultat pour ces filtres."}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            {total === 0
-              ? "Les actions admin et les événements de sécurité seront enregistrés ici dès qu'ils auront lieu."
-              : "Élargissez la période ou changez l'action filtrée."}
-          </p>
-        </div>
+        <EmptyState
+          title={
+            total === 0 ? "Journal vide." : "Aucun résultat pour ces filtres."
+          }
+        >
+          {total === 0
+            ? "Les actions admin et les événements de sécurité seront enregistrés ici dès qu'ils auront lieu."
+            : "Élargissez la période ou changez l'action filtrée."}
+        </EmptyState>
       ) : (
         <ul className="divide-y divide-border border-y border-border">
           {rows.map((r) => (
