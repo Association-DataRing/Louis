@@ -119,7 +119,7 @@ export function ModelPicker({
                   {g.meta.label}
                 </span>
                 <span
-                  className="text-[9px] uppercase tracking-wider text-foreground/50 font-medium"
+                  className="text-[10px] uppercase tracking-wider text-foreground/70 font-medium"
                   aria-hidden
                 >
                   {SOVEREIGNTY_LABEL[g.meta.sovereignty]}

@@ -446,7 +446,7 @@ function EditedDocumentCard({
             <li key={edit.index} className="px-4 py-3 text-xs">
               <div className="grid sm:grid-cols-2 gap-2">
                 <div className="bg-destructive/5 border border-destructive/15 rounded px-2 py-1.5">
-                  <p className="text-[9px] uppercase tracking-wider text-destructive/70 font-semibold mb-0.5">
+                  <p className="text-[10px] uppercase tracking-wider text-destructive font-semibold mb-0.5">
                     Avant
                   </p>
                   <p className="font-mono text-foreground/80 line-through decoration-destructive/40">
@@ -454,7 +454,7 @@ function EditedDocumentCard({
                   </p>
                 </div>
                 <div className="bg-primary/5 border border-primary/15 rounded px-2 py-1.5">
-                  <p className="text-[9px] uppercase tracking-wider text-primary font-semibold mb-0.5">
+                  <p className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-0.5">
                     Après
                   </p>
                   <p className="font-mono">{edit.replace || <em className="text-muted-foreground">(suppression)</em>}</p>

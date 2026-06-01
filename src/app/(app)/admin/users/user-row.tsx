@@ -73,7 +73,7 @@ function formatEurFromCents(cents: number | null): string {
 function StatCell({ label, value }: { label: string; value: number }) {
   return (
     <div className="text-right">
-      <div className="text-[9px] uppercase tracking-wider opacity-70">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div className="mt-0.5 font-medium text-foreground">{value}</div>
@@ -266,7 +266,7 @@ export function UserRow({
         <StatCell label="Docs" value={entry.stats.docCount} />
         <StatCell label="Projets" value={entry.stats.projectCount} />
         <div className="text-right">
-          <div className="text-[9px] uppercase tracking-wider opacity-70">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Ce mois
           </div>
           <div
