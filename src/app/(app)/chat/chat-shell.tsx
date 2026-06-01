@@ -8,6 +8,7 @@ import {
   AgentEventBadge,
   dedupeAgentEvents,
   type AgentEventData,
+  type AgentRetryData,
 } from "./agent-event-badge";
 import {
   LiveWorkflowPanel,
@@ -1449,6 +1450,17 @@ export function ChatShell({
     if (!lastAssistant?.parts) return baseStates;
 
     for (const part of lastAssistant.parts) {
+      // H10 : retry d'un débatteur reflété dans le panel — la carte passe en
+      // « nouvelle tentative N… » tant qu'elle n'a pas fini.
+      if (part.type === "data-agent-retry") {
+        const r = (part as { data?: AgentRetryData }).data;
+        if (!r?.agentId) continue;
+        const ridx = baseStates.findIndex((s) => s.id === r.agentId);
+        if (ridx >= 0) {
+          baseStates[ridx] = { ...baseStates[ridx], retryAttempt: r.attempt };
+        }
+        continue;
+      }
       if (part.type !== "data-agent-event") continue;
       const data = (part as { data?: AgentEventData }).data;
       if (!data?.agentId) continue;
@@ -1471,6 +1483,32 @@ export function ChatShell({
       }
     }
     return baseStates;
+  }, [messages, selectedPipeline]);
+
+  // H10 : tour courant d'un conseil multi-tours, dérivé du max `round` vu
+  // dans les agent_start du dernier message assistant. Alimente le libellé
+  // « Tour N/M » du panneau live (null hors council ou à 1 tour).
+  const councilRound = useMemo<{ current: number; total: number } | null>(() => {
+    if (!selectedPipeline || selectedPipeline.mode !== "council") return null;
+    const total = selectedPipeline.rounds ?? 1;
+    if (total <= 1) return null;
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    if (!lastAssistant?.parts) return null;
+    let current = 0;
+    for (const part of lastAssistant.parts) {
+      if (part.type !== "data-agent-event") continue;
+      const data = (part as { data?: AgentEventData }).data;
+      if (
+        data?.type === "agent_start" &&
+        typeof data.round === "number" &&
+        data.round > current
+      ) {
+        current = data.round;
+      }
+    }
+    return current > 0 ? { current, total } : null;
   }, [messages, selectedPipeline]);
 
   // Dérivation pure : le panneau live s'affiche dès qu'au moins un agent
@@ -2060,6 +2098,8 @@ export function ChatShell({
                 open={livePanelOpen}
                 pipelineName={selectedPipeline.name}
                 agents={liveAgents}
+                round={councilRound?.current}
+                totalRounds={councilRound?.total}
                 onClose={() => setManuallyClosed(true)}
                 onOpenTheatre={
                   theatreTurns.length > 0

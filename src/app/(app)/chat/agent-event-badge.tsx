@@ -26,6 +26,8 @@ export interface AgentEventData {
   outputTokens?: number;
   preview?: string;
   error?: string;
+  /** Numéro de tour (mode council multi-tours). undefined sinon. */
+  round?: number;
   /**
    * Numéro de la tentative en cours (1 = première, 2 = premier retry…).
    * Injecté côté chat-shell quand un `data-agent-retry` est reçu pour

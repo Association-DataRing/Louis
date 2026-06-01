@@ -13,12 +13,18 @@ export interface LiveAgentState {
   state: "idle" | "active" | "done" | "error";
   latencyMs?: number;
   error?: string;
+  /** Tentative en cours si l'agent a été relancé (>1 = retry). */
+  retryAttempt?: number;
 }
 
 interface LiveWorkflowPanelProps {
   open: boolean;
   pipelineName: string;
   agents: LiveAgentState[];
+  /** Tour courant d'un conseil multi-tours (mode council). */
+  round?: number;
+  /** Nombre total de tours du conseil. */
+  totalRounds?: number;
   onClose?: () => void;
   onOpenTheatre?: () => void;
 }
@@ -44,6 +50,8 @@ export function LiveWorkflowPanel({
   open,
   pipelineName,
   agents,
+  round,
+  totalRounds,
   onClose,
   onOpenTheatre,
 }: LiveWorkflowPanelProps) {
@@ -72,6 +80,7 @@ export function LiveWorkflowPanel({
             <div className="min-w-0 flex-1">
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 Board en action
+                {round && totalRounds ? ` · Tour ${round}/${totalRounds}` : ""}
               </div>
               <div className="text-sm font-medium truncate">{pipelineName}</div>
             </div>
@@ -163,7 +172,9 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
                 <span className="absolute inline-flex size-full animate-pulse rounded-full bg-foreground/30 opacity-75" />
                 <span className="relative inline-flex size-1.5 rounded-full bg-foreground/80" />
               </span>
-              {verb}…
+              {(agent.retryAttempt ?? 0) > 1
+                ? `nouvelle tentative ${agent.retryAttempt}…`
+                : `${verb}…`}
             </span>
           </motion.div>
         )}

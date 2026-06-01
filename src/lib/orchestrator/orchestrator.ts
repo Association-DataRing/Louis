@@ -320,7 +320,10 @@ export class Orchestrator {
       });
     } catch (err) {
       await this.emitError(args, writer, synthesizer, pipelineRunId, err);
-      throw err;
+      // H10 : fallback — on sert les positions brutes plutôt qu'une erreur
+      // vide. Pas de re-throw : le run se termine proprement et le texte de
+      // repli est persisté comme une réponse normale.
+      this.streamStaticText(writer, this.buildSynthesisFallback(priorOutputs));
     }
   }
 
@@ -469,7 +472,9 @@ export class Orchestrator {
       });
     } catch (err) {
       await this.emitError(args, writer, synthesizer, pipelineRunId, err);
-      throw err;
+      // H10 : même fallback qu'en council — positions brutes des workers
+      // plutôt qu'une erreur vide.
+      this.streamStaticText(writer, this.buildSynthesisFallback(priorOutputs));
     }
   }
 
@@ -562,6 +567,34 @@ export class Orchestrator {
         modelId: def.modelOverride ?? null,
       });
     }
+  }
+
+  /**
+   * H10 — quand le synthétiseur échoue, on ne renvoie pas une réponse vide à
+   * l'utilisateur : on sert les positions brutes du conseil, précédées d'un
+   * avertissement clair (non arbitrées, non vérifiées). On émet du vrai texte
+   * (text-start/delta/end) — la seule voie effectivement rendue ET persistée
+   * par `route.ts` (data-final-text n'est consommé nulle part).
+   */
+  private streamStaticText(writer: OrchestratorWriter, text: string): void {
+    const id = nanoid();
+    writer.write({ type: "text-start", id });
+    writer.write({ type: "text-delta", id, delta: text });
+    writer.write({ type: "text-end", id });
+  }
+
+  private buildSynthesisFallback(priorOutputs: AgentPriorOutput[]): string {
+    const header =
+      "> ⚠️ **Synthèse échouée** — le synthétiseur n'a pas pu produire de décision finale.\n>\n" +
+      "> Voici les **positions brutes** exprimées par le conseil, **ni arbitrées ni vérifiées**. À relire et valider par un juriste avant tout usage.";
+    if (priorOutputs.length === 0) {
+      return `${header}\n\n_Aucune position n'a pu être recueillie._`;
+    }
+    const blocks = priorOutputs.map((p) => {
+      const tour = typeof p.round === "number" ? ` · tour ${p.round}` : "";
+      return `### ${p.label}${tour}\n\n${p.output.trim()}`;
+    });
+    return `${header}\n\n${blocks.join("\n\n---\n\n")}`;
   }
 
   private async emitError(

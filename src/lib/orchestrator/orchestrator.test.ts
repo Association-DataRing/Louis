@@ -369,6 +369,59 @@ describe("Orchestrator: mode council", () => {
     expect(startEvents[startEvents.length - 1].agentId).toBe("synth");
   });
 
+  it("H10 : si le synthétiseur échoue, sert les positions brutes (sans throw)", async () => {
+    const pipeline: PipelineConfig = {
+      slug: "council-fallback",
+      name: "Council",
+      mode: "council",
+      rounds: 1,
+      agents: [
+        makeAgentDef("d1", "default-chat", "Débateur 1"),
+        makeAgentDef("d2", "default-chat", "Débateur 2"),
+        makeAgentDef("synth", "orchestrator", "Synthétiseur"),
+      ],
+    };
+
+    const orchestrator = new Orchestrator(pipeline);
+    const { writer, parts } = makeWriter();
+    const events: OrchestratorEvent[] = [];
+
+    // Ne doit PAS lever : l'échec de synthèse est rattrapé par le fallback.
+    await expect(
+      orchestrator.run({
+        ctx: makeCtx(),
+        writer,
+        onEvent: (e) => {
+          events.push(e);
+        },
+        agentFactory: (def) =>
+          new FakeAgent(def, `position-${def.id}`, undefined, def.id === "synth"),
+      })
+    ).resolves.toBeUndefined();
+
+    // Le synthétiseur a bien émis une erreur (honnêteté du panel + audit).
+    expect(
+      events.some((e) => e.type === "agent_error" && e.agentId === "synth")
+    ).toBe(true);
+
+    // Du vrai texte a été streamé (text-start/text-delta/text-end) — la seule
+    // voie rendue et persistée.
+    const typed = parts.filter(
+      (p): p is { type: string; delta?: string } =>
+        !!p && typeof p === "object" && "type" in p
+    );
+    expect(typed.some((p) => p.type === "text-start")).toBe(true);
+    expect(typed.some((p) => p.type === "text-end")).toBe(true);
+
+    const delta = typed.find((p) => p.type === "text-delta")?.delta ?? "";
+    expect(delta).toContain("Synthèse échouée");
+    // Les positions brutes des deux débatteurs sont présentes.
+    expect(delta).toContain("position-d1");
+    expect(delta).toContain("position-d2");
+    // Le texte de repli n'est pas vide.
+    expect(delta.length).toBeGreaterThan(40);
+  });
+
   it("au tour 2, les débatteurs voient les positions du tour 1", async () => {
     const observed = new Map<string, AgentContext>();
     const pipeline: PipelineConfig = {
