@@ -78,16 +78,20 @@ export async function createMcpServer(
     headersTag = blob.tag;
   }
 
+  let inserted: typeof mcpServers.$inferSelect;
   try {
-    await db.insert(mcpServers).values({
-      userId,
-      label: parsed.data.label,
-      transport: parsed.data.transport,
-      url: parsed.data.url,
-      headersCiphertext,
-      headersIv,
-      headersTag,
-    });
+    [inserted] = await db
+      .insert(mcpServers)
+      .values({
+        userId,
+        label: parsed.data.label,
+        transport: parsed.data.transport,
+        url: parsed.data.url,
+        headersCiphertext,
+        headersIv,
+        headersTag,
+      })
+      .returning();
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erreur";
     if (msg.includes("mcp_servers_user_label_idx")) {
@@ -96,7 +100,25 @@ export async function createMcpServer(
     return { ok: false, error: "Impossible de créer le serveur MCP." };
   }
 
+  // H24 : sync best-effort à la création — l'utilisateur voit immédiatement les
+  // outils découverts (ou l'erreur), sans devoir cliquer « Synchroniser ». Un
+  // échec de sync ne fait PAS échouer la création (il est persisté).
+  try {
+    const tools: CachedMcpTool[] = await mcpListTools(inserted);
+    await db
+      .update(mcpServers)
+      .set({ toolsJson: tools, lastSyncedAt: new Date(), lastSyncError: null })
+      .where(eq(mcpServers.id, inserted.id));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erreur inconnue";
+    await db
+      .update(mcpServers)
+      .set({ lastSyncedAt: new Date(), lastSyncError: msg.slice(0, 500) })
+      .where(eq(mcpServers.id, inserted.id));
+  }
+
   revalidatePath("/settings/mcp");
+  revalidatePath("/chat");
   return { ok: true };
 }
 

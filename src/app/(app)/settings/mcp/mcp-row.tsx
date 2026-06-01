@@ -70,6 +70,19 @@ export function McpRow({ entry }: { entry: McpServer }) {
         <div className="text-xs text-muted-foreground mt-0.5 truncate font-mono">
           {entry.url}
         </div>
+        {toolCount > 0 && entry.toolsJson && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {entry.toolsJson.map((t) => (
+              <span
+                key={t.name}
+                title={t.description ?? undefined}
+                className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground"
+              >
+                {t.name}
+              </span>
+            ))}
+          </div>
+        )}
         {entry.lastSyncError && (
           <div className="text-xs text-destructive mt-1 truncate">
             {entry.lastSyncError}

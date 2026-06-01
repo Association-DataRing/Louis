@@ -1,5 +1,6 @@
 import { decrypt } from "@/lib/crypto";
 import type { ProviderKey } from "@/db/schema";
+import { MODEL_CATALOG } from "./models";
 
 /**
  * Représentation unifiée d'un modèle remonté depuis l'API d'un provider.
@@ -87,13 +88,15 @@ export async function fetchLiveModels(
       return fetchOpenAiCompat(`${trimSlash(key.baseUrl)}/models`, apiKey);
     }
     case "ovh":
-      // OVH expose un endpoint par modèle, pas de catalogue global. On
-      // remonte une erreur explicite — le UI redirigera vers la liste
-      // curée locale.
-      throw new LiveCatalogError(
-        "OVHcloud expose un endpoint par modèle, pas de catalogue global. Utilisez la liste curée.",
-        501
-      );
+      // OVH expose un endpoint par modèle (pas de catalogue global) → on
+      // retourne la liste CURÉE locale au lieu d'une erreur 501 (H26 : avant,
+      // la bibliothèque était un cul-de-sac pour OVH). Le hint signale qu'elle
+      // est curée.
+      return MODEL_CATALOG.ovh.map((m) => ({
+        id: m.id,
+        label: m.label,
+        hint: m.hint ?? "Liste curée OVHcloud",
+      }));
     default: {
       const exhaustive: never = key.type;
       throw new LiveCatalogError(
