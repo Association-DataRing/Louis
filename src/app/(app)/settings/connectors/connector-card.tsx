@@ -7,8 +7,10 @@ import {
   IconDots,
   IconExternalLink,
   IconKey,
+  IconPlayerPlay,
   IconTrash,
 } from "@tabler/icons-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +53,7 @@ import { cn } from "@/lib/utils";
 import {
   createConnectorKey,
   deleteConnectorKey,
+  testConnectorKey,
   toggleConnectorKeyActive,
   updateConnectorKey,
 } from "./actions";
@@ -199,6 +202,24 @@ export function ConnectorCard({ type, keys }: Props) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
+                    disabled={pending}
+                    onSelect={() =>
+                      startTransition(async () => {
+                        const status = await testConnectorKey(primary.id);
+                        if (status === "ok") toast.success("Connexion réussie");
+                        else if (status === "auth_error")
+                          toast.error("Identifiants refusés (401/403)");
+                        else if (status === "config_error")
+                          toast.error("Connecteur non configuré ou désactivé");
+                        else if (status)
+                          toast.error("Connexion impossible (réseau/serveur)");
+                      })
+                    }
+                  >
+                    <IconPlayerPlay className="size-4" />
+                    Tester la connexion
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     variant="destructive"
                     disabled={pending}
                     onSelect={() => setDeleteOpen(true)}
@@ -214,6 +235,10 @@ export function ConnectorCard({ type, keys }: Props) {
           <p className="text-xs text-muted-foreground leading-relaxed">
             {meta.description}
           </p>
+
+          {isConfigured && primary.lastTestStatus && (
+            <ConnectorTestBadge status={primary.lastTestStatus} />
+          )}
 
           <div className="flex items-center gap-1 flex-wrap">
             <span className="text-[10px] text-muted-foreground mr-1">
@@ -419,5 +444,35 @@ export function ConnectorCard({ type, keys }: Props) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** Dernier résultat du test de connexion d'un connecteur (R5). */
+function ConnectorTestBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    ok: { label: "Connecté", cls: "text-success border-success/40" },
+    auth_error: {
+      label: "Auth refusée",
+      cls: "text-destructive border-destructive/40",
+    },
+    config_error: {
+      label: "Non configuré",
+      cls: "text-warning border-warning/40",
+    },
+    network_error: {
+      label: "Injoignable",
+      cls: "text-destructive border-destructive/40",
+    },
+  };
+  const m = map[status] ?? { label: status, cls: "text-muted-foreground" };
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]",
+        m.cls
+      )}
+    >
+      Dernier test : {m.label}
+    </span>
   );
 }

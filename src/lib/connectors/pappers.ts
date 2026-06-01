@@ -108,6 +108,20 @@ export async function pappersSearch(
   });
 }
 
+/**
+ * R5 : teste le token Pappers via une recherche minimale. Consomme un appel
+ * API réel (facturable selon le plan) — explicite et rare.
+ */
+export async function testPappersConnection(
+  userId: string
+): Promise<"ok" | "auth_error" | "config_error" | "network_error"> {
+  const r = await pappersSearch(userId, "test");
+  if (r.ok) return "ok";
+  if (r.reason === "auth") return "auth_error";
+  if (r.reason === "config") return "config_error";
+  return "network_error";
+}
+
 export async function pappersGet(
   userId: string,
   siren: string

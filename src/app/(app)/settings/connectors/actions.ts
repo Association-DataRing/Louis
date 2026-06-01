@@ -9,6 +9,8 @@ import { connectorKeys } from "@/db/schema";
 import { encrypt } from "@/lib/crypto";
 import { CONNECTOR_CATALOG, CONNECTOR_TYPES } from "@/lib/connectors/catalog";
 import { recordAudit } from "@/lib/audit";
+import { testPisteConnection } from "@/lib/connectors/piste";
+import { testPappersConnection } from "@/lib/connectors/pappers";
 
 const baseSchema = z.object({
   type: z.enum(CONNECTOR_TYPES as [string, ...string[]]),
@@ -74,6 +76,33 @@ export async function createConnectorKey(
 
   revalidatePath("/settings/connectors");
   return { ok: true };
+}
+
+/**
+ * R5 : teste les identifiants d'un connecteur (OAuth PISTE / token Pappers) et
+ * persiste le résultat (lastTestStatus/lastTestedAt). Consomme un appel API
+ * réel — déclenché explicitement par l'utilisateur.
+ */
+export async function testConnectorKey(id: string): Promise<string | null> {
+  const userId = await requireUserId();
+  const [key] = await db
+    .select({ type: connectorKeys.type })
+    .from(connectorKeys)
+    .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)))
+    .limit(1);
+  if (!key) return null;
+
+  const status =
+    key.type === "piste"
+      ? await testPisteConnection(userId)
+      : await testPappersConnection(userId);
+
+  await db
+    .update(connectorKeys)
+    .set({ lastTestedAt: new Date(), lastTestStatus: status })
+    .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)));
+  revalidatePath("/settings/connectors");
+  return status;
 }
 
 export async function deleteConnectorKey(id: string): Promise<void> {

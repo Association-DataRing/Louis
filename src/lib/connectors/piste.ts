@@ -66,6 +66,27 @@ async function getToken(userId: string): Promise<ToolResult<string>> {
   return toolOk(data.access_token);
 }
 
+export type ConnectorTestStatus =
+  | "ok"
+  | "auth_error"
+  | "config_error"
+  | "network_error";
+
+/**
+ * R5 : teste les identifiants PISTE en forçant un échange OAuth frais.
+ * Consomme un appel OAuth réel (rare, explicite).
+ */
+export async function testPisteConnection(
+  userId: string
+): Promise<ConnectorTestStatus> {
+  tokenCache.delete(userId);
+  const r = await getToken(userId);
+  if (r.ok) return "ok";
+  if (r.reason === "auth") return "auth_error";
+  if (r.reason === "config") return "config_error";
+  return "network_error";
+}
+
 async function pisteRequest<T>(
   userId: string,
   path: string,
