@@ -196,7 +196,7 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
                 onChange={(e) => setPrompt(e.target.value)}
                 maxLength={500}
                 rows={4}
-                className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm leading-snug focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm leading-snug focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
               />
               <p className="text-[10px] text-muted-foreground">
                 Décrivez ce que Louis doit extraire. Modifier le prompt ne

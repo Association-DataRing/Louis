@@ -64,7 +64,7 @@ export function CabinetForm({
           maxLength={1000}
           defaultValue={initial?.legalDisclaimer ?? ""}
           placeholder="Document généré par Louis. Ne constitue pas un conseil juridique personnalisé sans validation par un avocat."
-          className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         />
         <p className="text-xs text-muted-foreground">
           Ajoutée en dernière page des documents générés. Vous pouvez la

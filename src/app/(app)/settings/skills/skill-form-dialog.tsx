@@ -186,7 +186,7 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             placeholder="Le texte qui sera injecté dans le prompt système quand la compétence est activée…"
-            className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm font-mono leading-relaxed shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm font-mono leading-relaxed shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             aria-describedby="skill-prompt-help"
           />
           <p id="skill-prompt-help" className="text-[11px] text-muted-foreground">

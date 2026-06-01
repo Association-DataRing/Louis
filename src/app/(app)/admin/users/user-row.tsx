@@ -218,7 +218,13 @@ export function UserRow({
               : "jamais utilisé"}
         </div>
         {feedback && (
-          <div className="text-xs text-success mt-1">{feedback}</div>
+          <div
+            role="status"
+            aria-live="polite"
+            className="text-xs text-success mt-1"
+          >
+            {feedback}
+          </div>
         )}
 
         {/* Résumé compact des stats sur mobile : la rangée détaillée

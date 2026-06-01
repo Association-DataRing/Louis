@@ -139,7 +139,7 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
                 required
                 maxLength={4000}
                 rows={6}
-                className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               />
             </div>
             {error && (

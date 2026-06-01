@@ -70,7 +70,7 @@ export function UsersTable({ rows, currentUserId, nowMs }: Props) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher par email ou nom…"
             aria-label="Rechercher un utilisateur"
-            className="w-full rounded-md border border-input bg-background pl-8 pr-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="w-full rounded-md border border-input bg-background pl-8 pr-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           />
         </div>
         <div className="flex items-center gap-1">

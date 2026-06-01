@@ -247,7 +247,7 @@ export function AgentEditSheet({
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={6}
               placeholder={`Vide = prompt « factory » du rôle "${meta.label}".`}
-              className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 font-mono"
+              className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 font-mono"
               maxLength={8000}
               aria-describedby={`prompt-help-${agent.id}`}
             />
