@@ -21,6 +21,7 @@ import {
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { aggregateCosts, formatTotals } from "@/lib/providers/pricing";
+import { labelForAction } from "@/lib/audit/labels";
 import { Badge } from "@/components/ui/badge";
 
 export default async function AdminUserDetailPage({
@@ -261,7 +262,7 @@ export default async function AdminUserDetailPage({
                   className="py-3 flex items-start justify-between gap-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-mono truncate">{a.action}</p>
+                    <p className="text-sm truncate">{labelForAction(a.action)}</p>
                     {a.target && (
                       <p className="text-[11px] text-muted-foreground truncate">
                         {a.target}
