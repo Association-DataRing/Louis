@@ -17,7 +17,10 @@ import {
   IconVersions,
   IconHistory,
   IconFolder,
+  IconRefresh,
+  IconDatabase,
 } from "@tabler/icons-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -31,7 +34,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import type { Document, DocumentFolder } from "@/db/schema";
-import { deleteDocument, moveDocumentToFolder } from "./actions";
+import {
+  deleteDocument,
+  moveDocumentToFolder,
+  reindexDocumentAction,
+} from "./actions";
 import { moveDocumentToProject } from "../projects/actions";
 
 type Props = {
@@ -40,6 +47,10 @@ type Props = {
   folders?: DocumentFolder[];
   /** Older revisions (v1, v2…) of the same family, oldest first. */
   versions?: Document[];
+  /** Nombre de chunks RAG indexés (transparence RAG). */
+  chunkCount?: number;
+  /** L'utilisateur a-t-il une clé Mistral active (requise pour embedder) ? */
+  hasMistralKey?: boolean;
 };
 
 export function DocumentRow({
@@ -47,6 +58,8 @@ export function DocumentRow({
   projects = [],
   folders = [],
   versions = [],
+  chunkCount = 0,
+  hasMistralKey = false,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -94,6 +107,28 @@ export function DocumentRow({
     });
   }
 
+  const hasText =
+    entry.extractionStatus === "ok" || entry.extractionStatus === "truncated";
+  const indexed = chunkCount > 0;
+
+  function reindex() {
+    startTransition(async () => {
+      const r = await reindexDocumentAction(entry.id);
+      if (r.ok) {
+        toast.success(
+          `Document indexé (${r.chunks} segment${r.chunks > 1 ? "s" : ""}).`
+        );
+      } else if (r.reason === "no_mistral_key") {
+        toast.error("Aucune clé Mistral active — impossible d'indexer.");
+      } else if (r.reason === "no_text") {
+        toast.error("Aucun texte exploitable à indexer.");
+      } else {
+        toast.error("Échec de l'indexation.");
+      }
+      router.refresh();
+    });
+  }
+
   const hasHistory = versions.length > 0;
 
   return (
@@ -122,6 +157,31 @@ export function DocumentRow({
               extraction échouée
             </span>
           )}
+          {entry.extractionStatus !== "failed" &&
+            hasText &&
+            (indexed ? (
+              <Badge
+                variant="outline"
+                className="shrink-0 text-[10px] gap-1 text-success border-success/40"
+              >
+                <IconDatabase className="size-2.5" />
+                indexé · {chunkCount}
+              </Badge>
+            ) : !hasMistralKey ? (
+              <Badge
+                variant="outline"
+                className="shrink-0 text-[10px] text-warning border-warning/40"
+              >
+                clé Mistral manquante
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="shrink-0 text-[10px] text-muted-foreground"
+              >
+                non indexé
+              </Badge>
+            ))}
           {entry.projectId && (
             <Badge variant="secondary" className="shrink-0 text-[10px] gap-1">
               <IconFolders className="size-2.5" />
@@ -161,6 +221,12 @@ export function DocumentRow({
             <IconVersions className="size-4" />
             Uploader nouvelle version
           </DropdownMenuItem>
+          {hasText && (
+            <DropdownMenuItem disabled={pending} onSelect={() => reindex()}>
+              <IconRefresh className="size-4" />
+              {indexed ? "Réindexer" : "Indexer pour la recherche"}
+            </DropdownMenuItem>
+          )}
           {hasHistory && (
             <DropdownMenuItem onSelect={() => setHistoryOpen((v) => !v)}>
               <IconHistory className="size-4" />

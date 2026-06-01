@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentFolders } from "@/db/schema";
 import { deleteObject } from "@/lib/storage";
 import { recordAudit } from "@/lib/audit";
+import { reindexDocument, type ReindexResult } from "@/lib/rag/index-document";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -42,6 +43,46 @@ export async function deleteDocument(id: string): Promise<void> {
 
   revalidatePath("/documents");
   revalidatePath("/chat");
+}
+
+/** R6 : réindexation RAG d'un document (recovery après ajout de clé Mistral
+ * ou échec d'embedding). Idempotent — remplace les chunks existants. */
+export async function reindexDocumentAction(
+  documentId: string
+): Promise<ReindexResult> {
+  const userId = await requireUserId();
+  const result = await reindexDocument(userId, documentId);
+  revalidatePath("/documents");
+  return result;
+}
+
+/** R6 : réindexe tous les documents de l'utilisateur (utile après avoir
+ * ajouté sa clé Mistral suite à des imports non indexés). */
+export async function reindexAllDocumentsAction(): Promise<{
+  indexed: number;
+  failed: number;
+  noKey: boolean;
+}> {
+  const userId = await requireUserId();
+  const docs = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(
+      and(eq(documents.userId, userId), isNotNull(documents.extractedText))
+    );
+  let indexed = 0;
+  let failed = 0;
+  let noKey = false;
+  for (const d of docs) {
+    const r = await reindexDocument(userId, d.id);
+    if (r.ok) indexed += 1;
+    else {
+      failed += 1;
+      if (r.reason === "no_mistral_key") noKey = true;
+    }
+  }
+  revalidatePath("/documents");
+  return { indexed, failed, noKey };
 }
 
 const folderNameSchema = z.string().trim().min(1).max(80);
