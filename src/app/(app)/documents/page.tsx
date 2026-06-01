@@ -236,8 +236,9 @@ function FormatsNote() {
       <p className="font-medium text-foreground">Formats acceptés</p>
       <p className="mt-1">
         PDF, DOCX et texte brut. Limite : 25 Mo par fichier, ~500 000
-        caractères extraits. Au-delà, l&apos;extraction est tronquée — le
-        RAG (chunking + embeddings) arrive en v0.3.
+        caractères extraits (au-delà, l&apos;extraction est tronquée). Chaque
+        document est indexé pour la recherche sémantique (RAG) dès qu&apos;une
+        clé Mistral active est configurée.
       </p>
     </aside>
   );

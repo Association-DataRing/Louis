@@ -2,11 +2,33 @@
  * Server-side text extraction from PDF and DOCX documents.
  *
  * We cap extracted text at ~500K characters to stay within typical LLM
- * context windows. Larger documents will need a separate RAG pipeline
- * (chunking + embeddings + vector search) — not implemented in v0.1.
+ * context windows. Le texte extrait alimente à la fois l'injection en
+ * prompt système (petits fichiers) ET le pipeline RAG (chunking + embeddings
+ * + recherche vectorielle pgvector), qui EST en production (cf. lib/rag/*).
  */
 
 const MAX_TEXT_LENGTH = 500_000;
+
+/**
+ * En-dessous de ce nombre de caractères « utiles », un PDF est considéré
+ * comme scanné (image sans couche texte). Seuil bas pour minimiser les faux
+ * positifs sur de très courts documents.
+ */
+const SCANNED_PDF_MIN_CHARS = 20;
+
+/**
+ * Levée quand un PDF ne contient aucune couche texte exploitable (scanné).
+ * Le message remonte tel quel dans documents.extractionError pour expliquer
+ * à l'utilisateur pourquoi le document n'est ni indexé ni interrogeable.
+ */
+export class ScannedPdfError extends Error {
+  constructor() {
+    super(
+      "PDF probablement scanné (aucune couche texte détectée) — un OCR est requis pour l'indexer et l'interroger."
+    );
+    this.name = "ScannedPdfError";
+  }
+}
 
 export const PDF_MEDIA_TYPE = "application/pdf";
 export const DOCX_MEDIA_TYPE =
@@ -26,6 +48,12 @@ export async function extractText(
 
   if (contentType === PDF_MEDIA_TYPE) {
     raw = await extractPdf(buffer);
+    // H17 : un PDF scanné ressort quasi vide → on le signale explicitement
+    // plutôt que de l'enregistrer « ok » avec un texte vide (invisible RAG,
+    // inutilisable en analyse tabulaire, sans aucun message à l'utilisateur).
+    if (raw.trim().length < SCANNED_PDF_MIN_CHARS) {
+      throw new ScannedPdfError();
+    }
   } else if (contentType === DOCX_MEDIA_TYPE) {
     raw = await extractDocx(buffer);
   } else if (contentType.startsWith("text/")) {

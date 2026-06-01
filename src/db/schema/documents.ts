@@ -37,7 +37,8 @@ export const documents = pgTable("documents", {
   // disponible côté serveur (auquel cas on retombe sur mammoth HTML).
   previewStorageKey: text("preview_storage_key"),
   // Extracted plain text — capped at ~500KB to stay within typical LLM context.
-  // Larger documents would need RAG (chunking + embeddings), not implemented yet.
+  // Alimente l'injection en prompt système ET le RAG (chunking + embeddings +
+  // pgvector), en production — cf. lib/rag/*.
   extractedText: text("extracted_text"),
   extractionStatus: text("extraction_status").notNull().default("pending"),
   extractionError: text("extraction_error"),

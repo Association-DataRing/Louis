@@ -4,8 +4,9 @@ import { pappersSearch, pappersGet } from "./pappers";
 import { legifranceSearch } from "./piste";
 import { listActiveConnectorTypes } from "./runtime";
 import { ragSearch } from "@/lib/rag/search";
+import { searchProjectMessages } from "@/lib/rag/message-search";
 import { NoEmbeddingProviderError } from "@/lib/rag/embed";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { documentChunks, documents, providerKeys } from "@/db/schema";
 import { runTool, toolError, toolOk } from "@/lib/tools/result";
@@ -17,17 +18,47 @@ import {
 import { getObjectBytes } from "@/lib/storage";
 
 /**
+ * Périmètre projet (modèle dossier = projet). Quand fourni, les outils
+ * documentaires ne voient QUE les documents du projet, les documents
+ * générés/édités atterrissent dans son dossier, et l'outil de recherche
+ * dans l'historique des conversations du projet est activé.
+ */
+export type ToolScope = {
+  projectId: string;
+  /** Conversation courante — exclue de la recherche dans l'historique. */
+  conversationId: string;
+  /** Documents du projet (sous-arbre du dossier-racine). Peut être vide. */
+  documentIds: string[];
+  /** Dossier-racine — destination des documents générés/édités. */
+  folderId: string | null;
+};
+
+/**
  * Build the set of AI SDK tools available for `userId`, based on which
  * connectors they have active. Returns an empty object when no connector
  * is configured — streamText() then runs without tool calling.
+ *
+ * Quand `scope` est fourni (conversation rattachée à un projet), les outils
+ * documentaires sont restreints aux documents du projet — l'IA « ne prend en
+ * compte en RAG que les documents du projet ».
  *
  * Tool executions never throw: they return a `{ ok, ... }` envelope so the
  * model can relay a precise error message to the user instead of choking on
  * an opaque "tool execution failed".
  */
-export async function buildToolsForUser(userId: string): Promise<ToolSet> {
+export async function buildToolsForUser(
+  userId: string,
+  scope?: ToolScope
+): Promise<ToolSet> {
   const active = await listActiveConnectorTypes(userId);
   const tools: ToolSet = {};
+
+  // Scoping projet : `scoped` distingue le mode projet (documentIds est une
+  // liste, éventuellement vide) du mode global (scope absent → tous les docs).
+  const scoped = scope != null;
+  const scopedDocIds = scope?.documentIds ?? [];
+  const scopedDocSet = new Set(scopedDocIds);
+  const generatedDocFolderId = scope?.folderId ?? null;
 
   // search_documents : disponible si l'utilisateur a au moins un chunk
   // indexé ET une clé Mistral active (requise pour embedder la requête).
@@ -44,8 +75,28 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
     .limit(1);
 
   if (hasMistral.length > 0) {
-    const chunkCount = await db.$count(documentChunks);
-    if (chunkCount > 0) {
+    // R9 : comptage SCOPÉ à l'utilisateur (et au projet si scope). Un
+    // `$count(documentChunks)` global proposait search_documents à un user
+    // sans aucun document dès qu'un AUTRE tenant avait indexé quelque chose
+    // (fuite de disponibilité cross-tenant → réponses « aucun résultat »
+    // déroutantes). En mode projet sans document, l'outil n'est pas proposé.
+    const hasChunks =
+      scoped && scopedDocIds.length === 0
+        ? []
+        : await db
+            .select({ documentId: documentChunks.documentId })
+            .from(documentChunks)
+            .innerJoin(documents, eq(documents.id, documentChunks.documentId))
+            .where(
+              scoped
+                ? and(
+                    eq(documents.userId, userId),
+                    inArray(documentChunks.documentId, scopedDocIds)
+                  )
+                : eq(documents.userId, userId)
+            )
+            .limit(1);
+    if (hasChunks.length > 0) {
       tools.search_documents = tool({
         description:
           "Recherche sémantique dans les documents importés par l'utilisateur. Renvoie les passages les plus pertinents avec leur nom de fichier source. Préférez ce tool dès que la question porte sur le contenu d'un document précis, un contrat, un mémo, etc.",
@@ -59,8 +110,14 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
         }),
         execute: async ({ query }) =>
           runTool(async () => {
+            // En contexte projet sans document, on ne retombe PAS sur la
+            // recherche globale (ragSearch ignore un documentIds vide) :
+            // on renvoie explicitement aucun résultat.
+            if (scoped && scopedDocIds.length === 0) return toolOk([]);
             try {
-              const hits = await ragSearch(userId, query);
+              const hits = await ragSearch(userId, query, {
+                documentIds: scoped ? scopedDocIds : undefined,
+              });
               return toolOk(
                 hits.map((h) => ({
                   filename: h.filename,
@@ -74,6 +131,52 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
                 return toolError(
                   "config",
                   "La recherche documentaire nécessite une clé Mistral active. Activez-la dans /providers."
+                );
+              }
+              throw err;
+            }
+          }),
+      });
+    }
+
+    // Recherche dans l'historique des conversations du projet — disponible
+    // dès qu'on est en contexte projet, indépendamment des documents.
+    if (scope) {
+      const activeScope = scope;
+      tools.search_conversation_history = tool({
+        description:
+          "Recherche sémantique dans l'historique des CONVERSATIONS passées de ce projet (hors conversation courante). Utilisez-le pour retrouver une décision, une analyse ou un échange antérieur avec l'utilisateur sur ce dossier.",
+        inputSchema: z.object({
+          query: z
+            .string()
+            .min(2)
+            .describe(
+              "Question ou termes-clés. Sera traduite en embedding vectoriel."
+            ),
+        }),
+        execute: async ({ query }) =>
+          runTool(async () => {
+            try {
+              const hits = await searchProjectMessages(
+                userId,
+                activeScope.projectId,
+                query,
+                { excludeConversationId: activeScope.conversationId }
+              );
+              return toolOk(
+                hits.map((h) => ({
+                  conversation: h.conversationTitle,
+                  role: h.role,
+                  date: h.createdAt.toISOString().slice(0, 10),
+                  content: h.content,
+                  similarity: Math.round(h.similarity * 100) / 100,
+                }))
+              );
+            } catch (err) {
+              if (err instanceof NoEmbeddingProviderError) {
+                return toolError(
+                  "config",
+                  "La recherche dans l'historique nécessite une clé Mistral active. Activez-la dans /providers."
                 );
               }
               throw err;
@@ -206,6 +309,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
           format,
           spec: { ...rest, sections },
           userId,
+          folderId: generatedDocFolderId,
         });
         return toolOk({
           document_id: result.documentId,
@@ -230,6 +334,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
     inputSchema: z.object({}),
     execute: async () =>
       runTool(async () => {
+        if (scoped && scopedDocIds.length === 0) return toolOk([]);
         const rows = await db
           .select({
             id: documents.id,
@@ -239,7 +344,14 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
             version: documents.version,
           })
           .from(documents)
-          .where(eq(documents.userId, userId))
+          .where(
+            scoped
+              ? and(
+                  eq(documents.userId, userId),
+                  inArray(documents.id, scopedDocIds)
+                )
+              : eq(documents.userId, userId)
+          )
           .orderBy(desc(documents.createdAt))
           .limit(50);
         return toolOk(
@@ -276,6 +388,12 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
     }),
     execute: async ({ document_id, max_chars }) =>
       runTool(async () => {
+        if (scoped && !scopedDocSet.has(document_id)) {
+          return toolError(
+            "validation",
+            "Ce document n'appartient pas au projet courant."
+          );
+        }
         const [doc] = await db
           .select({
             id: documents.id,
@@ -336,6 +454,12 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
     }),
     execute: async ({ document_id, needle }) =>
       runTool(async () => {
+        if (scoped && !scopedDocSet.has(document_id)) {
+          return toolError(
+            "validation",
+            "Ce document n'appartient pas au projet courant."
+          );
+        }
         const [doc] = await db
           .select({
             extractedText: documents.extractedText,
@@ -431,6 +555,12 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
     }),
     execute: async ({ document_id, edits }) =>
       runTool(async () => {
+        if (scoped && !scopedDocSet.has(document_id)) {
+          return toolError(
+            "validation",
+            "Ce document n'appartient pas au projet courant."
+          );
+        }
         const [doc] = await db
           .select({
             id: documents.id,
@@ -466,6 +596,7 @@ export async function buildToolsForUser(userId: string): Promise<ToolSet> {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           filename: `${baseName} (édité par Louis).docx`,
           userId,
+          folderId: generatedDocFolderId,
         });
 
         return toolOk({

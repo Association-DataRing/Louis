@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentChunks, documentFolders } from "@/db/schema";
@@ -45,8 +45,10 @@ export async function POST(req: Request) {
   }
 
   // When `replaces` is set, this upload is a new version of an existing
-  // document. We inherit the project assignment from the parent and increment
-  // the version counter for the whole family.
+  // document. We inherit the parent's placement (folder = appartenance au
+  // projet, et le projectId legacy) et increment the version counter for the
+  // whole family. Sans héritage du folderId, une nouvelle version sortirait
+  // du périmètre du projet.
   const replacesRaw = formData.get("replaces");
   const replacesId =
     typeof replacesRaw === "string" && replacesRaw.length > 0
@@ -54,6 +56,7 @@ export async function POST(req: Request) {
       : null;
   let parentDocumentId: string | null = null;
   let projectIdOverride: string | null = null;
+  let folderIdOverride: string | null = null;
   let nextVersion = 1;
   if (replacesId) {
     const [parent] = await db
@@ -61,6 +64,7 @@ export async function POST(req: Request) {
         id: documents.id,
         userId: documents.userId,
         projectId: documents.projectId,
+        folderId: documents.folderId,
         parentDocumentId: documents.parentDocumentId,
       })
       .from(documents)
@@ -71,6 +75,7 @@ export async function POST(req: Request) {
     }
     parentDocumentId = parent.parentDocumentId ?? parent.id;
     projectIdOverride = parent.projectId;
+    folderIdOverride = parent.folderId;
     const [{ max }] = await db
       .select({
         max: sql<number>`COALESCE(MAX(${documents.version}), 0)::int`,
@@ -82,8 +87,9 @@ export async function POST(req: Request) {
     if (parentDocumentId === parent.id && nextVersion < 2) nextVersion = 2;
   }
 
-  // Folder assignment (only on fresh uploads — versions inherit from parent).
-  let folderIdOverride: string | null = null;
+  // Folder assignment (only on fresh uploads — versions inherit their
+  // placement from the parent document). Le dossier détermine l'appartenance
+  // au projet (modèle dossier = projet).
   if (!replacesId) {
     const folderRaw = formData.get("folder");
     if (typeof folderRaw === "string" && folderRaw.length > 0) {
@@ -180,6 +186,31 @@ export async function POST(req: Request) {
       } else {
         indexError = err instanceof Error ? err.message : "embedding_failed";
       }
+    }
+  }
+
+  // R7 : purge les chunks des versions OBSOLÈTES de la famille. Sans cela,
+  // ragSearch (qui interroge tous les documents du user) pouvait citer le
+  // texte d'une v1 remplacée à la place de la v2 courante — un bug de
+  // correction, pas qu'un détail. On ne supprime QUE les chunks : les rows
+  // documents (historique des versions) restent intactes.
+  if (replacesId && parentDocumentId) {
+    const familyDocs = await db
+      .select({ id: documents.id })
+      .from(documents)
+      .where(
+        or(
+          eq(documents.id, parentDocumentId),
+          eq(documents.parentDocumentId, parentDocumentId)
+        )
+      );
+    const staleIds = familyDocs
+      .map((d) => d.id)
+      .filter((id) => id !== docId);
+    if (staleIds.length > 0) {
+      await db
+        .delete(documentChunks)
+        .where(inArray(documentChunks.documentId, staleIds));
     }
   }
 
