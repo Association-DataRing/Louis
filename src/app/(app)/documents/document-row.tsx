@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { VersionDiffButton } from "./version-diff-dialog";
 import type { Document, DocumentFolder } from "@/db/schema";
 import {
   deleteDocument,
@@ -383,6 +384,14 @@ export function DocumentRow({
                     <span className="truncate">{v.filename}</span>
                     <span className="text-[10px]">
                       {new Date(v.createdAt).toLocaleDateString("fr-FR")}
+                    </span>
+                    <span className="ml-auto shrink-0">
+                      <VersionDiffButton
+                        currentId={entry.id}
+                        currentVersion={entry.version}
+                        olderId={v.id}
+                        olderVersion={v.version}
+                      />
                     </span>
                   </li>
                 ))}

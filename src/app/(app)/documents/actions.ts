@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -9,6 +9,7 @@ import { documents, documentFolders } from "@/db/schema";
 import { deleteObject } from "@/lib/storage";
 import { recordAudit } from "@/lib/audit";
 import { reindexDocument, type ReindexResult } from "@/lib/rag/index-document";
+import { diffLines, collapseDiff, type DisplayOp } from "@/lib/diff/line-diff";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -177,4 +178,79 @@ export async function moveDocumentToFolder(
 
   revalidatePath("/documents");
   return { ok: true };
+}
+
+export type VersionDiffResult =
+  | {
+      ok: true;
+      ops: DisplayOp[];
+      truncated: boolean;
+      older: { version: number; filename: string };
+      newer: { version: number; filename: string };
+    }
+  | { ok: false; error: string };
+
+/** Borne dure du payload de diff renvoyé (lignes affichables, contexte inclus). */
+const MAX_DIFF_OPS = 4000;
+
+/**
+ * H19 — compare le texte extrait de deux versions d'un même document.
+ * Sécurité : les deux ids doivent appartenir à l'utilisateur ET à la même
+ * famille de versions (root = parentDocumentId ?? id). On replie les plages
+ * inchangées et on plafonne le nombre de lignes renvoyées.
+ */
+export async function getDocumentVersionDiff(
+  aId: string,
+  bId: string
+): Promise<VersionDiffResult> {
+  const userId = await requireUserId();
+
+  const rows = await db
+    .select({
+      id: documents.id,
+      version: documents.version,
+      filename: documents.filename,
+      parentDocumentId: documents.parentDocumentId,
+      extractedText: documents.extractedText,
+    })
+    .from(documents)
+    .where(and(inArray(documents.id, [aId, bId]), eq(documents.userId, userId)));
+
+  const a = rows.find((r) => r.id === aId);
+  const b = rows.find((r) => r.id === bId);
+  if (!a || !b) return { ok: false, error: "Version introuvable." };
+
+  const rootA = a.parentDocumentId ?? a.id;
+  const rootB = b.parentDocumentId ?? b.id;
+  if (rootA !== rootB) {
+    return {
+      ok: false,
+      error: "Ces documents n'appartiennent pas à la même famille de versions.",
+    };
+  }
+
+  if (a.extractedText == null || b.extractedText == null) {
+    return {
+      ok: false,
+      error:
+        "Le texte d'au moins une version n'a pas pu être extrait — comparaison impossible.",
+    };
+  }
+
+  // Toujours différ l'ancienne version vers la plus récente.
+  const [older, newer] = a.version <= b.version ? [a, b] : [b, a];
+  const oldText = older.extractedText ?? "";
+  const newText = newer.extractedText ?? "";
+
+  const { ops, truncated: dpTruncated } = diffLines(oldText, newText);
+  const collapsed = collapseDiff(ops);
+  const truncated = dpTruncated || collapsed.length > MAX_DIFF_OPS;
+
+  return {
+    ok: true,
+    ops: truncated ? collapsed.slice(0, MAX_DIFF_OPS) : collapsed,
+    truncated,
+    older: { version: older.version, filename: older.filename },
+    newer: { version: newer.version, filename: newer.filename },
+  };
 }
