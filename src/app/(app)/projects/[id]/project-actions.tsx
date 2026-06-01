@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
-import { deleteProject, renameProject } from "../actions";
+import { deleteProject, updateProject } from "../actions";
 
 type Props = {
   id: string;
@@ -33,18 +33,20 @@ type Props = {
   description: string | null;
 };
 
-export function ProjectActions({ id, name }: Props) {
-  const [renameOpen, setRenameOpen] = useState(false);
+export function ProjectActions({ id, name, description }: Props) {
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [draft, setDraft] = useState(name);
+  const [nameDraft, setNameDraft] = useState(name);
+  const [descDraft, setDescDraft] = useState(description ?? "");
   const [pending, startTransition] = useTransition();
 
-  function handleRename(formData: FormData) {
+  function handleEdit(formData: FormData) {
     const next = (formData.get("name") as string)?.trim();
     if (!next) return;
+    const nextDesc = (formData.get("description") as string) ?? "";
     startTransition(async () => {
-      await renameProject(id, next);
-      setRenameOpen(false);
+      await updateProject(id, next, nextDesc);
+      setEditOpen(false);
     });
   }
 
@@ -65,12 +67,13 @@ export function ProjectActions({ id, name }: Props) {
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             onSelect={() => {
-              setDraft(name);
-              setRenameOpen(true);
+              setNameDraft(name);
+              setDescDraft(description ?? "");
+              setEditOpen(true);
             }}
           >
             <IconPencil className="size-4" />
-            Renommer
+            Modifier
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -83,40 +86,55 @@ export function ProjectActions({ id, name }: Props) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-heading">
-              Renommer le projet
+              Modifier le projet
             </DialogTitle>
             <DialogDescription>
-              Le nouveau nom sera visible partout (sidebar, liste des projets,
-              etc.).
+              Le nom est visible partout (sidebar, liste des projets, etc.).
             </DialogDescription>
           </DialogHeader>
-          <form action={handleRename} className="space-y-4">
+          <form action={handleEdit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="rename-name">Nom</Label>
+              <Label htmlFor="edit-name">Nom</Label>
               <Input
-                id="rename-name"
+                id="edit-name"
                 name="name"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
                 required
                 maxLength={80}
                 autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">
+                Description{" "}
+                <span className="text-[10px] text-muted-foreground font-normal">
+                  (optionnel)
+                </span>
+              </Label>
+              <Input
+                id="edit-description"
+                name="description"
+                value={descDraft}
+                onChange={(e) => setDescDraft(e.target.value)}
+                maxLength={500}
+                placeholder="Note interne, n° dossier, partie adverse…"
               />
             </div>
             <DialogFooter>
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setRenameOpen(false)}
+                onClick={() => setEditOpen(false)}
               >
                 Annuler
               </Button>
               <Button type="submit" disabled={pending}>
-                {pending ? "…" : "Enregistrer"}
+                {pending ? "Enregistrement…" : "Enregistrer"}
               </Button>
             </DialogFooter>
           </form>

@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   IconArrowLeft,
-  IconFolder,
   IconMessageCircle,
-  IconFileText,
   IconPlus,
 } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { conversations, documents, projects } from "@/db/schema";
+import { getProjectScope } from "@/lib/projects/scope";
 import { ProjectActions } from "./project-actions";
+import { ProjectDocuments } from "./project-documents";
 
 type Params = { id: string };
 
@@ -34,6 +34,8 @@ export default async function ProjectDetailPage({
 
   if (!project) notFound();
 
+  const scope = await getProjectScope(userId, id);
+
   const [convList, docList] = await Promise.all([
     db
       .select({
@@ -49,19 +51,24 @@ export default async function ProjectDetailPage({
         )
       )
       .orderBy(desc(conversations.updatedAt)),
-    db
-      .select({
-        id: documents.id,
-        filename: documents.filename,
-        contentType: documents.contentType,
-        sizeBytes: documents.sizeBytes,
-        createdAt: documents.createdAt,
-      })
-      .from(documents)
-      .where(
-        and(eq(documents.projectId, id), eq(documents.userId, userId))
-      )
-      .orderBy(desc(documents.createdAt)),
+    scope.documentIds.length > 0
+      ? db
+          .select({
+            id: documents.id,
+            filename: documents.filename,
+            contentType: documents.contentType,
+            sizeBytes: documents.sizeBytes,
+            createdAt: documents.createdAt,
+          })
+          .from(documents)
+          .where(
+            and(
+              eq(documents.userId, userId),
+              inArray(documents.id, scope.documentIds)
+            )
+          )
+          .orderBy(desc(documents.createdAt))
+      : Promise.resolve([]),
   ]);
 
   return (
@@ -75,20 +82,15 @@ export default async function ProjectDetailPage({
       </Link>
 
       <header className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="size-11 shrink-0 rounded-md bg-muted flex items-center justify-center mt-0.5">
-            <IconFolder className="size-6 text-primary" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-heading text-3xl tracking-tight truncate">
-              {project.name}
-            </h1>
-            {project.description && (
-              <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-                {project.description}
-              </p>
-            )}
-          </div>
+        <div className="min-w-0">
+          <h1 className="font-heading text-3xl tracking-tight truncate">
+            {project.name}
+          </h1>
+          {project.description && (
+            <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
+              {project.description}
+            </p>
+          )}
         </div>
         <ProjectActions
           id={project.id}
@@ -117,8 +119,9 @@ export default async function ProjectDetailPage({
             </Link>
           </div>
           {convList.length === 0 ? (
-            <div className="border border-dashed border-border rounded-lg p-6 text-center text-sm text-muted-foreground">
-              Aucune conversation pour l&apos;instant.
+            <div className="border border-dashed border-border rounded-lg p-6 text-sm text-muted-foreground">
+              Démarrez une conversation rattachée à ce dossier pour en garder
+              l&apos;historique au même endroit.
             </div>
           ) : (
             <div className="border border-border rounded-lg bg-card divide-y divide-border">
@@ -128,11 +131,14 @@ export default async function ProjectDetailPage({
                   href={`/chat?id=${c.id}`}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-accent/40 transition-colors"
                 >
-                  <IconMessageCircle className="size-3.5 text-muted-foreground shrink-0" />
+                  <IconMessageCircle
+                    className="size-3.5 text-muted-foreground shrink-0"
+                    aria-hidden
+                  />
                   <span className="text-sm truncate flex-1 min-w-0">
                     {c.title}
                   </span>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                  <span className="text-xs text-muted-foreground tabular-nums">
                     {new Date(c.updatedAt).toLocaleDateString("fr-FR")}
                   </span>
                 </Link>
@@ -142,46 +148,7 @@ export default async function ProjectDetailPage({
         </section>
 
         {/* Documents */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading text-lg tracking-tight inline-flex items-center gap-2">
-              <IconFileText className="size-4 text-muted-foreground" />
-              Documents
-              <span className="text-xs text-muted-foreground font-normal">
-                ({docList.length})
-              </span>
-            </h2>
-            <Link
-              href="/documents"
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2"
-            >
-              <IconPlus className="size-3" />
-              Importer un document
-            </Link>
-          </div>
-          {docList.length === 0 ? (
-            <div className="border border-dashed border-border rounded-lg p-6 text-center text-sm text-muted-foreground">
-              Aucun document rattaché à ce projet.
-            </div>
-          ) : (
-            <div className="border border-border rounded-lg bg-card divide-y divide-border">
-              {docList.map((d) => (
-                <div
-                  key={d.id}
-                  className="flex items-center gap-3 px-4 py-3"
-                >
-                  <IconFileText className="size-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm truncate flex-1 min-w-0">
-                    {d.filename}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">
-                    {new Date(d.createdAt).toLocaleDateString("fr-FR")}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <ProjectDocuments folderId={scope.folderId} docs={docList} />
       </div>
     </main>
   );

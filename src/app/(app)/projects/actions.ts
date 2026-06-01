@@ -6,7 +6,12 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { projects, conversations, documents } from "@/db/schema";
+import {
+  projects,
+  conversations,
+  documents,
+  documentFolders,
+} from "@/db/schema";
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -32,7 +37,53 @@ export async function createProject(
     description: formData.get("description") ?? undefined,
   });
 
-  if (!parsed.success) return { ok: false, error: "Champs invalides." };
+  if (!parsed.success) {
+    const field = parsed.error.issues[0]?.path[0];
+    return {
+      ok: false,
+      error:
+        field === "description"
+          ? "La description ne peut pas dépasser 500 caractères."
+          : "Le nom du projet est requis (80 caractères max).",
+    };
+  }
+
+  // Emplacement de stockage : soit un dossier existant (vérifié), soit un
+  // nouveau dossier créé à la racine. À défaut on crée un dossier au nom du
+  // projet — un projet a toujours un dossier-racine (modèle dossier = projet).
+  const folderMode = formData.get("folderMode");
+  let folderId: string | null = null;
+
+  if (folderMode === "existing") {
+    const existingRaw = formData.get("folderId");
+    if (typeof existingRaw === "string" && existingRaw.length > 0) {
+      const [folder] = await db
+        .select({ id: documentFolders.id })
+        .from(documentFolders)
+        .where(
+          and(
+            eq(documentFolders.id, existingRaw),
+            eq(documentFolders.userId, userId)
+          )
+        )
+        .limit(1);
+      if (!folder) {
+        return { ok: false, error: "Dossier de stockage introuvable." };
+      }
+      folderId = folder.id;
+    }
+  }
+
+  if (!folderId) {
+    const nameRaw = formData.get("folderName");
+    const folderName =
+      (typeof nameRaw === "string" && nameRaw.trim()) || parsed.data.name;
+    const [folder] = await db
+      .insert(documentFolders)
+      .values({ userId, name: folderName.slice(0, 80), parentFolderId: null })
+      .returning({ id: documentFolders.id });
+    folderId = folder.id;
+  }
 
   const [row] = await db
     .insert(projects)
@@ -40,21 +91,31 @@ export async function createProject(
       userId,
       name: parsed.data.name,
       description: parsed.data.description || null,
+      folderId,
     })
     .returning({ id: projects.id });
 
   revalidatePath("/projects");
+  revalidatePath("/documents");
   revalidatePath("/chat");
   return { ok: true, id: row.id };
 }
 
-export async function renameProject(id: string, name: string): Promise<void> {
+export async function updateProject(
+  id: string,
+  name: string,
+  description: string | null
+): Promise<void> {
   const userId = await requireUserId();
   const trimmed = name.trim();
   if (!trimmed) return;
   await db
     .update(projects)
-    .set({ name: trimmed, updatedAt: new Date() })
+    .set({
+      name: trimmed.slice(0, 80),
+      description: description?.trim().slice(0, 500) || null,
+      updatedAt: new Date(),
+    })
     .where(and(eq(projects.id, id), eq(projects.userId, userId)));
   revalidatePath("/projects");
   revalidatePath(`/projects/${id}`);

@@ -32,7 +32,10 @@ export type UploadResult =
 
 export async function uploadDocument(
   file: File,
-  opts: { folderId?: string | null; signal?: AbortSignal } = {}
+  opts: {
+    folderId?: string | null;
+    signal?: AbortSignal;
+  } = {}
 ): Promise<UploadResult> {
   const form = new FormData();
   form.append("file", file);
@@ -151,6 +154,9 @@ export function Dropzone({
       onDrop={handleDrop}
       className={`relative ${className ?? ""}`}
     >
+      <span className="sr-only" aria-live="polite">
+        {active ? "Déposez les fichiers pour les téléverser" : ""}
+      </span>
       {children}
       {active && (
         <div

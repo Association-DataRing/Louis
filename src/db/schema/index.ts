@@ -3,6 +3,7 @@ export * from "./projects";
 export * from "./provider-keys";
 export * from "./conversations";
 export * from "./messages";
+export * from "./message-chunks";
 export * from "./connector-keys";
 export * from "./document-folders";
 export * from "./documents";

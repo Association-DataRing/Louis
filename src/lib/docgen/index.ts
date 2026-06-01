@@ -31,11 +31,13 @@ export async function generateAndStore({
   spec,
   userId,
   projectId,
+  folderId,
 }: {
   format: DocFormat;
   spec: DocumentSpec;
   userId: string;
   projectId?: string | null;
+  folderId?: string | null;
 }): Promise<{ documentId: string; filename: string; format: DocFormat }> {
   const buffer =
     format === "docx" ? await generateDocx(spec) : await generatePdf(spec);
@@ -54,6 +56,7 @@ export async function generateAndStore({
     filename,
     userId,
     projectId,
+    folderId,
   });
 }
 
@@ -68,12 +71,14 @@ export async function storeBuffer({
   filename,
   userId,
   projectId,
+  folderId,
 }: {
   buffer: Buffer;
   contentType: string;
   filename: string;
   userId: string;
   projectId?: string | null;
+  folderId?: string | null;
 }): Promise<{ documentId: string; filename: string; format: DocFormat }> {
   const baseKey = `${userId}/louis-generated/${nanoid()}-${filename}`;
   await uploadObject(baseKey, buffer, contentType);
@@ -116,6 +121,7 @@ export async function storeBuffer({
     .values({
       userId,
       projectId: projectId ?? null,
+      folderId: folderId ?? null,
       filename,
       contentType,
       sizeBytes: buffer.length,
