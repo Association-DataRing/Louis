@@ -54,8 +54,10 @@ type Role =
 const ROLE_OPTIONS: Role[] = [
   "default-chat",
   "research",
+  "legifrance",
   "citator",
   "reviewer",
+  "drafting",
   "orchestrator",
 ];
 

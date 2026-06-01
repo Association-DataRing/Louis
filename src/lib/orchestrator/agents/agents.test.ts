@@ -3,6 +3,8 @@ import {
   AGENT_REGISTRY,
   CitatorAgent,
   DefaultAgent,
+  DraftingAgent,
+  LegifranceAgent,
   OrchestratorAgent,
   ResearchAgent,
   ReviewerAgent,
@@ -32,9 +34,12 @@ describe("Agent registry: résolution par rôle", () => {
     expect(resolveAgentConstructor("orchestrator")).toBe(OrchestratorAgent);
   });
 
-  it("rôle inconnu (drafting/legifrance non implémentés) → undefined", () => {
-    expect(resolveAgentConstructor("drafting")).toBeUndefined();
-    expect(resolveAgentConstructor("legifrance")).toBeUndefined();
+  it("drafting → DraftingAgent (P6 : rôle désormais implémenté)", () => {
+    expect(resolveAgentConstructor("drafting")).toBe(DraftingAgent);
+  });
+
+  it("legifrance → LegifranceAgent (P6 : rôle désormais implémenté)", () => {
+    expect(resolveAgentConstructor("legifrance")).toBe(LegifranceAgent);
   });
 
   it("AGENT_REGISTRY est cohérent avec les exports nommés", () => {
@@ -43,6 +48,8 @@ describe("Agent registry: résolution par rôle", () => {
     expect(AGENT_REGISTRY.citator).toBe(CitatorAgent);
     expect(AGENT_REGISTRY.reviewer).toBe(ReviewerAgent);
     expect(AGENT_REGISTRY.orchestrator).toBe(OrchestratorAgent);
+    expect(AGENT_REGISTRY.drafting).toBe(DraftingAgent);
+    expect(AGENT_REGISTRY.legifrance).toBe(LegifranceAgent);
   });
 });
 

@@ -3,6 +3,8 @@ import { DefaultAgent } from "./default";
 import { ResearchAgent } from "./research";
 import { CitatorAgent } from "./citator";
 import { ReviewerAgent } from "./reviewer";
+import { DraftingAgent } from "./drafting";
+import { LegifranceAgent } from "./legifrance";
 import { OrchestratorAgent } from "./orchestrator-agent";
 
 /**
@@ -18,6 +20,8 @@ export const AGENT_REGISTRY: Partial<
   research: ResearchAgent,
   citator: CitatorAgent,
   reviewer: ReviewerAgent,
+  drafting: DraftingAgent,
+  legifrance: LegifranceAgent,
 };
 
 export function resolveAgentConstructor(
@@ -30,6 +34,8 @@ export { DefaultAgent } from "./default";
 export { ResearchAgent, RESEARCH_SYSTEM_PROMPT } from "./research";
 export { CitatorAgent, CITATOR_SYSTEM_PROMPT } from "./citator";
 export { ReviewerAgent, REVIEWER_SYSTEM_PROMPT } from "./reviewer";
+export { DraftingAgent, DRAFTING_SYSTEM_PROMPT } from "./drafting";
+export { LegifranceAgent, LEGIFRANCE_SYSTEM_PROMPT } from "./legifrance";
 export {
   OrchestratorAgent,
   ORCHESTRATOR_SYSTEM_PROMPT,
