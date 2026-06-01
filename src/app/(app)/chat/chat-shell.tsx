@@ -159,6 +159,8 @@ type Props = {
    */
   enabledModels?: EnabledModel[];
   initialUsage: Usage;
+  /** Mapping slug → libellé des compétences activées (H4). */
+  skillLabels?: Record<string, string>;
 };
 
 function toUIMessages(rows: Props["initialMessages"]): UIMessage[] {
@@ -833,6 +835,7 @@ export function ChatShell({
   pipelines,
   enabledModels,
   initialUsage,
+  skillLabels = {},
 }: Props) {
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
@@ -1524,6 +1527,24 @@ export function ChatShell({
     );
   }, [messages, selectedPipeline, isBusy]);
 
+  // H4 : compétences détectées pour le dernier message assistant. Lues depuis
+  // la part data-skills-detected (persistée par H3a → survit au reload) et
+  // mappées en libellés lisibles.
+  const appliedSkills: string[] = useMemo(() => {
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    if (!lastAssistant) return [];
+    for (const part of lastAssistant.parts) {
+      if (part.type === "data-skills-detected") {
+        const slugs =
+          (part as { data?: { slugs?: string[] } }).data?.slugs ?? [];
+        return slugs.map((s) => skillLabels[s] ?? s);
+      }
+    }
+    return [];
+  }, [messages, skillLabels]);
+
   // H8 : estimation AU POINT DE DÉPENSE. Le nombre d'appels LLM est exact
   // (driver de coût d'un run multi-agents) ; le coût est une fourchette
   // (tokens de sortie inconnus → suffixé « estimé »). Recalculé à chaque
@@ -2014,6 +2035,22 @@ export function ChatShell({
                   </Badge>
                 );
               })}
+            </div>
+          )}
+
+          {appliedSkills.length > 0 && (
+            <div className="mb-2 flex flex-wrap items-center justify-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Compétences appliquées
+              </span>
+              {appliedSkills.map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[11px] text-foreground"
+                >
+                  {label}
+                </span>
+              ))}
             </div>
           )}
 

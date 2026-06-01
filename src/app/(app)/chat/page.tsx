@@ -15,6 +15,7 @@ import {
 } from "@/db/schema";
 import { seedPresetsForUser } from "@/lib/orchestrator";
 import { listEnabledModels } from "../settings/models/actions";
+import { getEnabledSkills } from "../settings/skills/actions";
 import type { ProviderType } from "@/lib/providers/catalog";
 import { ChatShell } from "./chat-shell";
 
@@ -210,11 +211,18 @@ export default async function ChatPage({
     totalOutputTokens = rows.reduce((n, r) => n + (r.outputTokens ?? 0), 0);
   }
 
+  // H4 : mapping slug → libellé des compétences activées, pour afficher
+  // « Compétence appliquée : X » quand le détecteur en déclenche une.
+  const skillLabels = Object.fromEntries(
+    (await getEnabledSkills(userId)).map((s) => [s.slug, s.name] as const)
+  );
+
   // key=currentId force le re-mount de ChatShell quand l'utilisateur change
   // de conversation via la sidebar (navigation soft Next sinon ne ré-init pas
   // le state interne de useChat).
   return (
     <ChatShell
+      skillLabels={skillLabels}
       key={currentId ?? `new-${projectIdFromUrl ?? ""}-${sp.pipeline ?? ""}-${sp.prompt ? "p" : ""}`}
       providerKeys={activeKeys}
       initialProviderKeyId={initialProviderKeyId}
