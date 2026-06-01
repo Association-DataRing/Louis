@@ -85,5 +85,9 @@
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.6"
+  },
+  "overrides": {
+    "tmp": "^0.2.7",
+    "postcss": "^8.5.10"
   }
 }
