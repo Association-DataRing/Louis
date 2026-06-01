@@ -7,6 +7,7 @@ import {
   IconDots,
   IconTrash,
   IconRefresh,
+  IconFileSpreadsheet,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -72,6 +73,18 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
           <IconDots className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            disabled={totalRows === 0}
+            onSelect={() => {
+              // Route GET attachment → le navigateur télécharge et reste sur
+              // la page.
+              window.location.href = `/api/tabular-reviews/${reviewId}/export`;
+            }}
+          >
+            <IconFileSpreadsheet className="size-4" />
+            Exporter en CSV
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             disabled={pending || totalRows === 0}
             onSelect={() => setRerunOpen(true)}

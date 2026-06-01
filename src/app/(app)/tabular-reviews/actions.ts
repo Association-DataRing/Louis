@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
 import { generateText, Output, type LanguageModel } from "ai";
 import { auth } from "@/auth";
@@ -19,6 +19,38 @@ import { log } from "@/lib/log";
 import { nanoid } from "nanoid";
 
 const EXTRACTION_CONCURRENCY = 3;
+
+// H15-f : au-delà de ce délai, une ligne « running » est considérée comme
+// abandonnée (after() interrompu : redéploiement, crash, serverless qui
+// coupe) et requalifiée pour redevenir relançable.
+const STALE_RUNNING_MS = 5 * 60_000;
+
+/**
+ * H15-e : intègre le `format` de colonne dans la description du champ
+ * d'extraction, pour que le modèle produise des valeurs au bon format.
+ */
+function describeColumn(c: ReviewColumn): string {
+  switch (c.format) {
+    case "date":
+      return `${c.prompt} (si une date est trouvée, réponds au format JJ/MM/AAAA)`;
+    case "money":
+      return `${c.prompt} (réponds par un montant avec sa devise, ex. « 12 500 € »)`;
+    case "boolean":
+      return `${c.prompt} (réponds uniquement par « Oui » ou « Non »)`;
+    case "bulleted_list":
+      return `${c.prompt} (réponds par une liste à puces, un élément par ligne)`;
+    default:
+      return c.prompt;
+  }
+}
+
+function buildValuesSchema(columns: ReviewColumn[]) {
+  return z.object(
+    Object.fromEntries(
+      columns.map((c) => [c.id, z.string().describe(describeColumn(c))])
+    )
+  );
+}
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -148,6 +180,24 @@ export async function runTabularReview(reviewId: string): Promise<void> {
   if (!review.providerKeyId || !review.modelId) return;
   if (!review.columns || review.columns.length === 0) return;
 
+  // H15-f : requalifie d'abord les lignes « running » abandonnées (au-delà du
+  // seuil) en « error », pour qu'elles soient reprises par l'update suivant.
+  // Les « running » récentes (run légitime en cours) ne sont pas touchées.
+  await db
+    .update(tabularReviewRows)
+    .set({
+      status: "error",
+      error: "Traitement interrompu — relancé.",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(tabularReviewRows.reviewId, reviewId),
+        eq(tabularReviewRows.status, "running"),
+        lt(tabularReviewRows.updatedAt, new Date(Date.now() - STALE_RUNNING_MS))
+      )
+    );
+
   // Snapshot des lignes à traiter, en une seule update pour libérer le
   // request handler immédiatement.
   const rowsToProcess = await db
@@ -210,11 +260,7 @@ async function processReviewRows({
   const key = await loadProviderKey(userId, providerKeyId);
   const model = modelFromKey(key, modelId);
 
-  const valuesSchema = z.object(
-    Object.fromEntries(
-      columns.map((c) => [c.id, z.string().describe(c.prompt)])
-    )
-  );
+  const valuesSchema = buildValuesSchema(columns);
 
   // Concurrency limiter — une "fenêtre coulissante" de N promesses en vol.
   let cursor = 0;
