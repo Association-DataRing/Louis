@@ -72,6 +72,14 @@ import {
 import { MODEL_CATALOG, DEFAULT_MODEL } from "@/lib/providers/models";
 import { computeCost, formatCost } from "@/lib/providers/pricing";
 import { estimateCalls, estimateRunCost } from "@/lib/orchestrator/cost-estimate";
+import {
+  LegifranceCitations,
+  PappersResults,
+  PappersCompany,
+  type LegifranceHitView,
+  type PappersResultView,
+  type PappersDetailsView,
+} from "./citation-cards";
 
 type KeyOption = {
   id: string;
@@ -581,6 +589,29 @@ function ToolPart({
         </div>
       </div>
     );
+  }
+
+  // R3 : citations Légifrance / Pappers cliquables (au lieu de jeter les URLs
+  // sources dans une pill grise « Terminé »).
+  if (name === "legifrance_search" && !isPending) {
+    const d = unwrapToolResult<{ query: string; hits: LegifranceHitView[] }>(
+      output
+    );
+    if (d?.hits?.length) return <LegifranceCitations hits={d.hits} />;
+  }
+
+  if (name === "pappers_search" && !isPending) {
+    const d = unwrapToolResult<{
+      query: string;
+      total: number;
+      results: PappersResultView[];
+    }>(output);
+    if (d?.results?.length) return <PappersResults results={d.results} />;
+  }
+
+  if (name === "pappers_get" && !isPending) {
+    const d = unwrapToolResult<PappersDetailsView>(output);
+    if (d?.siren) return <PappersCompany d={d} />;
   }
 
   return (
