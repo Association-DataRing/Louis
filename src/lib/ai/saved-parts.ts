@@ -33,6 +33,10 @@ export function uiPartsFromSaved(
         input: p.input,
         output: result?.output,
       } as never);
+    } else if (p.type === "data") {
+      // Ré-émet le data part tel que les consommateurs (theatre, badges,
+      // skills) l'attendent : { type: "data-agent-event", data }.
+      out.push({ type: p.dataType, data: p.data } as never);
     }
     // tool-result : déjà pairé avec son tool-call ci-dessus, on saute.
   }

@@ -425,6 +425,16 @@ export async function POST(req: Request) {
                 output: toolPart.output,
               });
             }
+          } else if (PERSISTED_DATA_PARTS.has(part.type)) {
+            // H3a : persiste le trail multi-agents (events/outputs/retries) +
+            // skills détectées pour qu'ils survivent au reload (theatre,
+            // badges d'étapes, pills « Compétence appliquée »).
+            const dataPart = part as { type: string; data?: unknown };
+            savedParts.push({
+              type: "data",
+              dataType: dataPart.type,
+              data: capAgentOutput(dataPart.type, dataPart.data),
+            });
           }
         }
       }
@@ -496,4 +506,26 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isUuid(value: string): boolean {
   return UUID_REGEX.test(value);
+}
+
+// Data parts du trail multi-agents persistés (H3a). On exclut data-final-text
+// (non consommé au rendu) et tout autre data part transitoire.
+const PERSISTED_DATA_PARTS = new Set<string>([
+  "data-agent-event",
+  "data-agent-output",
+  "data-agent-retry",
+  "data-skills-detected",
+]);
+
+/** Cap la taille du texte intermédiaire persisté (data-agent-output) pour ne
+ * pas faire exploser la colonne jsonb sur les conversations longues. */
+function capAgentOutput(dataType: string, data: unknown): unknown {
+  if (dataType !== "data-agent-output") return data;
+  if (data && typeof data === "object" && "output" in data) {
+    const d = data as { output?: unknown };
+    if (typeof d.output === "string" && d.output.length > 12_000) {
+      return { ...data, output: `${d.output.slice(0, 12_000)}…` };
+    }
+  }
+  return data;
 }

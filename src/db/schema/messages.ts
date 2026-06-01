@@ -33,7 +33,11 @@ export type SavedPart =
       toolCallId: string;
       toolName: string;
       output: unknown;
-    };
+    }
+  // Trail d'audit multi-agents (events/outputs/retries) + skills détectées,
+  // persistés pour survivre au reload (theatre, badges, pills skills). Le
+  // `dataType` est le type du data part AI SDK (ex. "data-agent-event").
+  | { type: "data"; dataType: string; data: unknown };
 
 export const messages = pgTable("messages", {
   id: uuid("id").defaultRandom().primaryKey(),

@@ -6,7 +6,7 @@ import { and, asc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { conversations, messages } from "@/db/schema";
+import { agentRuns, conversations, messages } from "@/db/schema";
 
 const titleSchema = z.string().trim().min(1).max(120);
 
@@ -137,6 +137,137 @@ export async function editUserMessageAndTrim(
 
   revalidatePath("/chat");
   return { ok: true };
+}
+
+export type AuditRunView = {
+  messageId: string | null;
+  role: string;
+  label: string;
+  modelId: string | null;
+  providerType: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  latencyMs: number | null;
+  status: string;
+  error: string | null;
+  startedAt: Date;
+  finishedAt: Date | null;
+};
+
+/**
+ * H3b : trail d'audit multi-agents d'une conversation, groupé par message
+ * assistant (agent_runs.messageId, rattaché côté route — P1/H9). Vérifie la
+ * propriété de la conversation. Sert à l'affichage et à l'export (H5).
+ */
+export async function getConversationAuditTrail(
+  conversationId: string
+): Promise<{ ok: true; runs: AuditRunView[] } | { ok: false }> {
+  const userId = await requireUserId();
+  const [conv] = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        eq(conversations.userId, userId)
+      )
+    )
+    .limit(1);
+  if (!conv) return { ok: false };
+
+  const runs = await db
+    .select({
+      messageId: agentRuns.messageId,
+      role: agentRuns.role,
+      label: agentRuns.label,
+      modelId: agentRuns.modelId,
+      providerType: agentRuns.providerType,
+      inputTokens: agentRuns.inputTokens,
+      outputTokens: agentRuns.outputTokens,
+      latencyMs: agentRuns.latencyMs,
+      status: agentRuns.status,
+      error: agentRuns.error,
+      startedAt: agentRuns.startedAt,
+      finishedAt: agentRuns.finishedAt,
+    })
+    .from(agentRuns)
+    .where(eq(agentRuns.conversationId, conversationId))
+    .orderBy(asc(agentRuns.startedAt));
+
+  return { ok: true, runs };
+}
+
+/**
+ * H5 : export du trail d'audit en JSON, groupé par message. Livrable
+ * « auditable / opposable » : qui (agents, rôles, modèles) a produit quoi,
+ * à quel coût (tokens) et latence, avec les erreurs éventuelles.
+ */
+export async function exportConversationAuditJson(
+  conversationId: string
+): Promise<{ ok: true; json: string; filename: string } | { ok: false }> {
+  const userId = await requireUserId();
+  const [conv] = await db
+    .select({
+      id: conversations.id,
+      title: conversations.title,
+      createdAt: conversations.createdAt,
+    })
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        eq(conversations.userId, userId)
+      )
+    )
+    .limit(1);
+  if (!conv) return { ok: false };
+
+  const trail = await getConversationAuditTrail(conversationId);
+  if (!trail.ok) return { ok: false };
+
+  const byMessage = new Map<string, AuditRunView[]>();
+  for (const r of trail.runs) {
+    const key = r.messageId ?? "(non rattaché)";
+    const list = byMessage.get(key) ?? [];
+    list.push(r);
+    byMessage.set(key, list);
+  }
+
+  const payload = {
+    conversation: {
+      id: conv.id,
+      title: conv.title,
+      createdAt: new Date(conv.createdAt).toISOString(),
+      exportedAt: new Date().toISOString(),
+    },
+    messages: Array.from(byMessage.entries()).map(([messageId, agents]) => ({
+      messageId,
+      agents: agents.map((a) => ({
+        role: a.role,
+        label: a.label,
+        modelId: a.modelId,
+        providerType: a.providerType,
+        inputTokens: a.inputTokens,
+        outputTokens: a.outputTokens,
+        latencyMs: a.latencyMs,
+        status: a.status,
+        error: a.error,
+        startedAt: a.startedAt ? new Date(a.startedAt).toISOString() : null,
+        finishedAt: a.finishedAt ? new Date(a.finishedAt).toISOString() : null,
+      })),
+    })),
+  };
+
+  const safeName = conv.title
+    .replace(/[^a-zA-Z0-9_\- ]+/g, "")
+    .replace(/\s+/g, "-")
+    .slice(0, 60)
+    .trim();
+  return {
+    ok: true,
+    json: JSON.stringify(payload, null, 2),
+    filename: `${safeName || "conversation"}-audit.json`,
+  };
 }
 
 export async function exportConversationMarkdown(

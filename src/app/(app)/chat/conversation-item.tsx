@@ -32,6 +32,7 @@ import {
   deleteConversation,
   togglePinConversation,
   exportConversationMarkdown,
+  exportConversationAuditJson,
 } from "./actions";
 import { moveConversationToProject } from "../projects/actions";
 
@@ -43,6 +44,19 @@ type Props = {
   currentProjectId?: string | null;
   projects?: { id: string; name: string }[];
 };
+
+/** Déclenche le téléchargement d'un contenu texte généré côté serveur. */
+function downloadBlob(content: string, mime: string, filename: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export function ConversationItem({
   id,
@@ -97,15 +111,15 @@ export function ConversationItem({
     startTransition(async () => {
       const result = await exportConversationMarkdown(id);
       if (!result.ok) return;
-      const blob = new Blob([result.markdown], { type: "text/markdown" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = result.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      downloadBlob(result.markdown, "text/markdown", result.filename);
+    });
+  }
+
+  function handleExportAudit() {
+    startTransition(async () => {
+      const result = await exportConversationAuditJson(id);
+      if (!result.ok) return;
+      downloadBlob(result.json, "application/json", result.filename);
     });
   }
 
@@ -182,6 +196,10 @@ export function ConversationItem({
           <DropdownMenuItem onSelect={handleExport}>
             <IconDownload className="size-4" />
             Exporter en Markdown
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleExportAudit}>
+            <IconDownload className="size-4" />
+            Exporter l&apos;audit (JSON)
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() =>
