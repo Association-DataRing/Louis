@@ -207,7 +207,11 @@ export function ProviderCard({ type, keys }: Props) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    disabled={pending || !meta.testBaseUrl}
+                    // R5 : testable dès qu'une base existe — soit l'URL du
+                    // catalogue, soit le baseUrl saisi par l'utilisateur
+                    // (Scaleway/OVH/Albert/OpenAI-compatible self-host). Avant,
+                    // ces providers avaient un test grisé sans explication.
+                    disabled={pending || !(meta.testBaseUrl || primary.baseUrl)}
                     onSelect={() => {
                       startTransition(() => testProviderKey(primary.id));
                     }}

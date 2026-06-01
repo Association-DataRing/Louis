@@ -7,6 +7,7 @@ import {
   IconMessageCircle,
   IconFolder,
   IconFolders,
+  IconCheck,
 } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -23,6 +24,8 @@ import {
   formatTotals,
 } from "@/lib/providers/pricing";
 import { getUserMonthlyQuotaCents } from "@/lib/usage/quota";
+import { listEnabledModels } from "../settings/models/actions";
+import { listActiveConnectorTypes } from "@/lib/connectors/runtime";
 import { ModuleHelp } from "@/components/module-help";
 
 export default async function DashboardPage() {
@@ -42,6 +45,8 @@ export default async function DashboardPage() {
     docCount,
     monthRows,
     quotaCents,
+    enabledModels,
+    activeConnectors,
   ] = await Promise.all([
     db
       .select({
@@ -89,10 +94,14 @@ export default async function DashboardPage() {
         )
       ),
     getUserMonthlyQuotaCents(userId),
+    listEnabledModels(userId),
+    listActiveConnectorTypes(userId),
   ]);
 
   const monthCost = aggregateCosts(monthRows);
   const hasProvider = activeKeys.length > 0;
+  const hasModel = enabledModels.length > 0;
+  const hasConnector = activeConnectors.length > 0;
   const hasContent = recentConvs.length > 0;
 
   // H22 : rendre le plafond mensuel visible au membre (jusqu'ici réservé à
@@ -131,7 +140,13 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      {!hasProvider && <SetupBanner />}
+      {(!hasProvider || !hasModel) && (
+        <ReadinessChecklist
+          hasProvider={hasProvider}
+          hasModel={hasModel}
+          hasConnector={hasConnector}
+        />
+      )}
 
       {/* Stats inline en grande typographie, pas une grille de cartes */}
       <section className="mb-14 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-6 border-b border-border pb-12">
@@ -207,25 +222,105 @@ export default async function DashboardPage() {
   );
 }
 
-function SetupBanner() {
+/**
+ * R9' : checklist de mise en route STATEFUL (et non plus basée sur le nombre
+ * de conversations). Reflète l'état réel : provider actif → modèle activé →
+ * connecteur (optionnel) → chat. Reste affichée tant que provider OU modèle
+ * manque ; disparaît une fois les deux présents.
+ */
+function ReadinessChecklist({
+  hasProvider,
+  hasModel,
+  hasConnector,
+}: {
+  hasProvider: boolean;
+  hasModel: boolean;
+  hasConnector: boolean;
+}) {
+  const steps = [
+    {
+      done: hasProvider,
+      label: "Ajouter une clé provider IA",
+      href: "/settings/providers",
+      hint: "Mistral, Scaleway, OVH, Albert, Anthropic, ou endpoint compatible.",
+    },
+    {
+      done: hasModel,
+      label: "Activer au moins un modèle",
+      href: "/settings/models/library",
+      hint: "Sans modèle activé, le chat reste vide.",
+    },
+    {
+      done: hasConnector,
+      label: "Brancher une source juridique",
+      href: "/settings/connectors",
+      hint: "Légifrance (PISTE), Pappers.",
+      optional: true,
+    },
+  ];
+  const ready = hasProvider && hasModel;
+
   return (
-    <div className="mb-10 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4 flex items-start gap-3">
-      <IconKey className="size-5 shrink-0 text-primary mt-0.5" />
-      <div className="flex-1">
-        <p className="font-medium">
-          Ajoutez une première clé pour démarrer.
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Sans clé provider active, le chat ne peut pas répondre. Configurez
-          Mistral, Scaleway, OVH, Albert, ou tout autre endpoint compatible.
-        </p>
-        <Link
-          href="/settings/providers"
-          className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline underline-offset-2"
-        >
-          Ouvrir Providers
-          <IconArrowUpRight className="size-3.5" />
-        </Link>
+    <div className="mb-10 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4">
+      <div className="flex items-start gap-3">
+        <IconKey className="size-5 shrink-0 text-primary mt-0.5" />
+        <div className="flex-1">
+          <p className="font-medium">Mise en route</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Quelques étapes pour rendre Louis opérationnel sur votre instance.
+          </p>
+          <ol className="mt-4 space-y-2.5">
+            {steps.map((s, i) => (
+              <li key={s.href} className="flex items-center gap-2.5 text-sm">
+                {s.done ? (
+                  <span className="size-5 shrink-0 grid place-items-center rounded-full bg-success/15 text-success">
+                    <IconCheck className="size-3.5" />
+                  </span>
+                ) : (
+                  <span className="size-5 shrink-0 grid place-items-center rounded-full border border-border text-[11px] tabular-nums text-muted-foreground">
+                    {i + 1}
+                  </span>
+                )}
+                <Link
+                  href={s.href}
+                  className={
+                    s.done
+                      ? "text-muted-foreground line-through"
+                      : "font-medium hover:text-primary"
+                  }
+                >
+                  {s.label}
+                </Link>
+                {s.optional && !s.done && (
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    optionnel
+                  </span>
+                )}
+                {!s.done && (
+                  <span className="hidden sm:inline text-xs text-muted-foreground">
+                    — {s.hint}
+                  </span>
+                )}
+              </li>
+            ))}
+            <li className="flex items-center gap-2.5 text-sm">
+              <span className="size-5 shrink-0 grid place-items-center rounded-full border border-border">
+                <IconMessageCircle className="size-3 text-muted-foreground" />
+              </span>
+              <Link
+                href="/chat"
+                aria-disabled={!ready}
+                className={
+                  ready
+                    ? "font-medium hover:text-primary"
+                    : "text-muted-foreground pointer-events-none"
+                }
+              >
+                Lancer une première conversation
+              </Link>
+            </li>
+          </ol>
+        </div>
       </div>
     </div>
   );
