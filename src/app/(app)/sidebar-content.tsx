@@ -4,35 +4,19 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  IconLayoutDashboard,
-  IconMessageCircle,
-  IconFolder,
   IconLogout,
   IconShieldLock,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
   IconSearch,
   IconPlus,
-  IconFolders,
-  IconTable,
-  IconLibrary,
-  IconBriefcase,
   IconSettings,
 } from "@tabler/icons-react";
 import { signOutAction } from "@/auth/actions";
 import { LouisLogo } from "@/components/louis-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { PRIMARY_NAV } from "@/lib/navigation";
 import { ConversationItem } from "./chat/conversation-item";
-
-const navItems = [
-  { href: "/dashboard", label: "Tableau de bord", icon: IconLayoutDashboard },
-  { href: "/chat", label: "Conversations", icon: IconMessageCircle },
-  { href: "/projects", label: "Projets", icon: IconFolders },
-  { href: "/documents", label: "Documents", icon: IconFolder },
-  { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
-  { href: "/workflows", label: "Trames", icon: IconLibrary },
-  { href: "/board", label: "Board", icon: IconBriefcase },
-];
 
 const settingsNav = {
   href: "/settings",
@@ -148,7 +132,7 @@ export function SidebarContent({
       {/* Nav + conversations */}
       <div className="flex-1 overflow-y-auto px-2.5 pb-3">
         <nav aria-label="Navigation principale" className="space-y-0.5">
-          {navItems.map((item) => {
+          {PRIMARY_NAV.map((item) => {
             const Icon = item.icon;
             const isActive =
               pathname === item.href ||
