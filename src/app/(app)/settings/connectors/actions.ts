@@ -205,17 +205,24 @@ export async function updateConnectorKey(
   return { ok: true };
 }
 
-export async function toggleConnectorKeyActive(id: string): Promise<void> {
+export async function toggleConnectorKeyActive(
+  id: string
+): Promise<ActionResult> {
   const userId = await requireUserId();
   const [current] = await db
     .select({ isActive: connectorKeys.isActive })
     .from(connectorKeys)
     .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)))
     .limit(1);
-  if (!current) return;
-  await db
-    .update(connectorKeys)
-    .set({ isActive: !current.isActive })
-    .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)));
+  if (!current) return { ok: false, error: "Connecteur introuvable." };
+  try {
+    await db
+      .update(connectorKeys)
+      .set({ isActive: !current.isActive })
+      .where(and(eq(connectorKeys.id, id), eq(connectorKeys.userId, userId)));
+  } catch {
+    return { ok: false, error: "Impossible de modifier l'état du connecteur." };
+  }
   revalidatePath("/settings/connectors");
+  return { ok: true };
 }

@@ -12,6 +12,7 @@ import {
   IconStar,
   IconTrash,
 } from "@tabler/icons-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,7 +145,10 @@ export function ProviderCard({ type, keys }: Props) {
                 checked={primary.isActive}
                 disabled={pending}
                 onCheckedChange={() => {
-                  startTransition(() => toggleProviderKeyActive(primary.id));
+                  startTransition(async () => {
+                    const result = await toggleProviderKeyActive(primary.id);
+                    if (!result.ok) toast.error(result.error);
+                  });
                 }}
                 aria-label="Activer ce provider"
               />

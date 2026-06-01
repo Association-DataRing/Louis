@@ -140,7 +140,10 @@ export function ConnectorCard({ type, keys }: Props) {
                 checked={primary.isActive}
                 disabled={pending}
                 onCheckedChange={() => {
-                  startTransition(() => toggleConnectorKeyActive(primary.id));
+                  startTransition(async () => {
+                    const result = await toggleConnectorKeyActive(primary.id);
+                    if (!result.ok) toast.error(result.error);
+                  });
                 }}
                 aria-label="Activer ce connecteur"
               />

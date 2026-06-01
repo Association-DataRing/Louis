@@ -10,6 +10,7 @@ import {
   IconRefresh,
   IconTrash,
 } from "@tabler/icons-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -94,7 +95,10 @@ export function McpRow({ entry }: { entry: McpServer }) {
         checked={entry.isActive}
         disabled={pending}
         onCheckedChange={() => {
-          startTransition(() => toggleMcpServerActive(entry.id));
+          startTransition(async () => {
+            const result = await toggleMcpServerActive(entry.id);
+            if (!result.ok) toast.error(result.error);
+          });
         }}
         aria-label="Activer ce serveur"
       />

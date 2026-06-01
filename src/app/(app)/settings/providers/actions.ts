@@ -95,7 +95,9 @@ export async function deleteProviderKey(id: string): Promise<void> {
   revalidatePath("/settings/providers");
 }
 
-export async function toggleProviderKeyActive(id: string): Promise<void> {
+export async function toggleProviderKeyActive(
+  id: string
+): Promise<ActionResult> {
   const userId = await requireUserId();
   const [current] = await db
     .select({
@@ -106,11 +108,15 @@ export async function toggleProviderKeyActive(id: string): Promise<void> {
     .from(providerKeys)
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)))
     .limit(1);
-  if (!current) return;
-  await db
-    .update(providerKeys)
-    .set({ isActive: !current.isActive })
-    .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
+  if (!current) return { ok: false, error: "Clé introuvable." };
+  try {
+    await db
+      .update(providerKeys)
+      .set({ isActive: !current.isActive })
+      .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
+  } catch {
+    return { ok: false, error: "Impossible de modifier l'état de la clé." };
+  }
   await recordAudit({
     userId,
     action: "provider.toggle",
@@ -118,6 +124,7 @@ export async function toggleProviderKeyActive(id: string): Promise<void> {
     meta: { newState: !current.isActive ? "active" : "inactive" },
   });
   revalidatePath("/settings/providers");
+  return { ok: true };
 }
 
 export async function setProviderKeyDefault(id: string): Promise<void> {
