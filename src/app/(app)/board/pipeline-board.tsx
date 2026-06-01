@@ -3,27 +3,32 @@
 import { useState } from "react";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
 import { AgentCard } from "./agent-card";
-import { AgentEditSheet } from "./agent-edit-sheet";
+import { AgentEditSheet, type AgentEditModelOption } from "./agent-edit-sheet";
 
 interface PipelineBoardProps {
   pipeline: Pipeline;
   agents: PipelineAgent[];
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
+  enabledModels?: AgentEditModelOption[];
+  availableTools?: string[];
 }
 
 /**
- * Affichage hiérarchique d'une pipeline en mode « board ». L'agent
- * terminal (dernier de la séquence) est mis en avant en haut — c'est
- * celui dont la réponse arrive à l'utilisateur. Les agents intermédiaires
- * sont affichés en grille en dessous, dans leur ordre d'exécution.
+ * Affichage vertical d'une pipeline — fallback mobile (H7) du canvas React
+ * Flow, inutilisable sur petit écran. L'agent terminal (dernier de la
+ * séquence) est mis en avant en haut — c'est celui dont la réponse arrive à
+ * l'utilisateur ; les agents intermédiaires sont empilés en dessous dans
+ * leur ordre d'exécution.
  *
  * Pour les pipelines mono-agent (chat-simple), on affiche juste la seule
- * carte centrée — pas de hiérarchie artificielle.
+ * carte — pas de hiérarchie artificielle.
  */
 export function PipelineBoard({
   pipeline,
   agents,
   providerKeys,
+  enabledModels,
+  availableTools,
 }: PipelineBoardProps) {
   const [editingAgent, setEditingAgent] = useState<PipelineAgent | null>(null);
 
@@ -69,12 +74,7 @@ export function PipelineBoard({
             <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
               s&apos;appuie sur
             </div>
-            <div
-              className="grid gap-3 w-full"
-              style={{
-                gridTemplateColumns: `repeat(${Math.min(team.length, 3)}, minmax(0, 1fr))`,
-              }}
-            >
+            <div className="grid grid-cols-1 gap-4 w-full">
               {team.map((a, i) => (
                 <div key={a.id} className="relative">
                   <span className="absolute -top-3 left-3 text-[11px] uppercase tracking-wider bg-background px-1 text-muted-foreground">
@@ -98,6 +98,8 @@ export function PipelineBoard({
         <AgentEditSheet
           agent={editingAgent}
           providerKeys={providerKeys}
+          enabledModels={enabledModels}
+          availableTools={availableTools}
           open={!!editingAgent}
           onOpenChange={(open) => {
             if (!open) setEditingAgent(null);

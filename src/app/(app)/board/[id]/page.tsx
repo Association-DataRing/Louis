@@ -8,6 +8,7 @@ import { providerKeys } from "@/db/schema";
 import { getPipeline } from "../actions";
 import { PipelineActionsMenu } from "../pipeline-actions-menu";
 import { PipelineWorkflow } from "./pipeline-workflow";
+import { PipelineBoard } from "../pipeline-board";
 import { CloneToEditButton } from "./clone-to-edit-button";
 import { PipelineModeBar } from "./pipeline-mode-bar";
 import { AddAgentDialog } from "./add-agent-dialog";
@@ -120,15 +121,29 @@ export default async function PipelineEditorPage({
       <PipelineModeBar pipeline={data.pipeline} agentCount={data.agents.length} />
 
       <div className="relative mt-6">
-        <PipelineWorkflow
-          pipeline={data.pipeline}
-          agents={data.agents}
-          providerKeys={keys}
-          enabledModels={enabledModels}
-          availableTools={availableTools}
-        />
+        {/* Desktop : canvas React Flow. */}
+        <div className="hidden sm:block">
+          <PipelineWorkflow
+            pipeline={data.pipeline}
+            agents={data.agents}
+            providerKeys={keys}
+            enabledModels={enabledModels}
+            availableTools={availableTools}
+          />
+        </div>
+        {/* Mobile (H7) : vue-liste verticale — le canvas est inutilisable au
+            doigt sous 640px. */}
+        <div className="sm:hidden">
+          <PipelineBoard
+            pipeline={data.pipeline}
+            agents={data.agents}
+            providerKeys={keys}
+            enabledModels={enabledModels}
+            availableTools={availableTools}
+          />
+        </div>
         {!data.pipeline.isPreset && (
-          <div className="absolute left-4 bottom-4 z-10">
+          <div className="mt-4 sm:mt-0 sm:absolute sm:left-4 sm:bottom-4 sm:z-10">
             <AddAgentDialog
               pipelineId={data.pipeline.id}
               providerKeys={keys}
