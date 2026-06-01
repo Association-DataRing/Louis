@@ -82,10 +82,15 @@ function AgentFlowNodeBase({ data }: NodeProps) {
           Erreur
         </span>
       )}
+      {/* Handle conservé pour l'ANCRAGE des edges auto-générées, mais invisible
+          et non-interactif : le graphe n'est pas un éditeur de connexions
+          (nodesConnectable=false). Avant, des poignées visibles laissaient
+          croire qu'on pouvait relier les agents à la main (H7). */}
       <Handle
         type="target"
         position={Position.Left}
-        className="!size-2 !border !border-foreground/40 !bg-background"
+        isConnectable={false}
+        className="!size-2 !border-0 !bg-transparent !opacity-0 !pointer-events-none"
       />
 
       {/* Header */}
@@ -187,7 +192,8 @@ function AgentFlowNodeBase({ data }: NodeProps) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!size-2 !border !border-foreground/40 !bg-background"
+        isConnectable={false}
+        className="!size-2 !border-0 !bg-transparent !opacity-0 !pointer-events-none"
       />
     </div>
   );
