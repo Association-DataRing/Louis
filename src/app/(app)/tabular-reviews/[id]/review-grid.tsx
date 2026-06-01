@@ -1,17 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   IconCheck,
   IconAlertTriangle,
   IconClock,
   IconTrash,
+  IconRefresh,
 } from "@tabler/icons-react";
 import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { ColumnEditPopover } from "./column-edit-popover";
 import type { ReviewColumn, TabularReviewRow } from "@/db/schema";
-import { deleteReviewRow } from "../actions";
+import { deleteReviewRow, rerunReviewRow } from "../actions";
 
 type Row = TabularReviewRow & { filename: string };
 
@@ -98,8 +100,17 @@ export function ReviewGrid({ columns, rows, reviewId }: Props) {
 }
 
 function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  function rerun() {
+    startTransition(async () => {
+      await rerunReviewRow(row.id);
+      router.refresh();
+    });
+  }
+
   return (
     <article className="border border-border rounded-lg bg-card overflow-hidden">
       <header className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
@@ -109,15 +120,26 @@ function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
             <StatusBadge status={row.status} error={row.error} />
           </div>
         </div>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => setDeleteOpen(true)}
-          className="size-10 shrink-0 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          aria-label="Retirer"
-        >
-          <IconTrash className="size-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            disabled={pending || row.status === "running"}
+            onClick={rerun}
+            className="size-10 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+            aria-label="Ré-extraire ce document"
+          >
+            <IconRefresh className="size-4" />
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setDeleteOpen(true)}
+            className="size-10 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            aria-label="Retirer"
+          >
+            <IconTrash className="size-4" />
+          </button>
+        </div>
       </header>
       <ConfirmDeleteDialog
         open={deleteOpen}
@@ -163,8 +185,16 @@ function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
 }
 
 function RowItem({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  function rerun() {
+    startTransition(async () => {
+      await rerunReviewRow(row.id);
+      router.refresh();
+    });
+  }
 
   return (
     <tr className="border-b border-border last:border-0 hover:bg-accent/20">
@@ -193,15 +223,27 @@ function RowItem({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
         );
       })}
       <td className="px-2 py-2.5">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => setDeleteOpen(true)}
-          className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          aria-label="Retirer"
-        >
-          <IconTrash className="size-3.5" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            disabled={pending || row.status === "running"}
+            onClick={rerun}
+            className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+            aria-label="Ré-extraire ce document"
+            title="Ré-extraire ce document"
+          >
+            <IconRefresh className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setDeleteOpen(true)}
+            className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            aria-label="Retirer"
+          >
+            <IconTrash className="size-3.5" />
+          </button>
+        </div>
         <ConfirmDeleteDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt } from "drizzle-orm";
 import { z } from "zod";
 import { generateText, Output, type LanguageModel } from "ai";
 import { auth } from "@/auth";
@@ -151,6 +151,167 @@ export async function deleteReviewRow(rowId: string): Promise<void> {
   if (!row) return;
   await db.delete(tabularReviewRows).where(eq(tabularReviewRows.id, rowId));
   revalidatePath(`/tabular-reviews/${row.reviewId}`);
+}
+
+/**
+ * H15-a : ré-extrait UNE ligne (toutes ses colonnes), même si elle était déjà
+ * « ok ». Utile pour relancer un document dont l'extraction a déçu, sans
+ * toucher aux autres lignes.
+ */
+export async function rerunReviewRow(rowId: string): Promise<void> {
+  const userId = await requireUserId();
+  const [row] = await db
+    .select({
+      reviewId: tabularReviewRows.reviewId,
+      documentId: tabularReviewRows.documentId,
+      providerKeyId: tabularReviews.providerKeyId,
+      modelId: tabularReviews.modelId,
+      columns: tabularReviews.columns,
+    })
+    .from(tabularReviewRows)
+    .innerJoin(
+      tabularReviews,
+      eq(tabularReviews.id, tabularReviewRows.reviewId)
+    )
+    .where(
+      and(
+        eq(tabularReviewRows.id, rowId),
+        eq(tabularReviews.userId, userId)
+      )
+    )
+    .limit(1);
+  if (!row || !row.providerKeyId || !row.modelId || !row.columns?.length) return;
+
+  await db
+    .update(tabularReviewRows)
+    .set({ status: "running", error: null, updatedAt: new Date() })
+    .where(eq(tabularReviewRows.id, rowId));
+  revalidatePath(`/tabular-reviews/${row.reviewId}`);
+
+  const { reviewId, documentId, providerKeyId, modelId, columns } = row;
+  after(async () => {
+    try {
+      await processReviewRows({
+        userId,
+        reviewId,
+        providerKeyId,
+        modelId,
+        columns,
+        rows: [{ id: rowId, documentId }],
+      });
+    } catch (err) {
+      log.error("tabular-reviews", "rerun row failed", {
+        error: err instanceof Error ? err.message : err,
+      });
+    }
+  });
+}
+
+/**
+ * H15-b : ré-extrait UNE colonne sur toutes les lignes — à déclencher après
+ * avoir modifié son prompt. Le merge dans extractRow préserve les valeurs des
+ * autres colonnes.
+ */
+export async function rerunReviewColumn(
+  reviewId: string,
+  columnId: string
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const [review] = await db
+    .select()
+    .from(tabularReviews)
+    .where(
+      and(eq(tabularReviews.id, reviewId), eq(tabularReviews.userId, userId))
+    )
+    .limit(1);
+  if (!review) return { ok: false, error: "Analyse introuvable." };
+  if (!review.providerKeyId || !review.modelId) {
+    return { ok: false, error: "Configuration du modèle incomplète." };
+  }
+  const col = review.columns.find((c) => c.id === columnId);
+  if (!col) return { ok: false, error: "Colonne introuvable." };
+
+  const rows = await db
+    .update(tabularReviewRows)
+    .set({ status: "running", error: null, updatedAt: new Date() })
+    .where(eq(tabularReviewRows.reviewId, reviewId))
+    .returning({
+      id: tabularReviewRows.id,
+      documentId: tabularReviewRows.documentId,
+    });
+  revalidatePath(`/tabular-reviews/${reviewId}`);
+  if (rows.length === 0) return { ok: true };
+
+  const { providerKeyId, modelId } = review;
+  after(async () => {
+    try {
+      await processReviewRows({
+        userId,
+        reviewId,
+        providerKeyId,
+        modelId,
+        columns: [col],
+        rows,
+      });
+    } catch (err) {
+      log.error("tabular-reviews", "rerun column failed", {
+        error: err instanceof Error ? err.message : err,
+      });
+    }
+  });
+  return { ok: true };
+}
+
+const addDocsSchema = z.object({
+  documentIds: z.array(z.uuid()).min(1).max(200),
+});
+
+/**
+ * H15-c : ajoute des documents à une analyse existante (la promesse « vous
+ * pourrez en ajouter plus tard »). N'insère que les documents de
+ * l'utilisateur avec du texte extrait ; pas de doublon (index unique).
+ */
+export async function addReviewDocuments(
+  reviewId: string,
+  documentIds: string[]
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const parsed = addDocsSchema.safeParse({ documentIds });
+  if (!parsed.success) return { ok: false, error: "Sélection invalide." };
+
+  const [review] = await db
+    .select({ id: tabularReviews.id })
+    .from(tabularReviews)
+    .where(
+      and(eq(tabularReviews.id, reviewId), eq(tabularReviews.userId, userId))
+    )
+    .limit(1);
+  if (!review) return { ok: false, error: "Analyse introuvable." };
+
+  const validDocs = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.userId, userId),
+        inArray(documents.id, parsed.data.documentIds),
+        isNotNull(documents.extractedText)
+      )
+    );
+  if (validDocs.length === 0) {
+    return {
+      ok: false,
+      error: "Aucun document éligible (texte non extrait ?).",
+    };
+  }
+
+  await db
+    .insert(tabularReviewRows)
+    .values(validDocs.map((d) => ({ reviewId, documentId: d.id })))
+    .onConflictDoNothing();
+
+  revalidatePath(`/tabular-reviews/${reviewId}`);
+  return { ok: true };
 }
 
 /**
@@ -327,10 +488,21 @@ async function extractRow({
       prompt: `Document : "${doc.filename}"\n\n${promptDoc}\n\nExtrais les valeurs demandées par les descriptions des champs.`,
     });
 
+    // Merge (pas overwrite) : préserve les valeurs des AUTRES colonnes — clé
+    // pour la ré-extraction d'une seule colonne (H15-b). Pour un run complet,
+    // les valeurs de départ sont vides, donc merge = set.
+    const [existing] = await db
+      .select({ values: tabularReviewRows.values })
+      .from(tabularReviewRows)
+      .where(eq(tabularReviewRows.id, row.id))
+      .limit(1);
     await db
       .update(tabularReviewRows)
       .set({
-        values: result.output as Record<string, string>,
+        values: {
+          ...(existing?.values ?? {}),
+          ...(result.output as Record<string, string>),
+        },
         status: "ok",
         error: null,
         updatedAt: new Date(),

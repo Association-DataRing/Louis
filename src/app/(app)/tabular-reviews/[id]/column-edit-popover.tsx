@@ -24,7 +24,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import type { ReviewColumn, ReviewColumnFormat } from "@/db/schema";
-import { updateReviewColumn, deleteReviewColumn } from "../actions";
+import {
+  updateReviewColumn,
+  deleteReviewColumn,
+  rerunReviewColumn,
+} from "../actions";
 
 const FORMAT_LABELS: Record<ReviewColumnFormat, string> = {
   text: "Texte",
@@ -76,6 +80,31 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
       setOpen(false);
       router.refresh();
       toast.success("Colonne mise à jour", { description: label.trim() });
+    });
+  }
+
+  function handleSaveAndRerun() {
+    setError(null);
+    startTransition(async () => {
+      const saved = await updateReviewColumn(reviewId, column.id, {
+        label: label.trim(),
+        prompt: prompt.trim(),
+        format,
+      });
+      if (!saved.ok) {
+        setError(saved.error);
+        return;
+      }
+      const rerun = await rerunReviewColumn(reviewId, column.id);
+      if (!rerun.ok) {
+        setError(rerun.error);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+      toast.success("Colonne enregistrée — ré-extraction lancée", {
+        description: label.trim(),
+      });
     });
   }
 
@@ -170,8 +199,9 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
                 className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm leading-snug focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               />
               <p className="text-[10px] text-muted-foreground">
-                Décrivez ce que Louis doit extraire — l&apos;instruction est
-                envoyée au modèle pour chaque document de l&apos;analyse.
+                Décrivez ce que Louis doit extraire. Modifier le prompt ne
+                recalcule pas les valeurs déjà extraites — utilisez «&nbsp;Ré-extraire&nbsp;»
+                pour relancer cette colonne sur tous les documents.
               </p>
             </div>
             {error && (
@@ -193,18 +223,19 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setOpen(false)}
-                disabled={pending}
+                onClick={handleSave}
+                disabled={pending || !label.trim() || !prompt.trim()}
               >
-                Annuler
+                Enregistrer
               </Button>
               <Button
                 type="button"
                 size="sm"
-                onClick={handleSave}
+                onClick={handleSaveAndRerun}
                 disabled={pending || !label.trim() || !prompt.trim()}
+                title="Enregistre et relance l'extraction de cette colonne sur tous les documents"
               >
-                {pending ? "Enregistrement…" : "Enregistrer"}
+                {pending ? "…" : "Ré-extraire"}
               </Button>
             </div>
           </div>

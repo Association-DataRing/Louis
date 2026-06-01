@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import {
   IconArrowLeft,
   IconTable,
@@ -17,6 +17,7 @@ import {
 import { ReviewGrid } from "./review-grid";
 import { ReviewActions } from "./review-actions";
 import { AutoRefresh } from "./auto-refresh";
+import { AddDocumentsDialog } from "./add-documents-dialog";
 
 type Params = { id: string };
 
@@ -68,6 +69,18 @@ export default async function TabularReviewDetailPage({
   ).length;
   const runningCount = rows.filter((r) => r.status === "running").length;
 
+  // H15-c : documents indexables pas encore dans l'analyse, pour l'ajout.
+  const existingDocIds = new Set(rows.map((r) => r.documentId));
+  const allUserDocs = await db
+    .select({ id: documents.id, filename: documents.filename })
+    .from(documents)
+    .where(
+      and(eq(documents.userId, userId), isNotNull(documents.extractedText))
+    );
+  const availableDocuments = allUserDocs.filter(
+    (d) => !existingDocIds.has(d.id)
+  );
+
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-8 md:px-8 md:py-10">
       <Link
@@ -105,11 +118,17 @@ export default async function TabularReviewDetailPage({
             </p>
           </div>
         </div>
-        <ReviewActions
-          reviewId={review.id}
-          pendingCount={pendingCount}
-          totalRows={rows.length}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <AddDocumentsDialog
+            reviewId={review.id}
+            availableDocuments={availableDocuments}
+          />
+          <ReviewActions
+            reviewId={review.id}
+            pendingCount={pendingCount}
+            totalRows={rows.length}
+          />
+        </div>
       </header>
 
       <ReviewGrid columns={columns} rows={rows} reviewId={review.id} />
