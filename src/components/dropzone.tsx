@@ -30,6 +30,9 @@ export type UploadResult =
   | { ok: true; id: string; filename: string; sizeBytes: number }
   | { ok: false; error: string };
 
+/** Fichier refusé au drop, avec la raison — surfacé au caller (H16). */
+export type RejectedFile = { name: string; reason: "type" | "size" };
+
 export async function uploadDocument(
   file: File,
   opts: {
@@ -63,6 +66,9 @@ export async function uploadDocument(
 type DropzoneProps = {
   children: ReactNode;
   onFiles: (files: File[]) => void;
+  /** Appelé avec les fichiers refusés (type/taille) — pour ne plus les
+   * ignorer silencieusement (H16). */
+  onRejected?: (files: RejectedFile[]) => void;
   /** Liste de types MIME ou préfixes (ex: "text/"). */
   accept?: string[];
   maxBytes?: number;
@@ -80,13 +86,13 @@ type DropzoneProps = {
  * pour éviter le flicker sur les enfants, et filtre les fichiers via accept +
  * maxBytes avant de remonter au consommateur.
  *
- * Les fichiers rejetés sont silencieusement ignorés — c'est au caller
- * d'afficher un retour (compter `accepted.length` vs files reçus côté
- * `onDrop` au besoin).
+ * Les fichiers rejetés (type non supporté / trop volumineux) sont remontés
+ * via `onRejected` pour que le caller affiche un retour explicite (H16).
  */
 export function Dropzone({
   children,
   onFiles,
+  onRejected,
   accept = DEFAULT_ACCEPTED_TYPES,
   maxBytes = DEFAULT_MAX_BYTES,
   disabled = false,
@@ -138,12 +144,17 @@ export function Dropzone({
       e.preventDefault();
       enterCount.current = 0;
       setActive(false);
-      const files = Array.from(e.dataTransfer.files).filter(
-        (f) => isAccepted(f, accept) && f.size <= maxBytes
-      );
-      if (files.length > 0) onFiles(files);
+      const accepted: File[] = [];
+      const rejected: RejectedFile[] = [];
+      for (const f of Array.from(e.dataTransfer.files)) {
+        if (!isAccepted(f, accept)) rejected.push({ name: f.name, reason: "type" });
+        else if (f.size > maxBytes) rejected.push({ name: f.name, reason: "size" });
+        else accepted.push(f);
+      }
+      if (rejected.length > 0) onRejected?.(rejected);
+      if (accepted.length > 0) onFiles(accepted);
     },
-    [disabled, hasFiles, accept, maxBytes, onFiles]
+    [disabled, hasFiles, accept, maxBytes, onFiles, onRejected]
   );
 
   return (

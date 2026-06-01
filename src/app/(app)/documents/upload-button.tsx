@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { IconUpload } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { uploadDocument } from "@/components/dropzone";
 
 export function UploadButton({
   folderId = null,
@@ -17,30 +18,28 @@ export function UploadButton({
   const [pending, startTransition] = useTransition();
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
     setError(null);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    if (folderId) formData.append("folder", folderId);
-
+    // H16 : import multi-fichiers (l'input porte `multiple`). Upload
+    // séquentiel — l'API fait extraction + embedding synchrones, le
+    // parallélisme saturerait le provider d'embedding.
     startTransition(async () => {
-      try {
-        const res = await fetch("/api/documents/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const msg = await res.text();
-          setError(msg || "Erreur lors de l'envoi.");
-          return;
-        }
-        if (fileRef.current) fileRef.current.value = "";
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Erreur réseau.");
+      let failed = 0;
+      for (const file of files) {
+        const r = await uploadDocument(file, { folderId });
+        if (!r.ok) failed += 1;
       }
+      if (fileRef.current) fileRef.current.value = "";
+      if (failed > 0) {
+        setError(
+          `${failed} fichier${failed > 1 ? "s" : ""} sur ${files.length} n'${
+            failed > 1 ? "ont" : "a"
+          } pas pu être importé${failed > 1 ? "s" : ""}.`
+        );
+      }
+      router.refresh();
     });
   }
 
@@ -56,6 +55,7 @@ export function UploadButton({
       <input
         ref={fileRef}
         type="file"
+        multiple
         accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
         className="hidden"
         onChange={onChange}

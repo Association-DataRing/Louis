@@ -22,7 +22,14 @@ import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import type { DocumentFolder } from "@/db/schema";
 import { deleteFolder, renameFolder } from "./actions";
 
-export function FolderRow({ folder }: { folder: DocumentFolder }) {
+export function FolderRow({
+  folder,
+  subfolderCount = 0,
+}: {
+  folder: DocumentFolder;
+  /** Nombre de sous-dossiers (récursif) supprimés en cascade (H20). */
+  subfolderCount?: number;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(folder.name);
@@ -140,7 +147,16 @@ export function FolderRow({ folder }: { folder: DocumentFolder }) {
         title="Supprimer ce dossier ?"
         description={
           <>
-            « {folder.name} » sera supprimé. Les documents qu&apos;il contient
+            « {folder.name} » sera supprimé
+            {subfolderCount > 0 && (
+              <>
+                {" "}
+                ainsi que ses {subfolderCount} sous-dossier
+                {subfolderCount > 1 ? "s" : ""}
+              </>
+            )}
+            . Tous les documents qu&apos;il contient
+            {subfolderCount > 0 ? " (y compris ceux des sous-dossiers)" : ""}{" "}
             remonteront à la racine — ils ne sont pas perdus.
           </>
         }

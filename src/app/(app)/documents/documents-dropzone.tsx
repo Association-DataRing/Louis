@@ -46,6 +46,16 @@ export function DocumentsDropzone({
   return (
     <Dropzone
       onFiles={handleDroppedFiles}
+      onRejected={(rejected) => {
+        const types = rejected.filter((r) => r.reason === "type").length;
+        const sizes = rejected.filter((r) => r.reason === "size").length;
+        const parts: string[] = [];
+        if (types) parts.push(`${types} de type non supporté`);
+        if (sizes) parts.push(`${sizes} > 25 Mo`);
+        setError(
+          `${rejected.length} fichier(s) ignoré(s) : ${parts.join(" · ")}.`
+        );
+      }}
       overlayLabel="Déposez pour importer dans ce dossier"
       overlayHint="PDF, DOCX ou texte — 25 Mo max par fichier"
     >

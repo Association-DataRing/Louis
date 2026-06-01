@@ -233,7 +233,10 @@ export default async function DocumentsPage({
           >
             {subFolders.map((f) => (
               <li key={f.id}>
-                <FolderRow folder={f} />
+                <FolderRow
+                  folder={f}
+                  subfolderCount={countDescendantFolders(f.id, allFolders)}
+                />
               </li>
             ))}
             {familyViews.map((fv) => (
@@ -255,6 +258,17 @@ export default async function DocumentsPage({
       <FormatsNote />
     </main>
   );
+}
+
+/** Nombre de sous-dossiers (récursif) d'un dossier — pour avertir de la
+ * suppression en cascade (H20). */
+function countDescendantFolders(
+  folderId: string,
+  all: DocumentFolder[]
+): number {
+  return all
+    .filter((f) => f.parentFolderId === folderId)
+    .reduce((n, c) => n + 1 + countDescendantFolders(c.id, all), 0);
 }
 
 function EmptyState({ isRoot }: { isRoot: boolean }) {

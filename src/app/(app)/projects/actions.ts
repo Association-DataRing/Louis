@@ -155,12 +155,28 @@ export async function moveDocumentToProject(
   projectId: string | null
 ): Promise<void> {
   const userId = await requireUserId();
+
+  // H18 : le périmètre RAG d'un projet est défini par son DOSSIER
+  // (lib/projects/scope ignore projectId). On déplace donc RÉELLEMENT le
+  // document dans le dossier du projet — sinon le badge « projet » mentirait
+  // (le doc ne serait pas vu par search_documents en contexte projet).
+  // projectId reste écrit (miroir d'affichage du badge). En retirant d'un
+  // projet (projectId=null), on remonte le doc à la racine.
+  let folderId: string | null = null;
+  if (projectId) {
+    const [proj] = await db
+      .select({ folderId: projects.folderId })
+      .from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
+      .limit(1);
+    if (!proj) return; // projet introuvable / pas le propriétaire → no-op
+    folderId = proj.folderId;
+  }
+
   await db
     .update(documents)
-    .set({ projectId })
-    .where(
-      and(eq(documents.id, documentId), eq(documents.userId, userId))
-    );
+    .set({ projectId, folderId })
+    .where(and(eq(documents.id, documentId), eq(documents.userId, userId)));
   revalidatePath("/documents");
   revalidatePath("/projects");
   if (projectId) revalidatePath(`/projects/${projectId}`);
