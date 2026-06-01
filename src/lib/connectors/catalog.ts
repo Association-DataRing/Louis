@@ -22,6 +22,9 @@ export type ConnectorMeta = {
   category: ConnectorCategory;
   /** APIs unlocked by configuring this connector. Surfaced in the UI. */
   unlocks: string[];
+  /** Sources annoncées mais pas encore implémentées (affichées « à venir »).
+   * Honnêteté : on ne liste comme « débloqué » que ce qui marche vraiment. */
+  comingSoon?: string[];
   credentialFields: CredentialField[];
   /** SVG logo path under /public, used in CutoutCard media. */
   logo: string;
@@ -40,7 +43,11 @@ export const CONNECTOR_CATALOG: Record<ConnectorType, ConnectorMeta> = {
     icon: IconScale,
     docsUrl: "https://piste.gouv.fr/",
     category: "official",
-    unlocks: ["Légifrance", "Judilibre", "JADE", "INPI", "BODACC"],
+    // Seul Légifrance est réellement câblé (lib/connectors/tools.ts). Les
+    // autres sous-APIs PISTE sont annoncées « à venir » plutôt que prétendues
+    // débloquées.
+    unlocks: ["Légifrance"],
+    comingSoon: ["Judilibre", "JADE", "INPI", "BODACC"],
     credentialFields: [
       {
         name: "client_id",

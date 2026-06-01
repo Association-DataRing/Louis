@@ -224,6 +224,22 @@ export function ConnectorCard({ type, keys }: Props) {
                 {u}
               </Badge>
             ))}
+            {meta.comingSoon && meta.comingSoon.length > 0 && (
+              <>
+                <span className="text-[10px] text-muted-foreground/70 ml-1">
+                  à venir :
+                </span>
+                {meta.comingSoon.map((u) => (
+                  <Badge
+                    key={u}
+                    variant="outline"
+                    className="text-[10px] border-dashed text-muted-foreground/60"
+                  >
+                    {u}
+                  </Badge>
+                ))}
+              </>
+            )}
           </div>
 
           {isConfigured && (
@@ -351,6 +367,20 @@ export function ConnectorCard({ type, keys }: Props) {
                   {u}
                 </Badge>
               ))}
+              {meta.comingSoon && meta.comingSoon.length > 0 && (
+                <>
+                  <span className="text-muted-foreground/70">à venir :</span>
+                  {meta.comingSoon.map((u) => (
+                    <Badge
+                      key={u}
+                      variant="outline"
+                      className="text-[10px] border-dashed text-muted-foreground/60"
+                    >
+                      {u}
+                    </Badge>
+                  ))}
+                </>
+              )}
             </div>
 
             <a

@@ -23,6 +23,16 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { PROVIDER_CATALOG, type ProviderType } from "@/lib/providers/catalog";
+import { MODEL_PRICING } from "@/lib/providers/pricing";
+
+/** H23 : prix par M de tokens (entrée/sortie) pour signaler le coût AVANT
+ * d'activer un modèle. « prix inconnu » plutôt qu'un faux « gratuit ». */
+function formatModelPrice(modelId: string): string {
+  const p = MODEL_PRICING[modelId];
+  if (!p) return "prix inconnu";
+  const sym = p.currency === "EUR" ? "€" : "$";
+  return `${p.inputPerMillion} / ${p.outputPerMillion} ${sym}/M`;
+}
 import type { LiveModel } from "@/lib/providers/live-catalog";
 import { addModelsBulk } from "../actions";
 
@@ -380,6 +390,12 @@ export function LibraryBrowser({
                           <code className="text-[11px] text-muted-foreground font-mono">
                             {m.id}
                           </code>
+                          <span
+                            className="text-[10px] text-muted-foreground tabular-nums"
+                            title="Prix par million de tokens (entrée / sortie)"
+                          >
+                            {formatModelPrice(m.id)}
+                          </span>
                           {added && (
                             <span className="text-[10px] uppercase tracking-wider text-foreground/70">
                               · déjà ajouté
