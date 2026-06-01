@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isRetryableError, withRetry } from "./retry";
+import { isAbortError, isRetryableError, withRetry } from "./retry";
 
 describe("isRetryableError", () => {
   it("retry sur HTTP 429", () => {
@@ -78,6 +78,38 @@ describe("isRetryableError", () => {
     expect(
       isRetryableError({ message: "Invalid request payload" })
     ).toBe(false);
+  });
+
+  // R2 : un « Stop » utilisateur (abort) ne doit JAMAIS être retryé, sinon
+  // l'annulation relancerait paradoxalement la dépense LLM.
+  it("PAS de retry sur AbortError (name)", () => {
+    expect(
+      isRetryableError({ name: "AbortError", message: "The operation was aborted" })
+    ).toBe(false);
+  });
+
+  it("PAS de retry sur DOMException AbortError", () => {
+    expect(isRetryableError(new DOMException("aborted", "AbortError"))).toBe(
+      false
+    );
+  });
+
+  it("PAS de retry sur un abort même si le message ressemble à 'fetch failed'", () => {
+    // Un abort peut, selon le provider, se présenter avec un message réseau
+    // qui matcherait sinon un pattern retryable — le garde abort doit primer.
+    expect(
+      isRetryableError({ name: "AbortError", message: "fetch failed" })
+    ).toBe(false);
+  });
+});
+
+describe("isAbortError", () => {
+  it("détecte name AbortError et DOMException, ignore le reste", () => {
+    expect(isAbortError({ name: "AbortError" })).toBe(true);
+    expect(isAbortError(new DOMException("x", "AbortError"))).toBe(true);
+    expect(isAbortError({ name: "TimeoutError" })).toBe(true);
+    expect(isAbortError({ statusCode: 429 })).toBe(false);
+    expect(isAbortError(null)).toBe(false);
   });
 });
 
@@ -171,5 +203,13 @@ describe("withRetry", () => {
       withRetry(fn, { maxAttempts: 2, backoffMs: [5, 5, 5] })
     ).rejects.toThrow();
     expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("ne relance PAS une AbortError (Stop = pas de reprise de dépense)", async () => {
+    const fn = vi.fn(async () => {
+      throw new DOMException("aborted", "AbortError");
+    });
+    await expect(withRetry(fn, { backoffMs: [5, 5] })).rejects.toThrow();
+    expect(fn).toHaveBeenCalledTimes(1);
   });
 });

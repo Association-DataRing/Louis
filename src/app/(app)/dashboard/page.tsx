@@ -19,8 +19,10 @@ import {
 } from "@/db/schema";
 import {
   aggregateCosts,
+  formatCost,
   formatTotals,
 } from "@/lib/providers/pricing";
+import { getUserMonthlyQuotaCents } from "@/lib/usage/quota";
 import { ModuleHelp } from "@/components/module-help";
 
 export default async function DashboardPage() {
@@ -39,6 +41,7 @@ export default async function DashboardPage() {
     projectCount,
     docCount,
     monthRows,
+    quotaCents,
   ] = await Promise.all([
     db
       .select({
@@ -85,11 +88,30 @@ export default async function DashboardPage() {
           gte(messages.createdAt, monthStart)
         )
       ),
+    getUserMonthlyQuotaCents(userId),
   ]);
 
   const monthCost = aggregateCosts(monthRows);
   const hasProvider = activeKeys.length > 0;
   const hasContent = recentConvs.length > 0;
+
+  // H22 : rendre le plafond mensuel visible au membre (jusqu'ici réservé à
+  // l'admin). Même dépense que l'enforcement → pas de surprise « bloqué ».
+  const spentCentsMonth = Math.round((monthCost.EUR + monthCost.USD) * 100);
+  const quotaPct =
+    quotaCents != null && quotaCents > 0
+      ? Math.min(100, Math.round((spentCentsMonth / quotaCents) * 100))
+      : 0;
+  const quotaReached = quotaCents != null && spentCentsMonth >= quotaCents;
+  const monthHint =
+    quotaCents != null
+      ? `${formatCost({ amount: spentCentsMonth / 100, currency: "EUR" })} / ${formatCost({ amount: quotaCents / 100, currency: "EUR" })}${quotaReached ? " — plafond atteint" : quotaPct >= 80 ? ` — ${quotaPct} %` : ""}`
+      : "coût estimé";
+  const monthHintTone: "default" | "warning" | "danger" = quotaReached
+    ? "danger"
+    : quotaCents != null && quotaPct >= 80
+      ? "warning"
+      : "default";
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-10 md:px-8 md:py-14">
@@ -116,7 +138,9 @@ export default async function DashboardPage() {
         <Stat
           label="Ce mois"
           value={formatTotals(monthCost)}
-          hint="coût estimé"
+          hint={monthHint}
+          hintTone={monthHintTone}
+          href="/settings/usage"
         />
         <Stat
           label="Projets"
@@ -256,13 +280,21 @@ function Stat({
   label,
   value,
   hint,
+  hintTone = "default",
   href,
 }: {
   label: string;
   value: string;
   hint?: string;
+  hintTone?: "default" | "warning" | "danger";
   href?: string;
 }) {
+  const hintClass =
+    hintTone === "danger"
+      ? "text-destructive"
+      : hintTone === "warning"
+        ? "text-warning"
+        : "text-muted-foreground";
   const inner = (
     <dl>
       <dt className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -272,7 +304,7 @@ function Stat({
         {value}
       </dd>
       {hint && (
-        <dd className="mt-0.5 text-xs text-muted-foreground">{hint}</dd>
+        <dd className={`mt-0.5 text-xs tabular-nums ${hintClass}`}>{hint}</dd>
       )}
     </dl>
   );

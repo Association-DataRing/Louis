@@ -5,7 +5,7 @@ import {
   type ToolSet,
 } from "ai";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
-import { buildToolsForUser } from "@/lib/connectors/tools";
+import { buildToolsForUser, type ToolScope } from "@/lib/connectors/tools";
 import { buildMcpToolsForUser } from "@/lib/mcp/tools";
 import type {
   Agent,
@@ -89,8 +89,16 @@ export class DefaultAgent implements Agent {
 
     const system = composeSystem(DEFAULT_CHAT_SYSTEM_PROMPT, this.definition, ctx);
 
+    const scope: ToolScope | undefined = ctx.projectId
+      ? {
+          projectId: ctx.projectId,
+          conversationId: ctx.conversationId,
+          documentIds: ctx.projectDocumentIds ?? [],
+          folderId: ctx.projectFolderId ?? null,
+        }
+      : undefined;
     const [connectorTools, mcpTools] = await Promise.all([
-      buildToolsForUser(ctx.userId),
+      buildToolsForUser(ctx.userId, scope),
       buildMcpToolsForUser(ctx.userId),
     ]);
     const tools = filterTools(
@@ -104,6 +112,7 @@ export class DefaultAgent implements Agent {
       messages: modelMessages,
       tools,
       stopWhen: stepCountIs(5),
+      abortSignal: ctx.abortSignal,
     });
 
     return { kind: "stream", stream };

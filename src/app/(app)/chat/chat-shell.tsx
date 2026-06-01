@@ -71,6 +71,7 @@ import {
 } from "@/lib/providers/catalog";
 import { MODEL_CATALOG, DEFAULT_MODEL } from "@/lib/providers/models";
 import { computeCost, formatCost } from "@/lib/providers/pricing";
+import { estimateCalls, estimateRunCost } from "@/lib/orchestrator/cost-estimate";
 
 type KeyOption = {
   id: string;
@@ -110,6 +111,10 @@ type PipelineOption = {
   description: string | null;
   isPreset: boolean;
   agentCount: number;
+  /** Mode d'exécution — pilote l'estimation du nombre d'appels LLM. */
+  mode: "sequential" | "council" | "parallel";
+  /** Tours de débat (mode council). null/1 sinon. */
+  rounds: number | null;
   agents: PipelineAgentOption[];
 };
 
@@ -1488,6 +1493,23 @@ export function ChatShell({
     );
   }, [messages, selectedPipeline, isBusy]);
 
+  // H8 : estimation AU POINT DE DÉPENSE. Le nombre d'appels LLM est exact
+  // (driver de coût d'un run multi-agents) ; le coût est une fourchette
+  // (tokens de sortie inconnus → suffixé « estimé »). Recalculé à chaque
+  // changement de modèle / pipeline / saisie, sans envoyer de requête.
+  // Placé après les useMemo qui dépendent de selectedPipeline pour ne pas
+  // casser la préservation de mémoïsation du React Compiler.
+  const estimatedCalls = estimateCalls({
+    mode: selectedPipeline?.mode ?? "sequential",
+    agents: selectedPipeline?.agentCount ?? 1,
+    rounds: selectedPipeline?.rounds ?? 1,
+  });
+  const estimatedRunCost = estimateRunCost({
+    modelId,
+    calls: estimatedCalls,
+    promptChars: input.length,
+  });
+
   // Auto-ouverture du DocPanel dès qu'un tool generate_document /
   // edit_document termine avec un document_id. On scanne les parts du
   // dernier message assistant et on prend le plus récent non vu.
@@ -2124,6 +2146,16 @@ export function ChatShell({
             </div>
           </form>
 
+          {estimatedCalls > 1 && (
+            <p className="mt-2 text-[11px] text-muted-foreground text-center tabular-nums">
+              {selectedPipeline?.name} : ~{estimatedCalls} appels IA par question
+              {estimatedRunCost
+                ? ` · ~${formatCost(estimatedRunCost)} estimé`
+                : modelId
+                  ? " · coût non tarifé pour ce modèle"
+                  : ""}
+            </p>
+          )}
           <p className="mt-2 text-[11px] text-muted-foreground text-center">
             Louis n&apos;est pas un avocat. Vérifiez le badge de souveraineté
             avant d&apos;envoyer des données sensibles.

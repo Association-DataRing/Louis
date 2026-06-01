@@ -117,6 +117,8 @@ export default async function ChatPage({
       description: p.description,
       isPreset: p.isPreset,
       agentCount: agents.length,
+      mode: (p.mode ?? "sequential") as "sequential" | "council" | "parallel",
+      rounds: p.rounds ?? null,
       agents: agents.map((a) => ({
         id: a.id,
         role: a.role,

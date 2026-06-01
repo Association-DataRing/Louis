@@ -14,8 +14,22 @@
  *   404 (model not found), 422 (validation)
  * - Patterns : "invalid_api_key", "model_not_found"
  */
+/**
+ * Annulation volontaire (« Stop » utilisateur → req.signal aborté, ou
+ * AbortSignal.timeout). Jamais retryable : relancer reviendrait à reprendre
+ * la dépense LLM que l'utilisateur vient d'annuler. À tester en priorité car
+ * un abort peut, selon le provider, ressembler à un « fetch failed » réseau
+ * (sinon faussement classé retryable par les patterns plus bas).
+ */
+export function isAbortError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  const name = (err as { name?: string } | null)?.name;
+  return name === "AbortError" || name === "TimeoutError";
+}
+
 export function isRetryableError(err: unknown): boolean {
   if (!err) return false;
+  if (isAbortError(err)) return false;
   const e = err as { statusCode?: number; data?: { code?: string }; message?: string };
 
   // 1. HTTP status code (présent sur les AI_APICallError)

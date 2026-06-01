@@ -6,7 +6,7 @@ import {
   type ToolSet,
 } from "ai";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
-import { buildToolsForUser } from "@/lib/connectors/tools";
+import { buildToolsForUser, type ToolScope } from "@/lib/connectors/tools";
 import { buildMcpToolsForUser } from "@/lib/mcp/tools";
 import { composeSystem, filterTools } from "./default";
 import type {
@@ -60,8 +60,16 @@ export async function runAgentStream(
 
   let tools: ToolSet = {};
   if (allowlist === null || (allowlist && allowlist.length > 0)) {
+    const scope: ToolScope | undefined = ctx.projectId
+      ? {
+          projectId: ctx.projectId,
+          conversationId: ctx.conversationId,
+          documentIds: ctx.projectDocumentIds ?? [],
+          folderId: ctx.projectFolderId ?? null,
+        }
+      : undefined;
     const [connectorTools, mcpTools] = await Promise.all([
-      buildToolsForUser(ctx.userId),
+      buildToolsForUser(ctx.userId, scope),
       buildMcpToolsForUser(ctx.userId),
     ]);
     tools = filterTools({ ...connectorTools, ...mcpTools }, allowlist);
@@ -75,6 +83,7 @@ export async function runAgentStream(
     messages: modelMessages,
     tools,
     stopWhen,
+    abortSignal: ctx.abortSignal,
   });
 
   return { kind: "stream", stream };

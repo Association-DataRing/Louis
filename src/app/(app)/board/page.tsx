@@ -120,6 +120,9 @@ export default async function BureauPage() {
                     <TryPipelineButton
                       pipelineId={pipeline.id}
                       slug={pipeline.slug}
+                      mode={pipeline.mode}
+                      agentCount={agents.length}
+                      rounds={pipeline.rounds}
                     />
                     <span
                       aria-hidden

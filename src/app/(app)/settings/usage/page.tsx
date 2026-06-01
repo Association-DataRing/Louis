@@ -9,6 +9,7 @@ import {
   formatCost,
   formatTotals,
 } from "@/lib/providers/pricing";
+import { getUserMonthlyQuotaCents } from "@/lib/usage/quota";
 
 export default async function UsagePage() {
   const session = await auth();
@@ -39,6 +40,10 @@ export default async function UsagePage() {
     );
 
   const totalsMonth = aggregateCosts(rowsThisMonth);
+  // Même formule que l'enforcement (route.ts via getMonthlySpendCents) pour
+  // que le montant affiché == celui qui déclenche le blocage 402.
+  const spentCentsMonth = Math.round((totalsMonth.EUR + totalsMonth.USD) * 100);
+  const quotaCents = await getUserMonthlyQuotaCents(userId);
   const totalInputTokens = rowsThisMonth.reduce(
     (n, r) => n + (r.inputTokens ?? 0),
     0
@@ -132,6 +137,67 @@ export default async function UsagePage() {
           <Metric label="Messages IA" value={messageCount.toString()} />
         </dl>
       </section>
+
+      {quotaCents != null &&
+        (() => {
+          const pct =
+            quotaCents > 0
+              ? Math.min(100, Math.round((spentCentsMonth / quotaCents) * 100))
+              : 0;
+          const reached = spentCentsMonth >= quotaCents;
+          const warning = !reached && pct >= 80;
+          const fmt = (c: number) =>
+            formatCost({ amount: c / 100, currency: "EUR" });
+          return (
+            <section className="mb-14 max-w-2xl border-b border-border pb-12">
+              <div className="flex items-baseline justify-between">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Plafond mensuel
+                </p>
+                <p className="font-heading tabular-nums">
+                  {fmt(spentCentsMonth)}{" "}
+                  <span className="text-muted-foreground">
+                    / {fmt(quotaCents)}
+                  </span>
+                </p>
+              </div>
+              <div
+                className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={quotaCents}
+                aria-valuenow={Math.min(spentCentsMonth, quotaCents)}
+                aria-label="Consommation du plafond mensuel"
+              >
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    reached
+                      ? "bg-destructive"
+                      : warning
+                        ? "bg-warning"
+                        : "bg-primary"
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p
+                className={`mt-2 text-xs ${
+                  reached
+                    ? "text-destructive"
+                    : warning
+                      ? "text-warning"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {reached
+                  ? "Plafond atteint — vos requêtes IA sont bloquées jusqu'au mois prochain ou jusqu'à un relèvement par l'administrateur de votre cabinet."
+                  : warning
+                    ? `Vous approchez du plafond (${pct} %).`
+                    : "Défini par l'administrateur de votre cabinet."}
+              </p>
+            </section>
+          );
+        })()}
 
       <section className="mb-14">
         <div className="grid lg:grid-cols-[280px_1fr] gap-x-12 gap-y-6">

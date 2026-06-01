@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { IconBolt } from "@tabler/icons-react";
+import { estimateCalls } from "@/lib/orchestrator/cost-estimate";
+import type { PipelineMode } from "@/lib/orchestrator/types";
 
 /**
  * CTA "Essayer" sur une card de pipeline — démarre une nouvelle
@@ -26,10 +28,23 @@ const SAMPLE_PROMPTS: Record<string, string> = {
 interface TryPipelineButtonProps {
   pipelineId: string;
   slug: string;
+  mode: PipelineMode;
+  agentCount: number;
+  rounds: number | null;
 }
 
-export function TryPipelineButton({ pipelineId, slug }: TryPipelineButtonProps) {
+export function TryPipelineButton({
+  pipelineId,
+  slug,
+  mode,
+  agentCount,
+  rounds,
+}: TryPipelineButtonProps) {
   const router = useRouter();
+  // Nombre d'appels LLM que ce pipeline déclenchera — affiché sur le CTA
+  // pour que le coût soit visible AVANT de lancer (un comité 3 agents/2 tours
+  // = 5 appels, pas 1).
+  const calls = estimateCalls({ mode, agents: agentCount, rounds: rounds ?? 1 });
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
@@ -46,9 +61,10 @@ export function TryPipelineButton({ pipelineId, slug }: TryPipelineButtonProps) 
       type="button"
       onClick={handleClick}
       className="inline-flex items-center gap-1 text-xs text-foreground/70 hover:text-foreground transition-colors"
+      title={`~${calls} appel${calls > 1 ? "s" : ""} LLM par question`}
     >
       <IconBolt className="size-3.5" />
-      Essayer
+      Essayer{calls > 1 ? ` · ~${calls} appels` : ""}
     </button>
   );
 }

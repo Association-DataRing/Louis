@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import type { Pipeline } from "@/db/schema";
 import { cn } from "@/lib/utils";
+import { estimateCalls } from "@/lib/orchestrator/cost-estimate";
 import { MODE_META, type PipelineModeKey } from "../mode-meta";
 import { updatePipelineMeta } from "../actions";
 
@@ -151,7 +152,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
         <p className="mt-3 flex items-start gap-1 text-[11px] text-muted-foreground border-t border-border/40 pt-2">
           {(() => {
             const debaters = Math.max(0, agentCount - 1);
-            const calls = rounds * debaters + 1;
+            const calls = estimateCalls({ mode: "council", agents: agentCount, rounds });
             return (
               <>
                 <IconAlertTriangle className="size-3.5 shrink-0 mt-px text-warning" />

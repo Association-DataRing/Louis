@@ -3,7 +3,7 @@ import {
   createUIMessageStreamResponse,
   type UIMessage,
 } from "ai";
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -11,11 +11,15 @@ import {
   conversations,
   documents,
   messages,
-  users,
   type SavedPart,
 } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
-import { aggregateCosts } from "@/lib/providers/pricing";
+import { getProjectScope } from "@/lib/projects/scope";
+import { indexMessageForProject } from "@/lib/rag/message-search";
+import {
+  getMonthlySpendCents,
+  getUserMonthlyQuotaCents,
+} from "@/lib/usage/quota";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { getEnabledSkills } from "@/app/(app)/settings/skills/actions";
 import {
@@ -50,42 +54,19 @@ export async function POST(req: Request) {
   const rl = await rateLimit("chat", userId);
   if (!rl.allowed) return tooManyRequests(rl);
 
-  // Enforcement du quota mensuel admin. Si le user a un plafond défini,
-  // on calcule sa dépense IA depuis le 1er du mois et on refuse toute
-  // nouvelle requête si le seuil est atteint. Audit/usage continue d'être
-  // tracé via les colonnes messages.inputTokens/outputTokens habituelles.
-  const [userRow] = await db
-    .select({ monthlyQuotaCents: users.monthlyQuotaCents })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (userRow?.monthlyQuotaCents != null) {
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-    const usageRows = await db
-      .select({
-        modelId: messages.modelId,
-        inputTokens: messages.inputTokens,
-        outputTokens: messages.outputTokens,
-      })
-      .from(messages)
-      .innerJoin(conversations, eq(conversations.id, messages.conversationId))
-      .where(
-        and(
-          eq(conversations.userId, userId),
-          eq(messages.role, "assistant"),
-          gte(messages.createdAt, monthStart)
-        )
-      );
-    const totals = aggregateCosts(usageRows);
-    const spentCents = Math.round((totals.EUR + totals.USD) * 100);
-    if (spentCents >= userRow.monthlyQuotaCents) {
+  // Enforcement du quota mensuel admin. Si le user a un plafond défini, on
+  // calcule sa dépense IA du mois via le helper PARTAGÉ avec l'affichage
+  // (page usage, dashboard) — même formule, donc le montant montré au membre
+  // == celui qui déclenche ce blocage 402.
+  const quotaCents = await getUserMonthlyQuotaCents(userId);
+  if (quotaCents != null) {
+    const spentCents = await getMonthlySpendCents(userId);
+    if (spentCents >= quotaCents) {
       return new Response(
         JSON.stringify({
           error: "quota_exceeded",
           spentCents,
-          quotaCents: userRow.monthlyQuotaCents,
+          quotaCents,
           message:
             "Quota mensuel atteint. Contactez l'administrateur de votre cabinet pour le relever ou attendez le mois suivant.",
         }),
@@ -112,17 +93,25 @@ export async function POST(req: Request) {
     return new Response("providerKeyId is required", { status: 400 });
   }
 
+  // Type du provider de la conversation — stampé sur chaque agent_run pour
+  // que l'audit trail soit lisible (et exportable) sans re-résoudre la clé.
+  let providerType: string | null = null;
   try {
-    await loadProviderKey(userId, providerKeyId);
+    const pk = await loadProviderKey(userId, providerKeyId);
+    providerType = pk.type;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Provider error";
     return new Response(msg, { status: 400 });
   }
 
-  // Verify ownership of existing conversation to prevent cross-user injection
+  // Verify ownership of existing conversation to prevent cross-user injection.
+  // On récupère aussi son projectId : pour une conversation existante le body
+  // ne porte pas forcément le projet (chat-shell ne le transmet que pour les
+  // nouvelles), donc la conversation est la source de vérité du périmètre.
+  let effectiveProjectId: string | null = null;
   if (conversationId) {
     const [conv] = await db
-      .select({ id: conversations.id })
+      .select({ id: conversations.id, projectId: conversations.projectId })
       .from(conversations)
       .where(
         and(eq(conversations.id, conversationId), eq(conversations.userId, userId))
@@ -131,6 +120,7 @@ export async function POST(req: Request) {
     if (!conv) {
       return new Response("Conversation not found", { status: 404 });
     }
+    effectiveProjectId = conv.projectId;
   }
 
   // Résout la pipeline : soit celle pointée par pipelineId (et l'on vérifie
@@ -161,26 +151,41 @@ export async function POST(req: Request) {
       })
       .returning({ id: conversations.id });
     conversationId = created.id;
+    effectiveProjectId = projectIdFromBody ?? null;
   }
 
   const finalConversationId = conversationId;
 
+  // Périmètre projet (modèle dossier = projet) : documents du sous-arbre du
+  // dossier-racine + dossier de destination des documents générés. Sert au
+  // scoping RAG des outils documentaires et à l'historique des conversations.
+  const projectScope = effectiveProjectId
+    ? await getProjectScope(userId, effectiveProjectId)
+    : null;
+
+  let userMessageId: string | null = null;
+  let userMessageText = "";
   const lastUser = uiMessages.at(-1);
   if (lastUser?.role === "user") {
     const text = extractTextPreview(lastUser);
     if (text) {
-      await db.insert(messages).values({
-        conversationId: finalConversationId,
-        role: "user",
-        content: text,
-        // Trace des documents joints à CE tour, pour ré-afficher les pills
-        // au re-load. Le contenu des docs est injecté dans le system prompt
-        // plus bas — ici on garde juste la liste d'IDs pour l'UI.
-        metadata:
-          documentIds && documentIds.length > 0
-            ? { documentIds }
-            : null,
-      });
+      userMessageText = text;
+      const [insertedUser] = await db
+        .insert(messages)
+        .values({
+          conversationId: finalConversationId,
+          role: "user",
+          content: text,
+          // Trace des documents joints à CE tour, pour ré-afficher les pills
+          // au re-load. Le contenu des docs est injecté dans le system prompt
+          // plus bas — ici on garde juste la liste d'IDs pour l'UI.
+          metadata:
+            documentIds && documentIds.length > 0
+              ? { documentIds }
+              : null,
+        })
+        .returning({ id: messages.id });
+      userMessageId = insertedUser.id;
     }
   }
 
@@ -257,6 +262,11 @@ export async function POST(req: Request) {
   let finalText = "";
   const finalUsage: { inputTokens?: number; outputTokens?: number } = {};
   const agentStarts = new Map<string, number>();
+  // Audit trail multi-agent accumulé pendant le run, inséré en batch dans
+  // onFinish une fois l'id du message assistant connu (rattachement messageId).
+  // Accumuler (vs insert immédiat) évite aussi de laisser des runs orphelins
+  // quand un Stop annule le tour avant l'insertion du message.
+  const pendingRuns: (typeof agentRuns.$inferInsert)[] = [];
 
   const orchestrator = new Orchestrator(pipelineConfig);
 
@@ -281,34 +291,51 @@ export async function POST(req: Request) {
           messages: uiMessages,
           documentIds,
           systemPromptExtras,
+          projectId: effectiveProjectId,
+          projectDocumentIds: projectScope?.documentIds,
+          projectFolderId: projectScope?.folderId ?? null,
+          // R2 : annulation réelle côté serveur. Quand l'utilisateur clique
+          // « Stop », DefaultChatTransport abort le fetch → req.signal s'abort
+          // → propagé jusqu'à streamText, qui coupe l'appel LLM (et la
+          // facturation), pas seulement le rendu client.
+          abortSignal: req.signal,
         },
         writer: {
           write: (part) => writer.write(part as never),
           merge: (s) => writer.merge(s as never),
         },
-        onEvent: async (event: OrchestratorEvent) => {
+        onEvent: (event: OrchestratorEvent) => {
           if (event.type === "agent_start") {
             agentStarts.set(event.agentId, Date.now());
             return;
           }
 
           if (event.type === "agent_finish") {
+            // R1 : usage agrégé du run = somme de TOUS les agents. Le message
+            // porte le coût total (pill, page usage, quota) ; le détail par
+            // agent vit dans agent_runs (audit trail).
+            finalUsage.inputTokens =
+              (finalUsage.inputTokens ?? 0) + (event.inputTokens ?? 0);
+            finalUsage.outputTokens =
+              (finalUsage.outputTokens ?? 0) + (event.outputTokens ?? 0);
+
             const startedAt = agentStarts.get(event.agentId) ?? Date.now();
-            const startedDate = new Date(startedAt);
-            await db.insert(agentRuns).values({
+            pendingRuns.push({
               conversationId: finalConversationId,
               pipelineId: pipelineConfig.id ?? null,
               pipelineAgentId: isUuid(event.agentId) ? event.agentId : null,
               role: event.role,
               label: event.label,
-              modelId: modelOverride ?? null,
-              providerType: null,
+              // H9 : modelId RÉEL de l'agent (def.modelOverride) ; fallback sur
+              // le modèle global de la conversation quand l'agent hérite.
+              modelId: event.modelId ?? modelOverride ?? null,
+              providerType,
               status: "success",
               inputTokens: event.inputTokens ?? null,
               outputTokens: event.outputTokens ?? null,
               latencyMs: event.latencyMs,
               output: event.preview ?? null,
-              startedAt: startedDate,
+              startedAt: new Date(startedAt),
               finishedAt: new Date(),
             });
             return;
@@ -316,13 +343,14 @@ export async function POST(req: Request) {
 
           if (event.type === "agent_error") {
             const startedAt = agentStarts.get(event.agentId) ?? Date.now();
-            await db.insert(agentRuns).values({
+            pendingRuns.push({
               conversationId: finalConversationId,
               pipelineId: pipelineConfig.id ?? null,
               pipelineAgentId: isUuid(event.agentId) ? event.agentId : null,
               role: event.role,
               label: event.label,
-              modelId: modelOverride ?? null,
+              modelId: event.modelId ?? modelOverride ?? null,
+              providerType,
               status: "error",
               latencyMs: Date.now() - startedAt,
               error: event.error,
@@ -332,8 +360,30 @@ export async function POST(req: Request) {
           }
         },
       });
+
+      // R1 : metadata du message. Le client (useChat.onFinish) y lit le
+      // conversationId (maj URL d'une conversation neuve → /chat?id=…, survit
+      // au refresh) et l'usage agrégé (pill coût, page usage, quota). Émis
+      // APRÈS le run pour que finalUsage soit complet. Si l'utilisateur a
+      // annulé, on n'émet pas (le tour est abandonné, rien à compter).
+      if (!req.signal.aborted) {
+        writer.write({
+          type: "message-metadata",
+          messageMetadata: {
+            conversationId: finalConversationId,
+            usage: {
+              inputTokens: finalUsage.inputTokens ?? 0,
+              outputTokens: finalUsage.outputTokens ?? 0,
+            },
+          },
+        });
+      }
     },
     onFinish: async ({ messages: streamMessages }) => {
+      // Décision : un « Stop » n'enregistre PAS de réponse partielle. Le tour
+      // est annulé proprement (pas de message tronqué, pas d'agent_runs
+      // orphelins). L'utilisateur relance s'il le souhaite.
+      if (req.signal.aborted) return;
       // Reconstitue les parts brutes du dernier message assistant (le
       // texte final + les tool calls/results) pour les re-render au load.
       for (const m of streamMessages) {
@@ -381,19 +431,47 @@ export async function POST(req: Request) {
 
       if (!finalText) return;
 
-      await db.insert(messages).values({
-        conversationId: finalConversationId,
-        role: "assistant",
-        content: finalText,
-        parts: savedParts.length > 0 ? savedParts : null,
-        inputTokens: finalUsage.inputTokens ?? null,
-        outputTokens: finalUsage.outputTokens ?? null,
-        modelId: modelOverride ?? null,
-      });
+      const [insertedAssistant] = await db
+        .insert(messages)
+        .values({
+          conversationId: finalConversationId,
+          role: "assistant",
+          content: finalText,
+          parts: savedParts.length > 0 ? savedParts : null,
+          inputTokens: finalUsage.inputTokens ?? null,
+          outputTokens: finalUsage.outputTokens ?? null,
+          modelId: modelOverride ?? null,
+        })
+        .returning({ id: messages.id });
+
+      // H9 : insère l'audit trail multi-agent, rattaché au message assistant
+      // (messageId), pour qu'il soit relisible/exportable par message.
+      if (pendingRuns.length > 0) {
+        await db
+          .insert(agentRuns)
+          .values(
+            pendingRuns.map((r) => ({ ...r, messageId: insertedAssistant.id }))
+          );
+      }
+
       await db
         .update(conversations)
         .set({ updatedAt: new Date() })
         .where(eq(conversations.id, finalConversationId));
+
+      // RAG conversations : on indexe les messages de ce tour uniquement
+      // quand la conversation appartient à un projet (maîtrise du coût
+      // d'embedding). Best-effort — n'interrompt jamais la réponse.
+      if (effectiveProjectId) {
+        if (userMessageId && userMessageText) {
+          await indexMessageForProject(
+            userId,
+            userMessageId,
+            userMessageText
+          );
+        }
+        await indexMessageForProject(userId, insertedAssistant.id, finalText);
+      }
     },
   });
 

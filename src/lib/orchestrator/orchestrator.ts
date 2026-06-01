@@ -246,6 +246,7 @@ export class Orchestrator {
             outputTokens: text.outputTokens,
             preview: preview(text.value),
             round,
+            modelId: def.modelOverride ?? null,
           });
           return {
             agentId: def.id,
@@ -415,6 +416,7 @@ export class Orchestrator {
           inputTokens: text.inputTokens,
           outputTokens: text.outputTokens,
           preview: preview(text.value),
+          modelId: def.modelOverride ?? null,
         });
         return {
           agentId: def.id,
@@ -512,6 +514,7 @@ export class Orchestrator {
       inputTokens: text.inputTokens,
       outputTokens: text.outputTokens,
       preview: preview(text.value),
+      modelId: def.modelOverride ?? null,
     });
   }
 
@@ -539,6 +542,7 @@ export class Orchestrator {
         inputTokens: usage?.inputTokens ?? undefined,
         outputTokens: usage?.outputTokens ?? undefined,
         preview: preview(finalText),
+        modelId: def.modelOverride ?? null,
       });
     } else {
       args.writer.write({
@@ -555,6 +559,7 @@ export class Orchestrator {
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
         preview: preview(result.text),
+        modelId: def.modelOverride ?? null,
       });
     }
   }
@@ -576,6 +581,7 @@ export class Orchestrator {
       label: def.label,
       error: message,
       round,
+      modelId: def.modelOverride ?? null,
     });
   }
 
