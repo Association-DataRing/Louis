@@ -71,7 +71,7 @@ export function LiveWorkflowPanel({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Bureau en action
+                Board en action
               </div>
               <div className="text-sm font-medium truncate">{pipelineName}</div>
             </div>

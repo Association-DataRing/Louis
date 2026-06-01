@@ -30,8 +30,8 @@ const navItems = [
   { href: "/projects", label: "Projets", icon: IconFolders },
   { href: "/documents", label: "Documents", icon: IconFolder },
   { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
-  { href: "/workflows", label: "Workflows", icon: IconLibrary },
-  { href: "/board", label: "Bureau", icon: IconBriefcase },
+  { href: "/workflows", label: "Trames", icon: IconLibrary },
+  { href: "/board", label: "Board", icon: IconBriefcase },
 ];
 
 const settingsNav = {

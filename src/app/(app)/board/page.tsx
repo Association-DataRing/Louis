@@ -30,7 +30,7 @@ export default async function BureauPage() {
       <header className="mb-10 flex items-end justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Bureau
+            Board
           </p>
           <h1 className="mt-2 font-heading text-4xl tracking-tight">
             Votre cabinet d&apos;IA.

@@ -662,7 +662,7 @@ function WorkflowPickerContent({
     <div className="max-h-96 overflow-y-auto py-1">
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
         <IconLibrary className="size-3.5 text-muted-foreground" />
-        <p className="text-xs font-medium">Workflows</p>
+        <p className="text-xs font-medium">Trames</p>
         <Link
           href="/workflows"
           className="ml-auto text-[10px] text-primary hover:underline underline-offset-2"

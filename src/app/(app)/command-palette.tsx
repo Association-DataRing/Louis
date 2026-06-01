@@ -16,6 +16,7 @@ import {
   IconSettings,
   IconPlus,
   IconShieldLock,
+  IconBriefcase,
 } from "@tabler/icons-react";
 import {
   CommandDialog,
@@ -44,7 +45,8 @@ const PAGES = [
   { href: "/projects", label: "Projets", icon: IconFolders },
   { href: "/documents", label: "Documents", icon: IconFileText },
   { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
-  { href: "/workflows", label: "Workflows", icon: IconLibrary },
+  { href: "/board", label: "Board", icon: IconBriefcase },
+  { href: "/workflows", label: "Trames", icon: IconLibrary },
   { href: "/settings/general", label: "Paramètres", icon: IconSettings },
   { href: "/settings/profile", label: "Profil", icon: IconSettings },
   { href: "/settings/usage", label: "Coûts & usage", icon: IconCash },
@@ -162,7 +164,7 @@ export function CommandPalette({
         {workflows.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Workflows">
+            <CommandGroup heading="Trames">
               {workflows.map((w) => (
                 <CommandItem
                   key={w.id}

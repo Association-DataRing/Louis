@@ -89,7 +89,7 @@ export function ComposerMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <IconSparkles className="size-4" />
-              Workflow
+              Trames
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-72">
               {workflows.slice(0, 12).map((w) => (
@@ -104,14 +104,14 @@ export function ComposerMenu({
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onPickWorkflow}>
                 <IconSparkles className="size-4" />
-                Voir tous les workflows
+                Voir toutes les trames
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         ) : (
           <DropdownMenuItem onSelect={onPickWorkflow}>
             <IconSparkles className="size-4" />
-            Workflow
+            Trames
           </DropdownMenuItem>
         )}
 
@@ -119,7 +119,7 @@ export function ComposerMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-              Bureau
+              Board
             </DropdownMenuLabel>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>

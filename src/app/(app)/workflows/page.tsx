@@ -27,12 +27,12 @@ export default async function WorkflowsPage() {
             Bibliothèque cabinet
           </p>
           <h1 className="mt-2 font-heading text-4xl tracking-tight">
-            Workflows.
+            Trames.
           </h1>
           <p className="mt-3 text-muted-foreground">
-            Prompts réutilisables — résumé d&apos;arrêt, analyse de clause,
-            due diligence. Insérez-les d&apos;un clic dans une conversation
-            via l&apos;icône{" "}
+            Prompts réutilisables du cabinet — résumé d&apos;arrêt, analyse de
+            clause, due diligence. Insérez-les d&apos;un clic dans une
+            conversation via l&apos;icône{" "}
             <IconSparkles className="inline size-3.5 align-text-bottom" />.
           </p>
         </div>
@@ -56,10 +56,10 @@ function EmptyState() {
   return (
     <div className="py-16 border-y border-dashed border-border">
       <p className="font-heading text-2xl tracking-tight">
-        Pas encore de workflow.
+        Pas encore de trame.
       </p>
       <p className="mt-3 text-sm text-muted-foreground max-w-md">
-        Un workflow est un prompt réutilisable que vous insérez d&apos;un clic
+        Une trame est un prompt réutilisable que vous insérez d&apos;un clic
         dans une conversation. Créez-en un depuis votre pratique — Louis ne
         livre pas de templates par défaut, c&apos;est votre cabinet qui définit
         sa bibliothèque.
