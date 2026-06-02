@@ -17,6 +17,7 @@ import {
 import {
   AgentTheatre,
   buildAgentTurns,
+  OpenTheatreButton,
   type AgentTurn,
 } from "./agent-theatre";
 import { ChatErrorBanner } from "./chat-error-banner";
@@ -1535,19 +1536,24 @@ export function ChatShell({
   // Theatre view : agrège les sorties intermédiaires (data-agent-output)
   // + le texte streamé du synthétiseur final. Reconstruit la timeline
   // chronologique de la délibération du conseil.
-  const [theatreOpen, setTheatreOpen] = useState(false);
+  // Théâtre : piloté par l'id du message à afficher (null = fermé). Permet de
+  // rouvrir la délibération de N'IMPORTE quel message multi-agents passé, pas
+  // seulement le dernier — avant, l'accès disparaissait avec le panneau live.
+  const [theatreMessageId, setTheatreMessageId] = useState<string | null>(null);
+  const lastAssistantId = useMemo(
+    () =>
+      [...messages].reverse().find((m) => m.role === "assistant")?.id ?? null,
+    [messages]
+  );
   const theatreTurns: AgentTurn[] = useMemo(() => {
-    if (!selectedPipeline) return [];
-    const lastAssistant = [...messages]
-      .reverse()
-      .find((m) => m.role === "assistant");
-    if (!lastAssistant?.parts) return [];
+    if (!selectedPipeline || !theatreMessageId) return [];
+    const msg = messages.find((m) => m.id === theatreMessageId);
+    if (!msg?.parts) return [];
 
-    // Collecte tous les events agents et le texte streamé final du
-    // dernier message assistant.
+    // Collecte les events agents + le texte final du message ciblé.
     const events: AgentEventData[] = [];
     let finalText = "";
-    for (const part of lastAssistant.parts) {
+    for (const part of msg.parts) {
       if (part.type === "data-agent-event") {
         const d = (part as { data?: AgentEventData }).data;
         if (d) events.push(d);
@@ -1556,14 +1562,14 @@ export function ChatShell({
         if (text) finalText += text;
       }
     }
-    const isLastMessageStreaming = isBusy;
+    const isStreaming = isBusy && msg.id === messages[messages.length - 1]?.id;
     return buildAgentTurns(
-      lastAssistant.parts as { type: string; data?: unknown; text?: string }[],
+      msg.parts as { type: string; data?: unknown; text?: string }[],
       events,
       finalText || null,
-      isLastMessageStreaming
+      isStreaming
     );
-  }, [messages, selectedPipeline, isBusy]);
+  }, [messages, selectedPipeline, isBusy, theatreMessageId]);
 
   // H4 : compétences détectées pour le dernier message assistant. Lues depuis
   // la part data-skills-detected (persistée par H3a → survit au reload) et
@@ -1784,6 +1790,15 @@ export function ChatShell({
                           />
                         ))}
                       </AgentStepsWrapper>
+                      {/* Accès PERMANENT à la délibération de ce message (le
+                          panneau live disparaît, pas ça). */}
+                      {!isLiveMessage && (
+                        <div className="mt-1">
+                          <OpenTheatreButton
+                            onClick={() => setTheatreMessageId(m.id)}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                   {m.parts.map((part, i) => {
@@ -2102,8 +2117,8 @@ export function ChatShell({
                 totalRounds={councilRound?.total}
                 onClose={() => setManuallyClosed(true)}
                 onOpenTheatre={
-                  theatreTurns.length > 0
-                    ? () => setTheatreOpen(true)
+                  lastAssistantId
+                    ? () => setTheatreMessageId(lastAssistantId)
                     : undefined
                 }
               />
@@ -2112,8 +2127,10 @@ export function ChatShell({
 
           {selectedPipeline && (
             <AgentTheatre
-              open={theatreOpen}
-              onOpenChange={setTheatreOpen}
+              open={theatreMessageId !== null}
+              onOpenChange={(o) => {
+                if (!o) setTheatreMessageId(null);
+              }}
               pipelineName={selectedPipeline.name}
               turns={theatreTurns}
             />
