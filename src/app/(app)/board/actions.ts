@@ -60,6 +60,7 @@ const agentUpdateSchema = z.object({
   systemPrompt: z.string().max(8000).nullable().optional(),
   toolAllowlist: z.array(z.string()).nullable().optional(),
   ragScope: ragScopeSchema.nullable().optional(),
+  temperature: z.number().min(0).max(2).nullable().optional(),
 });
 
 const agentInsertSchema = z.object({
@@ -291,6 +292,9 @@ export async function updatePipelineAgent(
       }),
       ...(parsed.data.ragScope !== undefined && {
         ragScope: parsed.data.ragScope,
+      }),
+      ...(parsed.data.temperature !== undefined && {
+        temperature: parsed.data.temperature,
       }),
       updatedAt: new Date(),
     })

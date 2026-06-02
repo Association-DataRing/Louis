@@ -85,6 +85,13 @@ export function AgentEditSheet({
     agent.providerKeyId ?? NONE_VALUE
   );
   const [modelOverride, setModelOverride] = useState(agent.modelOverride ?? "");
+  // Température : null en base = défaut du provider.
+  const [tempMode, setTempMode] = useState<"default" | "custom">(
+    agent.temperature == null ? "default" : "custom"
+  );
+  const [temperature, setTemperature] = useState<number>(
+    agent.temperature ?? 0.7
+  );
   const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? "");
   // Allowlist : null = tous les outils, [] = aucun, [...] = sélection. Plus de
   // champ texte libre (une typo donnait un agent sans outil, silencieux).
@@ -184,6 +191,7 @@ export function AgentEditSheet({
         role,
         providerKeyId: providerKeyId === NONE_VALUE ? null : providerKeyId,
         modelOverride: modelOverride.trim() || null,
+        temperature: tempMode === "custom" ? temperature : null,
         systemPrompt: systemPrompt.trim() ? systemPrompt : null,
         toolAllowlist: allowlist,
         ragScope,
@@ -323,6 +331,71 @@ export function AgentEditSheet({
                 placeholder="ex. mistral-small-latest"
                 maxLength={120}
               />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor={`temp-${agent.id}`}>Température</Label>
+              <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setTempMode("default")}
+                  className={`rounded px-2.5 py-1 transition-colors ${
+                    tempMode === "default"
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Défaut
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTempMode("custom")}
+                  className={`rounded px-2.5 py-1 transition-colors ${
+                    tempMode === "custom"
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Personnalisée
+                </button>
+              </div>
+            </div>
+            {tempMode === "custom" ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <input
+                    id={`temp-${agent.id}`}
+                    type="range"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={temperature}
+                    onChange={(e) =>
+                      setTemperature(parseFloat(e.target.value))
+                    }
+                    className="flex-1 accent-primary"
+                    aria-describedby={`temp-help-${agent.id}`}
+                  />
+                  <span className="w-8 text-right text-sm tabular-nums">
+                    {temperature.toFixed(1)}
+                  </span>
+                </div>
+                <div
+                  id={`temp-help-${agent.id}`}
+                  className="flex justify-between text-[10px] text-muted-foreground"
+                >
+                  <span>0 · précis / factuel</span>
+                  <span>créatif · 2</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Température par défaut du provider — convient à la plupart des
+                usages. Passez en « Personnalisée » pour un Relecteur très
+                factuel (bas) ou un Rédacteur plus créatif (haut).
+              </p>
             )}
           </div>
 

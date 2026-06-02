@@ -82,6 +82,7 @@ export async function runAgentStream(
     messages: modelMessages,
     tools,
     stopWhen,
+    temperature: def.temperature ?? undefined,
     abortSignal: ctx.abortSignal,
   });
 

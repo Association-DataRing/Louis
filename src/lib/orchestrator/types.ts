@@ -46,6 +46,11 @@ export interface AgentDefinition {
    * périmètre de la conversation (comportement historique). Cf. resolveAgentRag.
    */
   ragScope?: AgentRagScope | null;
+  /**
+   * Température d'échantillonnage. null/undefined = défaut du provider.
+   * Bas (~0.2) = factuel/déterministe ; haut (~0.8) = créatif.
+   */
+  temperature?: number | null;
 }
 
 /**

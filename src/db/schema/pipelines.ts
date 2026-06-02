@@ -103,6 +103,8 @@ export const pipelineAgents = pgTable(
     // Portée documentaire RAG propre à cet agent. NULL = inherit (périmètre de
     // la conversation). Cf. AgentRagScope + resolveAgentRag.
     ragScope: jsonb("rag_scope").$type<AgentRagScope | null>(),
+    // Température d'échantillonnage propre à l'agent. NULL = défaut du provider.
+    temperature: doublePrecision("temperature"),
     position: integer("position").notNull().default(0),
     // Coordonnées custom sur le canvas React Flow. NULL = layout
     // automatique (calculé selon le mode du pipeline). Dès que l'user

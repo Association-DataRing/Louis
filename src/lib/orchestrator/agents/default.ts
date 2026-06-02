@@ -108,6 +108,7 @@ export class DefaultAgent implements Agent {
       messages: modelMessages,
       tools,
       stopWhen: stepCountIs(5),
+      temperature: this.definition.temperature ?? undefined,
       abortSignal: ctx.abortSignal,
     });
 
