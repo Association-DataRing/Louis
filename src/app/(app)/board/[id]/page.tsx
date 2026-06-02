@@ -12,6 +12,7 @@ import { PipelineBoard } from "../pipeline-board";
 import { CloneToEditButton } from "./clone-to-edit-button";
 import { PipelineModeBar } from "./pipeline-mode-bar";
 import { AddAgentDialog } from "./add-agent-dialog";
+import { ExecutionOrderPanel } from "./execution-order-panel";
 import { InlineRename } from "./inline-rename";
 import { listEnabledModels } from "../../settings/models/actions";
 import { buildToolsForUser } from "@/lib/connectors/tools";
@@ -179,6 +180,13 @@ export default async function PipelineEditorPage({
         )}
         <span>· Chaque exécution est tracée dans l&apos;audit</span>
       </div>
+
+      <ExecutionOrderPanel
+        pipelineId={data.pipeline.id}
+        agents={data.agents}
+        mode={data.pipeline.mode}
+        editable={!data.pipeline.isPreset}
+      />
     </main>
   );
 }
