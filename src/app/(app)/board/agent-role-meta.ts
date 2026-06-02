@@ -91,3 +91,14 @@ export const AGENT_ROLE_META: Record<
 export function roleMeta(role: string) {
   return AGENT_ROLE_META[role as AgentRole] ?? AGENT_ROLE_META["default-chat"];
 }
+
+/** Rôles sélectionnables (ordre du plus généraliste au plus terminal). */
+export const AGENT_ROLES: AgentRole[] = [
+  "default-chat",
+  "research",
+  "legifrance",
+  "citator",
+  "drafting",
+  "reviewer",
+  "orchestrator",
+];

@@ -24,16 +24,6 @@ async function requireUserId(): Promise<string> {
   return session.user.id;
 }
 
-const AGENT_ROLE_VALUES = [
-  "default-chat",
-  "orchestrator",
-  "research",
-  "drafting",
-  "reviewer",
-  "citator",
-  "legifrance",
-] as const;
-
 const pipelineMetaSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).nullable().optional(),
@@ -52,8 +42,19 @@ const ragScopeSchema = z.discriminatedUnion("mode", [
   }),
 ]);
 
+const AGENT_ROLE_VALUES = [
+  "default-chat",
+  "orchestrator",
+  "research",
+  "drafting",
+  "reviewer",
+  "citator",
+  "legifrance",
+] as const;
+
 const agentUpdateSchema = z.object({
   label: z.string().trim().min(1).max(80).optional(),
+  role: z.enum(AGENT_ROLE_VALUES).optional(),
   providerKeyId: z.uuid().nullable().optional(),
   modelOverride: z.string().trim().max(120).nullable().optional(),
   systemPrompt: z.string().max(8000).nullable().optional(),
@@ -275,6 +276,7 @@ export async function updatePipelineAgent(
     .update(pipelineAgents)
     .set({
       ...(parsed.data.label !== undefined && { label: parsed.data.label }),
+      ...(parsed.data.role !== undefined && { role: parsed.data.role }),
       ...(parsed.data.providerKeyId !== undefined && {
         providerKeyId: parsed.data.providerKeyId,
       }),

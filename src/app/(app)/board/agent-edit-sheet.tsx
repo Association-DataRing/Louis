@@ -29,7 +29,8 @@ import type {
   AgentSourceDocument,
 } from "@/lib/projects/scope";
 import { MODEL_CATALOG } from "@/lib/providers/models";
-import { roleMeta } from "./agent-role-meta";
+import type { AgentRole } from "@/lib/orchestrator";
+import { roleMeta, AGENT_ROLES } from "./agent-role-meta";
 import { updatePipelineAgent } from "./actions";
 
 export interface AgentEditModelOption {
@@ -78,6 +79,7 @@ export function AgentEditSheet({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const [role, setRole] = useState<AgentRole>(agent.role as AgentRole);
   const [label, setLabel] = useState(agent.label);
   const [providerKeyId, setProviderKeyId] = useState<string>(
     agent.providerKeyId ?? NONE_VALUE
@@ -142,7 +144,7 @@ export function AgentEditSheet({
     });
   }
 
-  const meta = roleMeta(agent.role);
+  const meta = roleMeta(role);
   const Icon = meta.icon;
   const selectedKey = providerKeys.find((k) => k.id === providerKeyId);
   // Source de vérité = modèles ajoutés via la bibliothèque. Fallback
@@ -179,6 +181,7 @@ export function AgentEditSheet({
     startTransition(async () => {
       const result = await updatePipelineAgent(agent.id, {
         label: label.trim() || agent.label,
+        role,
         providerKeyId: providerKeyId === NONE_VALUE ? null : providerKeyId,
         modelOverride: modelOverride.trim() || null,
         systemPrompt: systemPrompt.trim() ? systemPrompt : null,
@@ -213,6 +216,34 @@ export function AgentEditSheet({
         </SheetHeader>
 
         <div className="space-y-5 px-4 pb-4">
+          <div className="space-y-2">
+            <Label htmlFor={`role-${agent.id}`}>Rôle</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as AgentRole)}>
+              <SelectTrigger id={`role-${agent.id}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AGENT_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {roleMeta(r).label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {role !== agent.role ? (
+              <p className="flex items-start gap-1 text-xs text-warning">
+                <IconAlertTriangle className="size-3.5 shrink-0 mt-px" />
+                <span>
+                  Changer le rôle modifie le prompt « factory » et les outils
+                  par défaut de l&apos;agent. Votre prompt système personnalisé
+                  est conservé.
+                </span>
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">{meta.pitch}</p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor={`label-${agent.id}`}>Nom affiché</Label>
             <Input
