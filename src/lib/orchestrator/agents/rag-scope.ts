@@ -1,6 +1,13 @@
 import type { ToolSet } from "ai";
 import type { ToolScope } from "@/lib/connectors/tools";
+import { getDocsInFolders } from "@/lib/projects/scope";
 import type { AgentContext, AgentRagScope } from "../types";
+
+/** Intersection : ne garde de `chosen` que ce qui est déjà dans `allowed`. */
+export function intersectDocIds(chosen: string[], allowed: string[]): string[] {
+  const allowedSet = new Set(allowed);
+  return chosen.filter((id) => allowedSet.has(id));
+}
 
 /**
  * Outils qui LISENT les documents RAG de l'utilisateur (vs outils de création
@@ -67,6 +74,29 @@ export async function resolveAgentRag(
     };
   }
 
-  // folders / documents → Lot 1b. En attendant : périmètre conversation (sûr).
-  return { scope: base, hideDocumentaryRag: false };
+  // folders / documents : restriction PAR INTERSECTION avec le périmètre
+  // projet. Hors conversation projet (base absent), on ne peut pas intersecter
+  // un périmètre curé → repli sûr sur le comportement global (jamais au-delà
+  // des documents de l'utilisateur, garanti par le filtre userId de search.ts).
+  if (!base) return { scope: undefined, hideDocumentaryRag: false };
+
+  if (ragScope.mode === "documents") {
+    return {
+      scope: {
+        ...base,
+        documentIds: intersectDocIds(ragScope.documentIds, base.documentIds),
+      },
+      hideDocumentaryRag: false,
+    };
+  }
+
+  // folders : on résout les documents des sous-arbres choisis, puis intersection.
+  const inFolders = await getDocsInFolders(ctx.userId, ragScope.folderIds);
+  return {
+    scope: {
+      ...base,
+      documentIds: intersectDocIds(inFolders, base.documentIds),
+    },
+    hideDocumentaryRag: false,
+  };
 }

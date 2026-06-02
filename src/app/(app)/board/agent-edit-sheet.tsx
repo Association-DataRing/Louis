@@ -23,7 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { PipelineAgent, ProviderKey } from "@/db/schema";
+import type { PipelineAgent, ProviderKey, AgentRagScope } from "@/db/schema";
+import type {
+  AgentSourceFolder,
+  AgentSourceDocument,
+} from "@/lib/projects/scope";
 import { MODEL_CATALOG } from "@/lib/providers/models";
 import { roleMeta } from "./agent-role-meta";
 import { updatePipelineAgent } from "./actions";
@@ -42,9 +46,15 @@ interface AgentEditSheetProps {
   enabledModels?: AgentEditModelOption[];
   /** Outils réellement disponibles (connecteurs actifs + RAG + MCP). */
   availableTools?: string[];
+  /** Dossiers de l'utilisateur (sélecteur de portée RAG « dossiers choisis »). */
+  availableFolders?: AgentSourceFolder[];
+  /** Documents de l'utilisateur (sélecteur de portée RAG « documents choisis »). */
+  availableDocuments?: AgentSourceDocument[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+type RagMode = "inherit" | "none" | "folders" | "documents";
 
 const NONE_VALUE = "__none__";
 
@@ -59,6 +69,8 @@ export function AgentEditSheet({
   providerKeys,
   enabledModels,
   availableTools = [],
+  availableFolders = [],
+  availableDocuments = [],
   open,
   onOpenChange,
 }: AgentEditSheetProps) {
@@ -80,11 +92,42 @@ export function AgentEditSheet({
   const [selectedTools, setSelectedTools] = useState<Set<string>>(
     new Set(agent.toolAllowlist ?? [])
   );
-  // Portée documentaire RAG (Lot 1a : hérite / aucun ; dossiers & documents
-  // arrivent en Lot 1b). null/inherit/project → « hérite ».
-  const [ragMode, setRagMode] = useState<"inherit" | "none">(
-    agent.ragScope?.mode === "none" ? "none" : "inherit"
+  // Portée documentaire RAG. null/inherit/project → « hérite » (périmètre de
+  // la conversation). folders/documents → restriction par intersection.
+  const [ragMode, setRagMode] = useState<RagMode>(
+    agent.ragScope?.mode === "none"
+      ? "none"
+      : agent.ragScope?.mode === "folders"
+        ? "folders"
+        : agent.ragScope?.mode === "documents"
+          ? "documents"
+          : "inherit"
   );
+  const [ragFolderIds, setRagFolderIds] = useState<Set<string>>(
+    new Set(agent.ragScope?.mode === "folders" ? agent.ragScope.folderIds : [])
+  );
+  const [ragDocIds, setRagDocIds] = useState<Set<string>>(
+    new Set(
+      agent.ragScope?.mode === "documents" ? agent.ragScope.documentIds : []
+    )
+  );
+
+  function toggleRagFolder(id: string) {
+    setRagFolderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleRagDoc(id: string) {
+    setRagDocIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
   // Outils de l'allowlist héritée qui ne sont plus/pas disponibles côté user.
   const unavailableSelected = Array.from(selectedTools).filter(
     (t) => !availableTools.includes(t)
@@ -124,6 +167,15 @@ export function AgentEditSheet({
     const allowlist =
       allowlistMode === "all" ? null : Array.from(selectedTools);
 
+    const ragScope: AgentRagScope | null =
+      ragMode === "none"
+        ? { mode: "none" }
+        : ragMode === "folders"
+          ? { mode: "folders", folderIds: Array.from(ragFolderIds) }
+          : ragMode === "documents"
+            ? { mode: "documents", documentIds: Array.from(ragDocIds) }
+            : null;
+
     startTransition(async () => {
       const result = await updatePipelineAgent(agent.id, {
         label: label.trim() || agent.label,
@@ -131,7 +183,7 @@ export function AgentEditSheet({
         modelOverride: modelOverride.trim() || null,
         systemPrompt: systemPrompt.trim() ? systemPrompt : null,
         toolAllowlist: allowlist,
-        ragScope: ragMode === "none" ? { mode: "none" } : null,
+        ragScope,
       });
       if (result.ok) {
         onOpenChange(false);
@@ -382,38 +434,93 @@ export function AgentEditSheet({
           </div>
 
           <div className="space-y-2">
-            <Label>
+            <Label htmlFor={`rag-${agent.id}`}>
               Sources documentaires{" "}
               <span className="text-muted-foreground text-xs">(RAG)</span>
             </Label>
-            <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setRagMode("inherit")}
-                className={`rounded px-2.5 py-1 transition-colors ${
-                  ragMode === "inherit"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Périmètre de la conversation
-              </button>
-              <button
-                type="button"
-                onClick={() => setRagMode("none")}
-                className={`rounded px-2.5 py-1 transition-colors ${
-                  ragMode === "none"
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Aucun document
-              </button>
-            </div>
+            <Select
+              value={ragMode}
+              onValueChange={(v) => setRagMode(v as RagMode)}
+            >
+              <SelectTrigger id={`rag-${agent.id}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inherit">
+                  Périmètre de la conversation
+                </SelectItem>
+                <SelectItem value="none">Aucun document</SelectItem>
+                <SelectItem value="folders">Dossiers choisis</SelectItem>
+                <SelectItem value="documents">Documents choisis</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {ragMode === "folders" && (
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+                {availableFolders.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Aucun dossier — créez-en dans l&apos;onglet Documents.
+                  </p>
+                ) : (
+                  availableFolders.map((f) => (
+                    <label
+                      key={f.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent"
+                      style={{ paddingLeft: 4 + f.depth * 16 }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={ragFolderIds.has(f.id)}
+                        onChange={() => toggleRagFolder(f.id)}
+                        className="size-4 accent-primary"
+                      />
+                      <span className="truncate">{f.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
+
+            {ragMode === "documents" && (
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+                {availableDocuments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Aucun document importé.
+                  </p>
+                ) : (
+                  availableDocuments.map((d) => (
+                    <label
+                      key={d.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={ragDocIds.has(d.id)}
+                        onChange={() => toggleRagDoc(d.id)}
+                        className="size-4 accent-primary shrink-0"
+                      />
+                      <span className="min-w-0 flex-1 truncate">
+                        {d.filename}
+                      </span>
+                      {!d.indexed && (
+                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-[10px] text-warning">
+                          <IconAlertTriangle className="size-3" /> non indexé
+                        </span>
+                      )}
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground">
               {ragMode === "inherit"
-                ? "L'agent lit les pièces du projet de la conversation (comportement par défaut)."
-                : "L'agent ne lit aucune pièce — il travaille sans recherche documentaire."}
+                ? "L'agent lit les pièces du projet de la conversation (par défaut)."
+                : ragMode === "none"
+                  ? "L'agent ne lit aucune pièce — il travaille sans recherche documentaire."
+                  : ragMode === "folders"
+                    ? `${ragFolderIds.size} dossier${ragFolderIds.size > 1 ? "s" : ""} sélectionné${ragFolderIds.size > 1 ? "s" : ""} — intersecté avec le périmètre du projet de la conversation.`
+                    : `${ragDocIds.size} document${ragDocIds.size > 1 ? "s" : ""} sélectionné${ragDocIds.size > 1 ? "s" : ""} — intersecté avec le périmètre du projet de la conversation.`}
             </p>
           </div>
 

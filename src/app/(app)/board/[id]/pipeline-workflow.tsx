@@ -17,6 +17,10 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
+import type {
+  AgentSourceFolder,
+  AgentSourceDocument,
+} from "@/lib/projects/scope";
 import { AgentEditSheet } from "../agent-edit-sheet";
 import { AgentFlowNode, type AgentFlowNodeData } from "./agent-flow-node";
 import { AnimatedEdge } from "./animated-edge";
@@ -54,6 +58,9 @@ interface PipelineWorkflowProps {
   liveStates?: Record<string, "idle" | "active" | "done" | "error">;
   /** Outils réellement disponibles pour l'utilisateur (multi-select allowlist). */
   availableTools?: string[];
+  /** Dossiers/documents de l'utilisateur (sélecteurs de portée RAG par agent). */
+  availableFolders?: AgentSourceFolder[];
+  availableDocuments?: AgentSourceDocument[];
 }
 
 const nodeTypes: NodeTypes = {
@@ -183,6 +190,8 @@ function PipelineWorkflowInner({
   enabledModels,
   liveStates,
   availableTools,
+  availableFolders,
+  availableDocuments,
 }: PipelineWorkflowProps) {
   const router = useRouter();
   const [editingAgent, setEditingAgent] = useState<PipelineAgent | null>(null);
@@ -427,6 +436,8 @@ function PipelineWorkflowInner({
           providerKeys={providerKeys}
           enabledModels={enabledModels}
           availableTools={availableTools}
+          availableFolders={availableFolders}
+          availableDocuments={availableDocuments}
           open={!!editingAgent}
           onOpenChange={(open) => {
             if (!open) setEditingAgent(null);

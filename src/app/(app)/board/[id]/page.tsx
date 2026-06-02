@@ -16,6 +16,7 @@ import { InlineRename } from "./inline-rename";
 import { listEnabledModels } from "../../settings/models/actions";
 import { buildToolsForUser } from "@/lib/connectors/tools";
 import { buildMcpToolsForUser } from "@/lib/mcp/tools";
+import { getAgentSourceOptions } from "@/lib/projects/scope";
 
 export default async function PipelineEditorPage({
   params,
@@ -60,6 +61,11 @@ export default async function PipelineEditorPage({
     ...Object.keys(connectorTools),
     ...Object.keys(mcpTools),
   ].sort((a, b) => a.localeCompare(b));
+
+  // Sources documentaires sélectionnables pour la portée RAG par agent
+  // (dossiers en arborescence + documents avec flag indexé).
+  const { folders: availableFolders, documents: availableDocuments } =
+    await getAgentSourceOptions(userId);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10 md:px-8 md:py-14">
@@ -129,6 +135,8 @@ export default async function PipelineEditorPage({
             providerKeys={keys}
             enabledModels={enabledModels}
             availableTools={availableTools}
+            availableFolders={availableFolders}
+            availableDocuments={availableDocuments}
           />
         </div>
         {/* Mobile (H7) : vue-liste verticale — le canvas est inutilisable au
@@ -140,6 +148,8 @@ export default async function PipelineEditorPage({
             providerKeys={keys}
             enabledModels={enabledModels}
             availableTools={availableTools}
+            availableFolders={availableFolders}
+            availableDocuments={availableDocuments}
           />
         </div>
         {!data.pipeline.isPreset && (

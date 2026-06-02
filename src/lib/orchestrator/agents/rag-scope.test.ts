@@ -3,6 +3,7 @@ import type { ToolSet } from "ai";
 import {
   resolveAgentRag,
   omitDocumentaryRagTools,
+  intersectDocIds,
   DOCUMENTARY_RAG_TOOLS,
 } from "./rag-scope";
 import type { AgentContext } from "../types";
@@ -75,6 +76,39 @@ describe("resolveAgentRag", () => {
     );
     expect(hideDocumentaryRag).toBe(false);
     expect(scope).toBeUndefined();
+  });
+
+  it("documents : intersection avec le projet — un doc hors projet est exclu", async () => {
+    const { scope } = await resolveAgentRag(projectCtx(), {
+      mode: "documents",
+      documentIds: ["d-1", "d-hors-projet"],
+    });
+    // projet = [d-1, d-2] ; d-hors-projet n'y est pas → exclu (jamais union)
+    expect(scope?.documentIds).toEqual(["d-1"]);
+  });
+
+  it("documents hors conversation projet = repli global (pas d'intersection possible)", async () => {
+    const { scope, hideDocumentaryRag } = await resolveAgentRag(globalCtx(), {
+      mode: "documents",
+      documentIds: ["d-1"],
+    });
+    expect(scope).toBeUndefined();
+    expect(hideDocumentaryRag).toBe(false);
+  });
+});
+
+describe("intersectDocIds", () => {
+  it("ne garde que les éléments présents dans allowed", () => {
+    expect(intersectDocIds(["a", "b", "c"], ["b", "c", "d"])).toEqual([
+      "b",
+      "c",
+    ]);
+  });
+  it("intersection vide si aucun élément commun", () => {
+    expect(intersectDocIds(["x"], ["y", "z"])).toEqual([]);
+  });
+  it("allowed vide = aucun document", () => {
+    expect(intersectDocIds(["a", "b"], [])).toEqual([]);
   });
 });
 

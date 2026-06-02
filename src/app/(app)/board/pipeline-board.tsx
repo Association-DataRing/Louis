@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
+import type {
+  AgentSourceFolder,
+  AgentSourceDocument,
+} from "@/lib/projects/scope";
 import { AgentCard } from "./agent-card";
 import { AgentEditSheet, type AgentEditModelOption } from "./agent-edit-sheet";
 
@@ -11,6 +15,8 @@ interface PipelineBoardProps {
   providerKeys: Pick<ProviderKey, "id" | "label" | "type">[];
   enabledModels?: AgentEditModelOption[];
   availableTools?: string[];
+  availableFolders?: AgentSourceFolder[];
+  availableDocuments?: AgentSourceDocument[];
 }
 
 /**
@@ -29,6 +35,8 @@ export function PipelineBoard({
   providerKeys,
   enabledModels,
   availableTools,
+  availableFolders,
+  availableDocuments,
 }: PipelineBoardProps) {
   const [editingAgent, setEditingAgent] = useState<PipelineAgent | null>(null);
 
@@ -100,6 +108,8 @@ export function PipelineBoard({
           providerKeys={providerKeys}
           enabledModels={enabledModels}
           availableTools={availableTools}
+          availableFolders={availableFolders}
+          availableDocuments={availableDocuments}
           open={!!editingAgent}
           onOpenChange={(open) => {
             if (!open) setEditingAgent(null);

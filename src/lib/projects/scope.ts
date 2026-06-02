@@ -1,6 +1,11 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { projects, documentFolders, documents } from "@/db/schema";
+import {
+  projects,
+  documentFolders,
+  documents,
+  documentChunks,
+} from "@/db/schema";
 
 /**
  * Modèle « dossier = projet » : un projet est rattaché à un dossier-racine
@@ -90,6 +95,114 @@ export async function getProjectScope(
     folderIds,
     documentIds: docs.map((d) => d.id),
   };
+}
+
+/**
+ * IDs des documents rangés dans les sous-arbres des dossiers donnés
+ * (récursif). Sert à la portée RAG « dossiers choisis » d'un agent (Board).
+ * Filtré par `userId` : un dossier d'un autre tenant ne ramène jamais de
+ * document (garde-fou en plus de l'intersection projet côté appelant).
+ */
+export async function getDocsInFolders(
+  userId: string,
+  folderIds: string[]
+): Promise<string[]> {
+  if (folderIds.length === 0) return [];
+
+  const folders = await db
+    .select({
+      id: documentFolders.id,
+      parentFolderId: documentFolders.parentFolderId,
+    })
+    .from(documentFolders)
+    .where(eq(documentFolders.userId, userId));
+
+  const childrenByParent = buildChildrenMap(folders);
+  const allowed = new Set<string>();
+  for (const fid of folderIds) {
+    for (const id of collectSubtree(fid, childrenByParent)) allowed.add(id);
+  }
+
+  const docs = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.userId, userId),
+        inArray(documents.folderId, Array.from(allowed))
+      )
+    );
+  return docs.map((d) => d.id);
+}
+
+export type AgentSourceFolder = { id: string; name: string; depth: number };
+export type AgentSourceDocument = {
+  id: string;
+  filename: string;
+  folderId: string | null;
+  indexed: boolean;
+};
+
+/**
+ * Options pour les sélecteurs « Sources documentaires » d'un agent (Board) :
+ * l'arborescence des dossiers de l'utilisateur (en ordre DFS avec profondeur
+ * pour l'indentation) et ses documents (avec un flag `indexed` = au moins un
+ * chunk RAG, comme la transparence de la page Documents).
+ */
+export async function getAgentSourceOptions(userId: string): Promise<{
+  folders: AgentSourceFolder[];
+  documents: AgentSourceDocument[];
+}> {
+  const [folderRows, docRows, chunkRows] = await Promise.all([
+    db
+      .select({
+        id: documentFolders.id,
+        name: documentFolders.name,
+        parentFolderId: documentFolders.parentFolderId,
+      })
+      .from(documentFolders)
+      .where(eq(documentFolders.userId, userId)),
+    db
+      .select({
+        id: documents.id,
+        filename: documents.filename,
+        folderId: documents.folderId,
+      })
+      .from(documents)
+      .where(eq(documents.userId, userId))
+      .orderBy(asc(documents.filename)),
+    db
+      .selectDistinct({ documentId: documentChunks.documentId })
+      .from(documentChunks)
+      .innerJoin(documents, eq(documents.id, documentChunks.documentId))
+      .where(eq(documents.userId, userId)),
+  ]);
+
+  const childrenByParent = buildChildrenMap(folderRows);
+  const nameById = new Map(folderRows.map((f) => [f.id, f.name]));
+  const byName = (a: string, b: string) =>
+    (nameById.get(a) ?? "").localeCompare(nameById.get(b) ?? "");
+
+  const folders: AgentSourceFolder[] = [];
+  const visit = (id: string, depth: number) => {
+    folders.push({ id, name: nameById.get(id) ?? id, depth });
+    for (const child of (childrenByParent.get(id) ?? []).slice().sort(byName)) {
+      visit(child, depth + 1);
+    }
+  };
+  for (const root of (childrenByParent.get(null) ?? []).slice().sort(byName)) {
+    visit(root, 0);
+  }
+
+  const indexed = new Set(chunkRows.map((r) => r.documentId));
+  const documentsOut: AgentSourceDocument[] = docRows.map((d) => ({
+    id: d.id,
+    filename: d.filename,
+    folderId: d.folderId,
+    indexed: indexed.has(d.id),
+  }));
+
+  return { folders, documents: documentsOut };
 }
 
 /**
