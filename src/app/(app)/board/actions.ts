@@ -41,12 +41,24 @@ const pipelineMetaSchema = z.object({
   rounds: z.number().int().min(1).max(6).optional(),
 });
 
+const ragScopeSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("inherit") }),
+  z.object({ mode: z.literal("none") }),
+  z.object({ mode: z.literal("project") }),
+  z.object({ mode: z.literal("folders"), folderIds: z.array(z.uuid()).max(50) }),
+  z.object({
+    mode: z.literal("documents"),
+    documentIds: z.array(z.uuid()).max(200),
+  }),
+]);
+
 const agentUpdateSchema = z.object({
   label: z.string().trim().min(1).max(80).optional(),
   providerKeyId: z.uuid().nullable().optional(),
   modelOverride: z.string().trim().max(120).nullable().optional(),
   systemPrompt: z.string().max(8000).nullable().optional(),
   toolAllowlist: z.array(z.string()).nullable().optional(),
+  ragScope: ragScopeSchema.nullable().optional(),
 });
 
 const agentInsertSchema = z.object({
@@ -274,6 +286,9 @@ export async function updatePipelineAgent(
       }),
       ...(parsed.data.toolAllowlist !== undefined && {
         toolAllowlist: parsed.data.toolAllowlist,
+      }),
+      ...(parsed.data.ragScope !== undefined && {
+        ragScope: parsed.data.ragScope,
       }),
       updatedAt: new Date(),
     })

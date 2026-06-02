@@ -6,9 +6,10 @@ import {
   type ToolSet,
 } from "ai";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
-import { buildToolsForUser, type ToolScope } from "@/lib/connectors/tools";
+import { buildToolsForUser } from "@/lib/connectors/tools";
 import { buildMcpToolsForUser } from "@/lib/mcp/tools";
 import { composeSystem, filterTools } from "./default";
+import { resolveAgentRag, omitDocumentaryRagTools } from "./rag-scope";
 import type {
   AgentContext,
   AgentDefinition,
@@ -60,19 +61,17 @@ export async function runAgentStream(
 
   let tools: ToolSet = {};
   if (allowlist === null || (allowlist && allowlist.length > 0)) {
-    const scope: ToolScope | undefined = ctx.projectId
-      ? {
-          projectId: ctx.projectId,
-          conversationId: ctx.conversationId,
-          documentIds: ctx.projectDocumentIds ?? [],
-          folderId: ctx.projectFolderId ?? null,
-        }
-      : undefined;
+    const { scope, hideDocumentaryRag } = await resolveAgentRag(
+      ctx,
+      def.ragScope
+    );
     const [connectorTools, mcpTools] = await Promise.all([
       buildToolsForUser(ctx.userId, scope),
       buildMcpToolsForUser(ctx.userId),
     ]);
-    tools = filterTools({ ...connectorTools, ...mcpTools }, allowlist);
+    let merged: ToolSet = { ...connectorTools, ...mcpTools };
+    if (hideDocumentaryRag) merged = omitDocumentaryRagTools(merged);
+    tools = filterTools(merged, allowlist);
   }
 
   const stopWhen: StopCondition<ToolSet> = stepCountIs(defaults.maxSteps ?? 3);

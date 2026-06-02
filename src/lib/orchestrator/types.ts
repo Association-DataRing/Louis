@@ -1,4 +1,7 @@
 import type { streamText, UIMessage } from "ai";
+import type { AgentRagScope } from "@/db/schema/pipelines";
+
+export type { AgentRagScope };
 
 /**
  * Type retourné par streamText() — utiliser le type inféré garde la
@@ -38,6 +41,11 @@ export interface AgentDefinition {
    * outils disponibles à l'utilisateur (connecteurs + MCP).
    */
   toolAllowlist?: string[] | null;
+  /**
+   * Portée documentaire RAG propre à l'agent. null/undefined/`inherit` =
+   * périmètre de la conversation (comportement historique). Cf. resolveAgentRag.
+   */
+  ragScope?: AgentRagScope | null;
 }
 
 /**

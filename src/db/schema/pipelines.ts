@@ -33,6 +33,24 @@ import { messages } from "./messages";
  */
 export type PipelineMode = "sequential" | "council" | "parallel";
 
+/**
+ * Portée documentaire RAG d'un agent (Board). `null` en base = `inherit` =
+ * comportement historique (l'agent voit le périmètre documentaire de la
+ * conversation). Les autres modes restreignent ce que CET agent peut lire :
+ * - `none`      : aucune pièce (l'agent travaille sans RAG documentaire)
+ * - `project`   : tout le périmètre projet (explicite, = inherit en conv. projet)
+ * - `folders`   : sous-arbres de dossiers choisis (intersection avec le projet)
+ * - `documents` : documents explicites (intersection avec le projet)
+ * Règle de sécurité : la portée d'un agent est TOUJOURS une intersection avec
+ * le périmètre de la conversation, jamais une extension (cf. resolveAgentRag).
+ */
+export type AgentRagScope =
+  | { mode: "inherit" }
+  | { mode: "none" }
+  | { mode: "project" }
+  | { mode: "folders"; folderIds: string[] }
+  | { mode: "documents"; documentIds: string[] };
+
 export const pipelines = pgTable(
   "pipelines",
   {
@@ -82,6 +100,9 @@ export const pipelineAgents = pgTable(
     modelOverride: text("model_override"),
     systemPrompt: text("system_prompt"),
     toolAllowlist: jsonb("tool_allowlist").$type<string[] | null>(),
+    // Portée documentaire RAG propre à cet agent. NULL = inherit (périmètre de
+    // la conversation). Cf. AgentRagScope + resolveAgentRag.
+    ragScope: jsonb("rag_scope").$type<AgentRagScope | null>(),
     position: integer("position").notNull().default(0),
     // Coordonnées custom sur le canvas React Flow. NULL = layout
     // automatique (calculé selon le mode du pipeline). Dès que l'user

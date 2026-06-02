@@ -80,6 +80,11 @@ export function AgentEditSheet({
   const [selectedTools, setSelectedTools] = useState<Set<string>>(
     new Set(agent.toolAllowlist ?? [])
   );
+  // Portée documentaire RAG (Lot 1a : hérite / aucun ; dossiers & documents
+  // arrivent en Lot 1b). null/inherit/project → « hérite ».
+  const [ragMode, setRagMode] = useState<"inherit" | "none">(
+    agent.ragScope?.mode === "none" ? "none" : "inherit"
+  );
   // Outils de l'allowlist héritée qui ne sont plus/pas disponibles côté user.
   const unavailableSelected = Array.from(selectedTools).filter(
     (t) => !availableTools.includes(t)
@@ -126,6 +131,7 @@ export function AgentEditSheet({
         modelOverride: modelOverride.trim() || null,
         systemPrompt: systemPrompt.trim() ? systemPrompt : null,
         toolAllowlist: allowlist,
+        ragScope: ragMode === "none" ? { mode: "none" } : null,
       });
       if (result.ok) {
         onOpenChange(false);
@@ -372,6 +378,42 @@ export function AgentEditSheet({
                   : `${selectedTools.size} outil${
                       selectedTools.size > 1 ? "s" : ""
                     } sélectionné${selectedTools.size > 1 ? "s" : ""}.`}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Sources documentaires{" "}
+              <span className="text-muted-foreground text-xs">(RAG)</span>
+            </Label>
+            <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setRagMode("inherit")}
+                className={`rounded px-2.5 py-1 transition-colors ${
+                  ragMode === "inherit"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Périmètre de la conversation
+              </button>
+              <button
+                type="button"
+                onClick={() => setRagMode("none")}
+                className={`rounded px-2.5 py-1 transition-colors ${
+                  ragMode === "none"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Aucun document
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {ragMode === "inherit"
+                ? "L'agent lit les pièces du projet de la conversation (comportement par défaut)."
+                : "L'agent ne lit aucune pièce — il travaille sans recherche documentaire."}
             </p>
           </div>
 
