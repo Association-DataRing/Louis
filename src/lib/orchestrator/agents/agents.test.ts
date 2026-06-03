@@ -86,34 +86,36 @@ describe("composeSystem", () => {
     expect(out).toContain("EXTRAS");
   });
 
-  it("injecte les priorOutputs en bloc lisible", () => {
+  it("active la politique non-fiable quand priorOutputs présent, SANS y fuiter le contenu", () => {
+    // Sécurité : les sorties d'agents précédents sont désormais traitées comme
+    // des données non fiables (injectées côté messages), pas concaténées dans
+    // le prompt système. composeSystem ne doit donc PAS contenir leur texte,
+    // mais doit activer la politique de séparation instruction/donnée.
     const out = composeSystem("FACTORY", baseDef, {
       ...baseCtx,
       priorOutputs: [
-        {
-          agentId: "p1",
-          role: "research",
-          label: "Recherche",
-          output: "DONNÉES",
-        },
+        { agentId: "p1", role: "research", label: "Recherche", output: "DONNÉES" },
       ],
     });
     expect(out).toContain("FACTORY");
-    expect(out).toContain("Recherche");
-    expect(out).toContain("DONNÉES");
-    expect(out).toMatch(/Sortie de l'agent 1/);
+    expect(out).toContain("DONNÉE NON FIABLE");
+    expect(out).not.toContain("DONNÉES");
   });
 
-  it("numérote correctement plusieurs priorOutputs", () => {
+  it("active la politique non-fiable quand untrustedBlocks présent", () => {
     const out = composeSystem("FACTORY", baseDef, {
       ...baseCtx,
-      priorOutputs: [
-        { agentId: "p1", role: "research", label: "R", output: "A" },
-        { agentId: "p2", role: "citator", label: "C", output: "B" },
+      untrustedBlocks: [
+        { kind: "document", label: "contrat.pdf", text: "CLAUSE SECRÈTE" },
       ],
     });
-    expect(out).toMatch(/agent 1/);
-    expect(out).toMatch(/agent 2/);
+    expect(out).toContain("DONNÉE NON FIABLE");
+    expect(out).not.toContain("CLAUSE SECRÈTE");
+  });
+
+  it("n'ajoute PAS la politique sans contenu non-fiable", () => {
+    const out = composeSystem("FACTORY", baseDef, baseCtx);
+    expect(out).not.toContain("DONNÉE NON FIABLE");
   });
 });
 

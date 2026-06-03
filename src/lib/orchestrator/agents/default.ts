@@ -8,6 +8,11 @@ import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { buildToolsForUser } from "@/lib/connectors/tools";
 import { buildMcpToolsForUser } from "@/lib/mcp/tools";
 import { resolveAgentRag, omitDocumentaryRagTools } from "./rag-scope";
+import {
+  UNTRUSTED_CONTEXT_POLICY,
+  hasUntrustedContext,
+  injectUntrustedContext,
+} from "../untrusted";
 import type {
   Agent,
   AgentContext,
@@ -50,9 +55,14 @@ export function filterTools(
 }
 
 /**
- * Compose le system prompt final à partir du prompt « factory » du rôle,
- * de l'override éventuel défini par l'utilisateur, et des extras de contexte
- * (documents joints, sortie des agents précédents).
+ * Compose le system prompt final (canal FIABLE) à partir du prompt « factory »
+ * du rôle, de l'override éventuel défini par l'utilisateur, et des ajouts
+ * fiables de contexte (instructions d'orchestration via systemPromptExtras).
+ *
+ * Le contenu NON-FIABLE (documents joints, compétences, sorties des agents
+ * précédents) n'est PLUS concaténé ici : il est injecté comme message `user`
+ * préfixé par injectUntrustedContext(). composeSystem se contente d'activer la
+ * politique de séparation instruction/donnée quand un tel contenu est présent.
  */
 export function composeSystem(
   factory: string,
@@ -62,15 +72,7 @@ export function composeSystem(
   const base = def.systemPrompt ?? factory;
   const parts: string[] = [base];
   if (ctx.systemPromptExtras) parts.push(ctx.systemPromptExtras);
-  if (ctx.priorOutputs && ctx.priorOutputs.length > 0) {
-    const blocks = ctx.priorOutputs.map(
-      (o, i) =>
-        `--- Sortie de l'agent ${i + 1} (${o.label}, rôle « ${o.role} ») ---\n${o.output}\n--- Fin sortie agent ${i + 1} ---`
-    );
-    parts.push(
-      `Les agents précédents de la pipeline ont produit le travail suivant. Appuie-toi dessus pour composer ta réponse, mais ne le recopie pas verbatim si l'utilisateur ne l'a pas demandé.\n\n${blocks.join("\n\n")}`
-    );
-  }
+  if (hasUntrustedContext(ctx)) parts.push(UNTRUSTED_CONTEXT_POLICY);
   return parts.join("\n\n");
 }
 
@@ -86,7 +88,10 @@ export class DefaultAgent implements Agent {
   async run(ctx: AgentContext): Promise<AgentRunResult> {
     const key = await loadProviderKey(ctx.userId, this.definition.providerKeyId);
     const model = modelFromKey(key, this.definition.modelOverride);
-    const modelMessages = await convertToModelMessages(ctx.messages);
+    const modelMessages = injectUntrustedContext(
+      await convertToModelMessages(ctx.messages),
+      ctx
+    );
 
     const system = composeSystem(DEFAULT_CHAT_SYSTEM_PROMPT, this.definition, ctx);
 

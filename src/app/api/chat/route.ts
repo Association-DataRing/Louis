@@ -30,6 +30,7 @@ import {
   Orchestrator,
   chatSimplePipeline,
   type OrchestratorEvent,
+  type UntrustedBlock,
 } from "@/lib/orchestrator";
 import { loadPipelineForUser } from "@/lib/orchestrator/repository";
 
@@ -189,7 +190,12 @@ export async function POST(req: Request) {
     }
   }
 
-  let systemPromptExtras: string | undefined;
+  // Contenu NON-FIABLE du tour. Documents joints et compétences sont des
+  // sources que Louis n'a pas écrites → injectées comme messages `user`
+  // préfixés (cf. injectUntrustedContext), jamais dans le prompt système, pour
+  // qu'une instruction cachée dans un PDF client ne soit pas lue avec la même
+  // autorité que la déontologie ou la politique d'outils.
+  const untrustedBlocks: UntrustedBlock[] = [];
   if (documentIds && documentIds.length > 0) {
     const docs = await db
       .select({
@@ -201,24 +207,23 @@ export async function POST(req: Request) {
         and(eq(documents.userId, userId), inArray(documents.id, documentIds))
       );
 
-    const docBlocks = docs
-      .filter((d) => d.extractedText)
-      .map(
-        (d, i) =>
-          `--- Document ${i + 1} : ${d.filename} ---\n${d.extractedText}\n--- Fin document ${i + 1} ---`
-      );
-
-    if (docBlocks.length > 0) {
-      systemPromptExtras = `Les documents suivants ont été joints à la conversation par l'utilisateur. Réponds en t'appuyant sur leur contenu quand c'est pertinent et cite explicitement le nom du document quand tu en reprends un extrait.\n\n${docBlocks.join("\n\n")}`;
+    for (const d of docs) {
+      if (d.extractedText) {
+        untrustedBlocks.push({
+          kind: "document",
+          label: d.filename,
+          text: d.extractedText,
+        });
+      }
     }
   }
 
   // ─── Détection automatique de skills ────────────────────────────────
   // Avant de lancer l'orchestrateur, on demande à un classificateur
   // léger quelles skills (parmi celles activées par l'utilisateur) sont
-  // pertinentes pour la demande. Leurs system prompts sont alors empilés
-  // dans systemPromptExtras → injectés dans le prompt système du
-  // modèle principal. L'utilisateur n'a rien à toggle manuellement.
+  // pertinentes pour la demande. Leurs system prompts sont alors injectés
+  // comme bloc non-fiable (une compétence est éditable par l'utilisateur,
+  // donc traitée comme donnée). L'utilisateur n'a rien à toggle manuellement.
   let detectedSkillSlugs: string[] = [];
   try {
     const lastUserText = extractTextPreview(lastUser);
@@ -243,9 +248,11 @@ export async function POST(req: Request) {
           );
           const skillsBlock = composeSkillsPrompt(selected);
           if (skillsBlock) {
-            systemPromptExtras = systemPromptExtras
-              ? `${systemPromptExtras}\n\n---\n\n${skillsBlock}`
-              : skillsBlock;
+            untrustedBlocks.push({
+              kind: "skill",
+              label: "Compétences activées",
+              text: skillsBlock,
+            });
           }
         }
       }
@@ -290,7 +297,7 @@ export async function POST(req: Request) {
           conversationId: finalConversationId,
           messages: uiMessages,
           documentIds,
-          systemPromptExtras,
+          untrustedBlocks: untrustedBlocks.length > 0 ? untrustedBlocks : undefined,
           projectId: effectiveProjectId,
           projectDocumentIds: projectScope?.documentIds,
           projectFolderId: projectScope?.folderId ?? null,

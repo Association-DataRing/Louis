@@ -84,7 +84,20 @@ export interface AgentContext {
   conversationId: string;
   messages: UIMessage[];
   documentIds?: string[];
+  /**
+   * Ajouts FIABLES au prompt système (instructions d'orchestration : consignes
+   * de tour/synthèse du council). NE JAMAIS y mettre de contenu non-fiable
+   * (documents joints, compétences, sorties d'agents) — celui-ci passe par
+   * `untrustedBlocks`. Cf. lib/orchestrator/untrusted.ts.
+   */
   systemPromptExtras?: string;
+  /**
+   * Contenu NON-FIABLE du tour (documents joints, compétences). Injecté comme
+   * message `user` préfixé d'un marqueur, jamais dans le prompt système, pour
+   * que le modèle ne puisse pas confondre une instruction cachée dans un
+   * document avec une consigne de Louis.
+   */
+  untrustedBlocks?: UntrustedBlock[];
   /**
    * Périmètre projet de la conversation (modèle dossier = projet). Quand il
    * est présent, les outils documentaires sont scopés aux documents du projet
@@ -115,6 +128,21 @@ export interface AgentPriorOutput {
   output: string;
   /** Numéro de tour pour le mode council (1, 2, …). undefined en sequential. */
   round?: number;
+}
+
+/** Nature d'une source non-fiable, pour l'étiquetage du bloc injecté. */
+export type UntrustedKind = "document" | "skill" | "agent-output";
+
+/**
+ * Bloc de contenu NON-FIABLE (document joint, compétence, sortie d'agent…).
+ * Injecté comme message `user` distinct et préfixé d'un marqueur, jamais dans
+ * le prompt système — séparation instruction/donnée. Cf. lib/orchestrator/untrusted.ts.
+ */
+export interface UntrustedBlock {
+  kind: UntrustedKind;
+  /** Libellé de la source (nom de fichier, libellé d'agent…) affiché dans l'en-tête. */
+  label: string;
+  text: string;
 }
 
 /**
