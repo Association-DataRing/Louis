@@ -10,6 +10,8 @@ import {
   IconFileText,
   IconKey,
   IconCpu,
+  IconPlugConnected,
+  IconBolt,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -175,6 +177,24 @@ export function ComposerMenu({
           <Link href="/settings/models">
             <IconCpu className="size-4" />
             Modèles
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/skills">
+            <IconSparkles className="size-4" />
+            Skills
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/connectors">
+            <IconPlugConnected className="size-4" />
+            Connecteurs
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/mcp">
+            <IconBolt className="size-4" />
+            Serveurs MCP
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
