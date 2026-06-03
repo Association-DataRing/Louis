@@ -21,6 +21,7 @@ const sections = [
     items: [
       { href: "/settings/general", label: "Général", icon: IconAdjustments },
       { href: "/settings/profile", label: "Profil", icon: IconUser },
+      { href: "/settings/security", label: "Sécurité", icon: IconShieldLock },
       { href: "/settings/usage", label: "Coûts & usage", icon: IconCash },
     ],
   },

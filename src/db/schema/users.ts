@@ -6,6 +6,7 @@ import {
   timestamp,
   pgEnum,
   integer,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "member"]);
@@ -25,6 +26,13 @@ export const users = pgTable("users", {
    * Géré côté admin uniquement, contrôlé dans /api/chat/route.ts.
    */
   monthlyQuotaCents: integer("monthly_quota_cents"),
+  // 2FA TOTP. `totpSecretPending` détient le secret le temps de l'enrôlement ;
+  // il est promu vers `totpSecret` + `totpEnabled=true` une fois un premier
+  // code confirmé. `backupCodes` = codes de secours à usage unique, HACHÉS.
+  totpSecret: text("totp_secret"),
+  totpSecretPending: text("totp_secret_pending"),
+  totpEnabled: boolean("totp_enabled").default(false).notNull(),
+  backupCodes: jsonb("backup_codes").$type<string[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

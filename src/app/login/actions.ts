@@ -31,6 +31,7 @@ export async function loginAction(
 ): Promise<LoginState> {
   const email = formData.get("email");
   const password = formData.get("password");
+  const totp = formData.get("totp");
 
   if (typeof email !== "string" || typeof password !== "string") {
     return { error: "Champs requis manquants." };
@@ -53,6 +54,7 @@ export async function loginAction(
     await signIn("credentials", {
       email,
       password,
+      totp: typeof totp === "string" ? totp : "",
       redirectTo: "/dashboard",
     });
     return {};
