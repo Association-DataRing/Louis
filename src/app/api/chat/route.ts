@@ -18,6 +18,8 @@ import {
   extractAndStoreMemories,
   memoryExtractionEnabled,
 } from "@/lib/memory-extract";
+import { assessDeliverable } from "@/lib/orchestrator/verify";
+import { recordAudit } from "@/lib/audit";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { getProjectScope } from "@/lib/projects/scope";
 import { indexMessageForProject } from "@/lib/rag/message-search";
@@ -502,6 +504,24 @@ export async function POST(req: Request) {
           modelId: modelOverride ?? null,
         })
         .returning({ id: messages.id });
+
+      // Vérification du livrable : si un outil effectif (generate/edit_document)
+      // a été utilisé, on trace dans l'audit s'il a réellement abouti. Capture
+      // le cas « le modèle annonce avoir créé le document alors que l'outil a
+      // silencieusement échoué » — défendabilité d'un livrable juridique.
+      const deliverable = assessDeliverable(savedParts);
+      if (deliverable.hadEffectful) {
+        await recordAudit({
+          userId,
+          action: deliverable.allOk
+            ? "deliverable.verified"
+            : "deliverable.failed",
+          target: finalConversationId,
+          meta: deliverable.allOk
+            ? undefined
+            : { failures: deliverable.failures },
+        });
+      }
 
       // H9 : insère l'audit trail multi-agent, rattaché au message assistant
       // (messageId), pour qu'il soit relisible/exportable par message.
