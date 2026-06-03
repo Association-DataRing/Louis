@@ -117,6 +117,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id!;
         token.role = user.role;
+        return token;
+      }
+      // Sessions existantes : on revalide le compte à CHAQUE accès. Sans ça,
+      // désactiver/supprimer un membre (départ de collaborateur) ne coupait son
+      // accès qu'au bout des 30 jours du JWT — fenêtre inacceptable pour un
+      // système qui détient des données clients privilégiées et les clés de
+      // chiffrement at-rest. Lecture PK minimale, donc négligeable. Sur blip DB
+      // on garde la session (fail-open dispo) plutôt que de déconnecter tout le
+      // cabinet ; la revalidation reprend au prochain accès. Ne tourne qu'en
+      // runtime Node (le proxy n'appelle pas auth()), pas en edge.
+      if (token.id) {
+        try {
+          const [u] = await db
+            .select({ isActive: users.isActive, role: users.role })
+            .from(users)
+            .where(eq(users.id, token.id))
+            .limit(1);
+          if (!u || !u.isActive) return null; // compte supprimé/désactivé → session détruite
+          token.role = u.role; // propage un changement de rôle immédiatement
+        } catch {
+          // blip DB → on conserve la session existante
+        }
       }
       return token;
     },
