@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { encrypt, decrypt } from "./crypto";
+import { encrypt, decrypt, tryDecrypt, DecryptError } from "./crypto";
 
 beforeAll(() => {
   // Clé de test stable — entropie suffisante pour passer le check length.
@@ -62,6 +62,32 @@ describe("crypto: tampering detection", () => {
     const a = encrypt("payload-a");
     const b = encrypt("payload-b");
     expect(() => decrypt({ ...a, iv: b.iv })).toThrow();
+  });
+
+  it("decrypt throws a typed DecryptError on tampering", () => {
+    const blob = encrypt("payload");
+    const buf = Buffer.from(blob.ciphertext, "base64");
+    buf[0] ^= 0xff;
+    expect(() => decrypt({ ...blob, ciphertext: buf.toString("base64") })).toThrow(
+      DecryptError
+    );
+  });
+});
+
+describe("crypto: fail-soft tryDecrypt", () => {
+  it("ok:true avec la valeur sur un blob valide", () => {
+    const blob = encrypt("secret-api-key");
+    const res = tryDecrypt(blob);
+    expect(res).toEqual({ ok: true, value: "secret-api-key" });
+  });
+
+  it("ok:false avec DecryptError sur un blob altéré (pas de throw)", () => {
+    const blob = encrypt("payload");
+    const buf = Buffer.from(blob.ciphertext, "base64");
+    buf[0] ^= 0xff;
+    const res = tryDecrypt({ ...blob, ciphertext: buf.toString("base64") });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toBeInstanceOf(DecryptError);
   });
 });
 

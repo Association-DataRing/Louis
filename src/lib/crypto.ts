@@ -52,16 +52,55 @@ export function encrypt(plaintext: string): EncryptedBlob {
   };
 }
 
+/**
+ * Échec de déchiffrement d'un secret : clé ENCRYPTION_KEY changée (rotation),
+ * ou donnée corrompue/altérée. Erreur typée pour que les appelants distinguent
+ * « secret indéchiffrable » (récupérable : re-saisir la clé) d'une vraie panne,
+ * et puissent dégrader proprement plutôt que de propager un 500 opaque.
+ */
+export class DecryptError extends Error {
+  constructor(cause?: unknown) {
+    super(
+      "Échec du déchiffrement d'un secret (clé ENCRYPTION_KEY changée, ou donnée corrompue/altérée)."
+    );
+    this.name = "DecryptError";
+    if (cause !== undefined) (this as { cause?: unknown }).cause = cause;
+  }
+}
+
 export function decrypt(blob: EncryptedBlob): string {
-  const decipher = createDecipheriv(
-    ALGO,
-    getKey(),
-    Buffer.from(blob.iv, "base64")
-  );
-  decipher.setAuthTag(Buffer.from(blob.tag, "base64"));
-  const decrypted = Buffer.concat([
-    decipher.update(Buffer.from(blob.ciphertext, "base64")),
-    decipher.final(),
-  ]);
-  return decrypted.toString("utf8");
+  // getKey() laisse remonter telle quelle l'erreur de CONFIG (ENCRYPTION_KEY
+  // absente/trop courte) — c'est un problème d'exploitation, pas de donnée.
+  const key = getKey();
+  try {
+    const decipher = createDecipheriv(ALGO, key, Buffer.from(blob.iv, "base64"));
+    decipher.setAuthTag(Buffer.from(blob.tag, "base64"));
+    const decrypted = Buffer.concat([
+      decipher.update(Buffer.from(blob.ciphertext, "base64")),
+      decipher.final(),
+    ]);
+    return decrypted.toString("utf8");
+  } catch (err) {
+    throw new DecryptError(err);
+  }
+}
+
+export type DecryptResult =
+  | { ok: true; value: string }
+  | { ok: false; error: DecryptError };
+
+/**
+ * Variante non-throwing de decrypt(). Utile dans les boucles multi-secrets
+ * (catalogue de modèles, liste de connecteurs) : un secret corrompu est sauté
+ * proprement au lieu de faire échouer l'ensemble.
+ */
+export function tryDecrypt(blob: EncryptedBlob): DecryptResult {
+  try {
+    return { ok: true, value: decrypt(blob) };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof DecryptError ? err : new DecryptError(err),
+    };
+  }
 }
