@@ -1,6 +1,6 @@
-import { and, cosineDistance, desc, eq, ne, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/db";
-import { messageChunks, messages, conversations } from "@/db/schema";
+import { messageChunks } from "@/db/schema";
 import { chunkText } from "./chunk";
 import { embedQuery, embedTexts, NoEmbeddingProviderError } from "./embed";
 
@@ -13,11 +13,15 @@ export type MessageHit = {
   similarity: number;
 };
 
+// Mêmes poids que la recherche documentaire (cf. rag/search.ts).
+const VECTOR_WEIGHT = 0.7;
+const KEYWORD_WEIGHT = 0.3;
+
 /**
- * Recherche vectorielle dans l'historique des conversations d'un projet.
- * Jointure message_chunks → messages → conversations pour ne garder que les
- * conversations de l'utilisateur rattachées au projet. La conversation
- * courante peut être exclue (son contenu est déjà dans le contexte du modèle).
+ * Recherche HYBRIDE (vecteur + mot-clé) dans l'historique des conversations
+ * d'un projet. Jointure message_chunks → messages → conversations pour ne
+ * garder que les conversations de l'utilisateur rattachées au projet. La
+ * conversation courante peut être exclue. Dégrade en mot-clé pur sans embedding.
  */
 export async function searchProjectMessages(
   userId: string,
@@ -26,38 +30,73 @@ export async function searchProjectMessages(
   options?: { excludeConversationId?: string | null; limit?: number }
 ): Promise<MessageHit[]> {
   const limit = options?.limit ?? 6;
-  const queryEmbedding = await embedQuery(userId, query);
+  const candidates = limit * 3;
+  const exclude = options?.excludeConversationId ?? null;
+  const scope = exclude
+    ? sql`c.user_id = ${userId} AND c.project_id = ${projectId} AND c.id <> ${exclude}::uuid`
+    : sql`c.user_id = ${userId} AND c.project_id = ${projectId}`;
 
-  const similarity = sql<number>`1 - (${cosineDistance(
-    messageChunks.embedding,
-    queryEmbedding
-  )})`;
-
-  const conds = [
-    eq(conversations.userId, userId),
-    eq(conversations.projectId, projectId),
-  ];
-  if (options?.excludeConversationId) {
-    conds.push(ne(conversations.id, options.excludeConversationId));
+  let queryEmbedding: number[] | null = null;
+  try {
+    queryEmbedding = await embedQuery(userId, query);
+  } catch (err) {
+    if (!(err instanceof NoEmbeddingProviderError)) throw err;
   }
 
-  const rows = await db
-    .select({
-      conversationId: conversations.id,
-      conversationTitle: conversations.title,
-      role: messages.role,
-      content: messageChunks.content,
-      createdAt: messages.createdAt,
-      similarity,
-    })
-    .from(messageChunks)
-    .innerJoin(messages, eq(messages.id, messageChunks.messageId))
-    .innerJoin(conversations, eq(conversations.id, messages.conversationId))
-    .where(and(...conds))
-    .orderBy(desc(similarity))
-    .limit(limit);
+  if (!queryEmbedding) {
+    const rows = await db.execute(sql`
+      SELECT c.id AS "conversationId", c.title AS "conversationTitle",
+             m.role AS "role", mc.content AS "content", m.created_at AS "createdAt",
+             ts_rank(to_tsvector('french', mc.content),
+                     websearch_to_tsquery('french', ${query})) AS "similarity"
+      FROM message_chunks mc
+      JOIN messages m ON m.id = mc.message_id
+      JOIN conversations c ON c.id = m.conversation_id
+      WHERE ${scope}
+        AND to_tsvector('french', mc.content) @@ websearch_to_tsquery('french', ${query})
+      ORDER BY "similarity" DESC
+      LIMIT ${limit}
+    `);
+    return rows as unknown as MessageHit[];
+  }
 
-  return rows;
+  const vecLiteral = `[${queryEmbedding.join(",")}]`;
+  const rows = await db.execute(sql`
+    WITH q AS (
+      SELECT websearch_to_tsquery('french', ${query}) AS tsq, ${vecLiteral}::vector AS vec
+    ),
+    vec AS (
+      SELECT mc.id, 1 - (mc.embedding <=> (SELECT vec FROM q)) AS vec_sim
+      FROM message_chunks mc
+      JOIN messages m ON m.id = mc.message_id
+      JOIN conversations c ON c.id = m.conversation_id
+      WHERE ${scope} AND mc.embedding IS NOT NULL
+      ORDER BY mc.embedding <=> (SELECT vec FROM q)
+      LIMIT ${candidates}
+    ),
+    kw AS (
+      SELECT mc.id, ts_rank(to_tsvector('french', mc.content), (SELECT tsq FROM q)) AS kw_rank
+      FROM message_chunks mc
+      JOIN messages m ON m.id = mc.message_id
+      JOIN conversations c ON c.id = m.conversation_id
+      WHERE ${scope} AND to_tsvector('french', mc.content) @@ (SELECT tsq FROM q)
+      ORDER BY kw_rank DESC
+      LIMIT ${candidates}
+    )
+    SELECT c.id AS "conversationId", c.title AS "conversationTitle",
+           m.role AS "role", mc.content AS "content", m.created_at AS "createdAt",
+           (${VECTOR_WEIGHT} * COALESCE(v.vec_sim, 0)
+            + ${KEYWORD_WEIGHT} * LEAST(COALESCE(k.kw_rank, 0), 1.0)) AS "similarity"
+    FROM message_chunks mc
+    JOIN messages m ON m.id = mc.message_id
+    JOIN conversations c ON c.id = m.conversation_id
+    LEFT JOIN vec v ON v.id = mc.id
+    LEFT JOIN kw k ON k.id = mc.id
+    WHERE v.id IS NOT NULL OR k.id IS NOT NULL
+    ORDER BY "similarity" DESC
+    LIMIT ${limit}
+  `);
+  return rows as unknown as MessageHit[];
 }
 
 /**
