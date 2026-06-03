@@ -201,6 +201,7 @@ export async function POST(req: Request) {
       .select({
         filename: documents.filename,
         extractedText: documents.extractedText,
+        extractionStatus: documents.extractionStatus,
       })
       .from(documents)
       .where(
@@ -209,10 +210,18 @@ export async function POST(req: Request) {
 
     for (const d of docs) {
       if (d.extractedText) {
+        // Quand le texte a été tronqué à l'extraction (gros document), on le
+        // signale DANS le bloc : sans ça le modèle répond avec assurance sur un
+        // contrat à moitié lu. Il sait alors qu'il doit déférer à search_documents
+        // (RAG) pour le reste.
+        const notice =
+          d.extractionStatus === "truncated"
+            ? "\n\n[⚠️ Document tronqué à l'extraction — seul le début est inclus ici. Pour le reste, utilise search_documents (RAG) plutôt que de répondre sur la seule partie visible.]"
+            : "";
         untrustedBlocks.push({
           kind: "document",
           label: d.filename,
-          text: d.extractedText,
+          text: `${d.extractedText}${notice}`,
         });
       }
     }
