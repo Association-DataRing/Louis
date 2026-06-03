@@ -131,7 +131,7 @@ export interface AgentPriorOutput {
 }
 
 /** Nature d'une source non-fiable, pour l'étiquetage du bloc injecté. */
-export type UntrustedKind = "document" | "skill" | "agent-output";
+export type UntrustedKind = "document" | "skill" | "agent-output" | "memory";
 
 /**
  * Bloc de contenu NON-FIABLE (document joint, compétence, sortie d'agent…).

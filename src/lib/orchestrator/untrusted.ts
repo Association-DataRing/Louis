@@ -24,6 +24,7 @@ const KIND_LABEL: Record<UntrustedKind, string> = {
   document: "DOCUMENT JOINT",
   skill: "COMPÉTENCE",
   "agent-output": "PRODUCTION D'AGENT",
+  memory: "MÉMOIRE DU DOSSIER",
 };
 
 /** Emballe un bloc non-fiable avec un en-tête/pied de page traçables. */

@@ -11,8 +11,13 @@ import {
   conversations,
   documents,
   messages,
+  projectMemories,
   type SavedPart,
 } from "@/db/schema";
+import {
+  extractAndStoreMemories,
+  memoryExtractionEnabled,
+} from "@/lib/memory-extract";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { getProjectScope } from "@/lib/projects/scope";
 import { indexMessageForProject } from "@/lib/rag/message-search";
@@ -271,6 +276,34 @@ export async function POST(req: Request) {
     // continue sans skills plutôt que de bloquer la conversation.
   }
 
+  // ─── Recall mémoire du dossier ──────────────────────────────────────
+  // On injecte UNIQUEMENT les faits VALIDÉS par un humain (status approved) —
+  // les faits « pending » n'influencent jamais une réponse. Scopé au dossier
+  // (jamais global) et traité comme donnée non-fiable.
+  if (effectiveProjectId) {
+    const mems = await db
+      .select({
+        category: projectMemories.category,
+        text: projectMemories.text,
+      })
+      .from(projectMemories)
+      .where(
+        and(
+          eq(projectMemories.userId, userId),
+          eq(projectMemories.projectId, effectiveProjectId),
+          eq(projectMemories.status, "approved")
+        )
+      )
+      .limit(100);
+    if (mems.length > 0) {
+      untrustedBlocks.push({
+        kind: "memory",
+        label: "Mémoire validée du dossier",
+        text: mems.map((m) => `- [${m.category}] ${m.text}`).join("\n"),
+      });
+    }
+  }
+
   // États mutables capturés par les callbacks de streamText (savedParts du
   // message final pour ré-hydrater les tool calls au reload) et par
   // onEvent (audit trail multi-agent dans agent_runs).
@@ -497,6 +530,32 @@ export async function POST(req: Request) {
           );
         }
         await indexMessageForProject(userId, insertedAssistant.id, finalText);
+      }
+
+      // Extraction mémoire (désactivée par défaut — coût d'un appel LLM). Crée
+      // des faits en statut « pending » (jamais utilisés avant validation
+      // humaine). Best-effort, ne perturbe jamais le chat.
+      if (
+        effectiveProjectId &&
+        userMessageText &&
+        memoryExtractionEnabled()
+      ) {
+        try {
+          const model = modelFromKey(
+            await loadProviderKey(userId, providerKeyId),
+            modelOverride ?? null
+          );
+          await extractAndStoreMemories({
+            model,
+            userId,
+            projectId: effectiveProjectId,
+            sourceMessageId: userMessageId,
+            userText: userMessageText,
+            assistantText: finalText,
+          });
+        } catch {
+          // best-effort
+        }
       }
     },
   });

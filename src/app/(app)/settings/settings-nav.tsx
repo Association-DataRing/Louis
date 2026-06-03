@@ -12,6 +12,7 @@ import {
   IconShieldLock,
   IconCpu,
   IconSparkles,
+  IconBrain,
 } from "@tabler/icons-react";
 
 const sections = [
@@ -29,6 +30,7 @@ const sections = [
       { href: "/settings/providers", label: "Providers IA", icon: IconKey },
       { href: "/settings/models", label: "Modèles", icon: IconCpu },
       { href: "/settings/skills", label: "Skills", icon: IconSparkles },
+      { href: "/settings/memory", label: "Mémoire", icon: IconBrain },
       {
         href: "/settings/connectors",
         label: "Connecteurs",
