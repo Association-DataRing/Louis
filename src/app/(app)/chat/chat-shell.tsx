@@ -30,6 +30,7 @@ import { ModuleHelp } from "@/components/module-help";
 import { Dropzone, uploadDocument } from "@/components/dropzone";
 import { useSmoothText } from "@/lib/use-smooth-text";
 import { useStickToBottom } from "@/lib/use-stick-to-bottom";
+import { cn } from "@/lib/utils";
 import { ThinkingIndicator } from "./thinking-indicator";
 import { AgentStepsWrapper } from "./agent-steps-wrapper";
 import {
@@ -53,6 +54,8 @@ import {
   IconArrowDown,
   IconPaperclip,
   IconUpload,
+  IconFolder,
+  IconChevronRight,
   IconX,
   IconTool,
   IconPlayerStop,
@@ -100,6 +103,13 @@ type DocumentOption = {
   id: string;
   filename: string;
   sizeBytes: number;
+  folderId?: string | null;
+};
+
+type FolderOption = {
+  id: string;
+  name: string;
+  parentFolderId: string | null;
 };
 
 type Usage = {
@@ -158,6 +168,7 @@ type Props = {
     metadata?: unknown;
   }[];
   availableDocuments: DocumentOption[];
+  folders: FolderOption[];
   workflows: WorkflowOption[];
   pipelines: PipelineOption[];
   /**
@@ -826,15 +837,164 @@ const AssistantMarkdownPart = memo(function AssistantMarkdownPart({
   );
 });
 
+/** Ligne document (feuille) avec case à cocher, indentée selon la profondeur. */
+function DocLeaf({
+  doc,
+  depth,
+  selected,
+  onToggle,
+}: {
+  doc: DocumentOption;
+  depth: number;
+  selected: boolean;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <label
+      className="flex items-center gap-2.5 py-1.5 pr-3 hover:bg-accent cursor-pointer rounded-md"
+      style={{ paddingLeft: 12 + depth * 16 }}
+    >
+      <Checkbox checked={selected} onCheckedChange={() => onToggle(doc.id)} />
+      <span className="flex-1 text-sm truncate">{doc.filename}</span>
+    </label>
+  );
+}
+
+/** Nœud dossier repliable + son contenu (sous-dossiers puis documents). */
+function FolderNode({
+  folder,
+  depth,
+  childrenByParent,
+  docsByFolder,
+  selected,
+  collapsed,
+  toggleCollapse,
+  onToggle,
+}: {
+  folder: FolderOption;
+  depth: number;
+  childrenByParent: Map<string | null, FolderOption[]>;
+  docsByFolder: Map<string | null, DocumentOption[]>;
+  selected: string[];
+  collapsed: Set<string>;
+  toggleCollapse: (id: string) => void;
+  onToggle: (id: string) => void;
+}) {
+  const isCollapsed = collapsed.has(folder.id);
+  const subFolders = (childrenByParent.get(folder.id) ?? []).filter((f) =>
+    folderHasDocs(f.id, childrenByParent, docsByFolder)
+  );
+  const docs = docsByFolder.get(folder.id) ?? [];
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => toggleCollapse(folder.id)}
+        className="w-full flex items-center gap-1.5 py-1.5 pr-3 hover:bg-accent rounded-md text-left"
+        style={{ paddingLeft: 8 + depth * 16 }}
+      >
+        <IconChevronRight
+          className={cn(
+            "size-3.5 shrink-0 text-muted-foreground transition-transform",
+            !isCollapsed && "rotate-90"
+          )}
+        />
+        <IconFolder className="size-4 shrink-0 text-muted-foreground" />
+        <span className="flex-1 text-sm font-medium truncate">{folder.name}</span>
+      </button>
+      {!isCollapsed && (
+        <>
+          {subFolders.map((f) => (
+            <FolderNode
+              key={f.id}
+              folder={f}
+              depth={depth + 1}
+              childrenByParent={childrenByParent}
+              docsByFolder={docsByFolder}
+              selected={selected}
+              collapsed={collapsed}
+              toggleCollapse={toggleCollapse}
+              onToggle={onToggle}
+            />
+          ))}
+          {docs.map((doc) => (
+            <DocLeaf
+              key={doc.id}
+              doc={doc}
+              depth={depth + 1}
+              selected={selected.includes(doc.id)}
+              onToggle={onToggle}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Vrai si le dossier (ou un descendant) contient au moins un document. */
+function folderHasDocs(
+  folderId: string,
+  childrenByParent: Map<string | null, FolderOption[]>,
+  docsByFolder: Map<string | null, DocumentOption[]>
+): boolean {
+  if ((docsByFolder.get(folderId) ?? []).length > 0) return true;
+  return (childrenByParent.get(folderId) ?? []).some((f) =>
+    folderHasDocs(f.id, childrenByParent, docsByFolder)
+  );
+}
+
+/**
+ * Picker de documents en ARBORESCENCE réelle : dossiers et sous-dossiers
+ * (parentFolderId) repliables, documents en feuilles. Les dossiers sans aucun
+ * document (direct ou descendant) sont élagués. Les documents sans dossier
+ * (racine, ex. fichiers tout juste téléversés) apparaissent en bas.
+ */
 function DocPickerContent({
   documents,
+  folders,
   selected,
   onToggle,
 }: {
   documents: DocumentOption[];
+  folders: FolderOption[];
   selected: string[];
   onToggle: (id: string) => void;
 }) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const { childrenByParent, docsByFolder, rootFolders, rootDocs } = useMemo(() => {
+    const childrenByParent = new Map<string | null, FolderOption[]>();
+    for (const f of folders) {
+      const key = f.parentFolderId;
+      const arr = childrenByParent.get(key) ?? [];
+      arr.push(f);
+      childrenByParent.set(key, arr);
+    }
+    const folderIds = new Set(folders.map((f) => f.id));
+    const docsByFolder = new Map<string | null, DocumentOption[]>();
+    for (const d of documents) {
+      // Un folderId inconnu (dossier filtré/supprimé) retombe en racine.
+      const key = d.folderId && folderIds.has(d.folderId) ? d.folderId : null;
+      const arr = docsByFolder.get(key) ?? [];
+      arr.push(d);
+      docsByFolder.set(key, arr);
+    }
+    return {
+      childrenByParent,
+      docsByFolder,
+      rootFolders: childrenByParent.get(null) ?? [],
+      rootDocs: docsByFolder.get(null) ?? [],
+    };
+  }, [documents, folders]);
+
   if (documents.length === 0) {
     return (
       <div className="p-4 text-center">
@@ -850,6 +1010,11 @@ function DocPickerContent({
       </div>
     );
   }
+
+  const visibleRootFolders = rootFolders.filter((f) =>
+    folderHasDocs(f.id, childrenByParent, docsByFolder)
+  );
+
   return (
     <div className="max-h-72 overflow-y-auto py-1">
       <div className="px-3 py-2 border-b border-border">
@@ -858,21 +1023,30 @@ function DocPickerContent({
           Le texte extrait sera inséré dans le system prompt.
         </p>
       </div>
-      {documents.map((doc) => {
-        const isSelected = selected.includes(doc.id);
-        return (
-          <label
+      <div className="p-1">
+        {visibleRootFolders.map((f) => (
+          <FolderNode
+            key={f.id}
+            folder={f}
+            depth={0}
+            childrenByParent={childrenByParent}
+            docsByFolder={docsByFolder}
+            selected={selected}
+            collapsed={collapsed}
+            toggleCollapse={toggleCollapse}
+            onToggle={onToggle}
+          />
+        ))}
+        {rootDocs.map((doc) => (
+          <DocLeaf
             key={doc.id}
-            className="flex items-center gap-2.5 px-3 py-2 hover:bg-accent cursor-pointer"
-          >
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={() => onToggle(doc.id)}
-            />
-            <span className="flex-1 text-sm truncate">{doc.filename}</span>
-          </label>
-        );
-      })}
+            doc={doc}
+            depth={0}
+            selected={selected.includes(doc.id)}
+            onToggle={onToggle}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -888,6 +1062,7 @@ export function ChatShell({
   projectContext,
   initialMessages,
   availableDocuments,
+  folders,
   workflows,
   pipelines,
   enabledModels,
@@ -1255,6 +1430,7 @@ export function ChatShell({
                   id: result.id,
                   filename: result.filename,
                   sizeBytes: result.sizeBytes,
+                  folderId: null,
                 },
               ]
         );
@@ -2310,6 +2486,7 @@ export function ChatShell({
                     <div className="border-t border-border">
                       <DocPickerContent
                         documents={mergedDocuments}
+                        folders={folders}
                         selected={attachedDocIds}
                         onToggle={(id) =>
                           setAttachedDocIds((ids) =>

@@ -6,6 +6,7 @@ import { db } from "@/db";
 import {
   conversations,
   documents,
+  documentFolders,
   messages,
   pipelineAgents,
   pipelines,
@@ -133,11 +134,24 @@ export default async function ChatPage({
       id: documents.id,
       filename: documents.filename,
       sizeBytes: documents.sizeBytes,
+      folderId: documents.folderId,
     })
     .from(documents)
     .where(and(eq(documents.userId, userId), isNotNull(documents.extractedText)))
     .orderBy(desc(documents.createdAt))
     .limit(50);
+
+  // Dossiers de l'utilisateur — pour afficher l'arborescence réelle dans le
+  // picker du trombone (dossiers + sous-dossiers via parentFolderId).
+  const folderList = await db
+    .select({
+      id: documentFolders.id,
+      name: documentFolders.name,
+      parentFolderId: documentFolders.parentFolderId,
+    })
+    .from(documentFolders)
+    .where(eq(documentFolders.userId, userId))
+    .orderBy(asc(documentFolders.name));
 
   const workflowList = await db
     .select({
@@ -238,6 +252,7 @@ export default async function ChatPage({
       projectContext={conversationProjectContext}
       initialMessages={initialMessages}
       availableDocuments={docList}
+      folders={folderList}
       workflows={workflowList}
       pipelines={pipelineList}
       enabledModels={enabledModels}
