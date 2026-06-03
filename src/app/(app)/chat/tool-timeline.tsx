@@ -65,19 +65,19 @@ export function ToolTimeline({
   }
 
   return (
-    <div className="w-full max-w-2xl rounded-xl border border-border bg-card/60 overflow-hidden">
+    <div className="w-full">
       {/* En-tête récapitulatif */}
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
         aria-expanded={!collapsed}
-        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-accent/40 transition-colors"
+        className="group/h w-full flex items-center gap-2.5 py-1.5 text-left"
       >
-        <IconSparkles className="size-4 shrink-0 text-foreground/70" />
-        <span className="text-sm font-medium truncate">{summary}</span>
+        <IconSparkles className="size-4 shrink-0 text-foreground/60" />
+        <span className="text-[15px] font-medium truncate">{summary}</span>
         <IconChevronDown
           className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform",
+            "size-4 shrink-0 text-muted-foreground/60 group-hover/h:text-muted-foreground transition-transform",
             collapsed && "-rotate-90"
           )}
         />
@@ -91,10 +91,10 @@ export function ToolTimeline({
       </button>
 
       {!collapsed && (
-        <div className="relative px-3.5 pb-2.5">
+        <div className="relative">
           {/* Ligne verticale de la timeline */}
           <div
-            className="absolute left-[1.4rem] top-0 bottom-0 w-px bg-border"
+            className="absolute left-[0.875rem] top-1 bottom-4 w-px bg-border/70"
             aria-hidden
           />
           <ul className="relative flex flex-col">
@@ -108,22 +108,24 @@ export function ToolTimeline({
                     type="button"
                     onClick={() => toggleRow(row.id)}
                     aria-expanded={isOpen}
-                    className="group flex items-center gap-3 py-1.5 text-left rounded-md hover:bg-accent/30 transition-colors -mx-1 px-1"
+                    className="group flex items-center gap-3 py-2 text-left w-full"
                   >
-                    <span className="relative z-10 grid place-items-center size-7 rounded-full bg-card border border-border text-foreground/70">
+                    <span className="relative z-10 grid place-items-center size-7 rounded-full border border-border/70 bg-background text-foreground/55">
                       {row.pending ? (
                         <IconLoader2 className="size-3.5 animate-spin" />
                       ) : (
                         <Icon className="size-3.5" />
                       )}
                     </span>
-                    <span className="min-w-0 flex-1 text-sm truncate">
-                      <span className="text-foreground">{row.label}</span>
+                    <span className="min-w-0 flex-1 text-[15px] truncate">
+                      <span className="text-foreground/90 group-hover:text-foreground transition-colors">
+                        {row.label}
+                      </span>
                       {row.summary && (
-                        <span className="text-muted-foreground"> · {row.summary}</span>
+                        <span className="text-muted-foreground/80"> · {row.summary}</span>
                       )}
                     </span>
-                    <span className="shrink-0 text-[11px] text-muted-foreground rounded-md bg-muted px-1.5 py-0.5">
+                    <span className="shrink-0 text-[11px] text-muted-foreground rounded-md bg-muted/60 px-2 py-0.5">
                       {meta.chip}
                     </span>
                   </button>
@@ -135,11 +137,11 @@ export function ToolTimeline({
             })}
 
             {!isStreaming && (
-              <li className="flex items-center gap-3 py-1.5">
-                <span className="relative z-10 grid place-items-center size-7 rounded-full bg-card border border-border text-success">
+              <li className="flex items-center gap-3 py-2">
+                <span className="relative z-10 grid place-items-center size-7 rounded-full border border-border/70 bg-background text-success/80">
                   <IconCircleCheck className="size-4" />
                 </span>
-                <span className="text-sm text-muted-foreground">Terminé</span>
+                <span className="text-[15px] text-muted-foreground">Terminé</span>
               </li>
             )}
           </ul>

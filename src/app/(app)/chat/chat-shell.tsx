@@ -534,8 +534,8 @@ function buildToolRows(
       label: TOOL_LABEL[name] ?? name,
       summary: formatToolInput(part.input),
       pending,
-      autoExpand:
-        !pending && (name === "generate_document" || name === "edit_document"),
+      // Tout est replié par défaut (look minimaliste) — le détail s'ouvre au clic.
+      autoExpand: false,
       input: part.input,
       output: part.output,
     });
