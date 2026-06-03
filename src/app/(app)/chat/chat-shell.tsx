@@ -51,6 +51,7 @@ import { DocPanel } from "./doc-panel";
 import { EditCard } from "./edit-card";
 import {
   IconArrowUp,
+  IconArrowUpRight,
   IconArrowDown,
   IconPaperclip,
   IconUpload,
@@ -1972,7 +1973,12 @@ export function ChatShell({
         aria-label="Conversation avec Louis"
       >
         {isEmpty ? (
-          <EmptyState />
+          <EmptyState
+            onPickSuggestion={(text) => {
+              setInput(text);
+              composerRef.current?.focus();
+            }}
+          />
         ) : (
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
             {messages.map((m, msgIdx) => {
@@ -2591,72 +2597,76 @@ export function ChatShell({
   );
 }
 
-function EmptyState() {
-  // Stagger d'entrée subtile : le logo fade rapide, le titre slide-up
-  // doux, les 3 points d'entrée arrivent l'un après l'autre. Wrappé
-  // sous `motion-safe` pour respecter prefers-reduced-motion.
+const EMPTY_SUGGESTIONS = [
+  "Rédige une mise en demeure pour loyers impayés.",
+  "Cherche la jurisprudence récente sur la clause de non-concurrence.",
+  "Résume les points clés d'une décision de justice.",
+  "Explique le régime de la responsabilité civile (art. 1240 C. civ.).",
+];
+
+function EmptyState({
+  onPickSuggestion,
+}: {
+  onPickSuggestion: (text: string) => void;
+}) {
+  // Stagger d'entrée subtile : logo, titre, puis les suggestions l'une après
+  // l'autre. Wrappé sous `motion-safe` (respecte prefers-reduced-motion).
   return (
     <div className="h-full flex flex-col items-center justify-center px-6">
-      <div className="max-w-xl w-full">
+      <div className="max-w-2xl w-full">
         <LouisLogo className="size-10 text-primary mb-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500" />
         <div className="flex items-center gap-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700">
           <h1 className="font-heading text-4xl md:text-5xl tracking-tight">
             Une nouvelle conversation.
           </h1>
           <ModuleHelp slug="user/chat" title="Utiliser le chat">
-            Choisissez un modèle, posez votre question. Joignez un document
-            (trombone) ou insérez un workflow (étoiles). Chaque appel
-            d&apos;outil est inspectable.
+            Posez une question, joignez une pièce (trombone) ou laissez Louis
+            chercher dans le droit (Légifrance, Pappers) et vos documents. Il
+            peut aussi rédiger des actes en .docx. Chaque appel d&apos;outil est
+            inspectable.
           </ModuleHelp>
         </div>
         <p className="mt-3 text-base text-muted-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-700 motion-safe:delay-150">
-          Tapez votre question dans le composer ci-dessous — ou parcourez
-          ces points d&apos;entrée.
+          Posez une question juridique, joignez une pièce, ou partez d&apos;un
+          exemple.
         </p>
-        <ul className="mt-8 space-y-3 text-sm">
-          <li
-            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
-            style={{ animationDelay: "260ms", animationFillMode: "both" }}
-          >
-            <span className="text-muted-foreground tabular-nums">·</span>
-            <span>
-              <strong className="text-foreground">Joindre un document</strong>
-              <span className="text-muted-foreground">
-                {" "}
-                — cliquez sur l&apos;icône trombone pour interroger un PDF
-                ou un DOCX que vous avez importé.
+
+        <div className="mt-8 grid sm:grid-cols-2 gap-2.5">
+          {EMPTY_SUGGESTIONS.map((s, i) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onPickSuggestion(s)}
+              className="group text-left rounded-xl border border-border bg-card/40 hover:bg-accent/50 px-4 py-3 transition-colors motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
+              style={{
+                animationDelay: `${260 + i * 70}ms`,
+                animationFillMode: "both",
+              }}
+            >
+              <span className="flex items-start gap-2">
+                <span className="flex-1 text-sm text-foreground/90">{s}</span>
+                <IconArrowUpRight className="size-4 shrink-0 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </span>
-            </span>
-          </li>
-          <li
-            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
-            style={{ animationDelay: "340ms", animationFillMode: "both" }}
-          >
-            <span className="text-muted-foreground tabular-nums">·</span>
-            <span>
-              <strong className="text-foreground">Insérer un workflow</strong>
-              <span className="text-muted-foreground">
-                {" "}
-                — icône étoiles pour piquer un prompt prêt à l&apos;emploi
-                (résumé d&apos;arrêt, analyse de clause…).
-              </span>
-            </span>
-          </li>
-          <li
-            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
-            style={{ animationDelay: "420ms", animationFillMode: "both" }}
-          >
-            <span className="text-muted-foreground tabular-nums">·</span>
-            <span>
-              <strong className="text-foreground">Choisir un modèle</strong>
-              <span className="text-muted-foreground">
-                {" "}
-                — sélecteur en bas à gauche, le badge FR / UE / US reste
-                visible pendant toute la conversation.
-              </span>
-            </span>
-          </li>
-        </ul>
+            </button>
+          ))}
+        </div>
+
+        <p
+          className="mt-6 text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-700"
+          style={{ animationDelay: "560ms", animationFillMode: "both" }}
+        >
+          <span className="inline-flex items-center gap-1">
+            <IconPaperclip className="size-3.5" /> joindre une pièce ou un
+            document de Louis
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            <strong className="text-foreground/80">+</strong> trames, board
+            multi-agents et réglages
+          </span>
+          <span aria-hidden>·</span>
+          <span>badge FR / UE / US = souveraineté du modèle</span>
+        </p>
       </div>
     </div>
   );
