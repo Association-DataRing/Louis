@@ -30,8 +30,9 @@ import { messages } from "./messages";
  * - `council`    : comité, N tours où tous les agents (sauf le synthétiseur)
  *                  voient les positions des autres et révisent la leur
  * - `parallel`   : fan-out — le synthétiseur dispatche en parallèle, agrège
+ * - `iterative`  : approfondissement multi-tours d'un chercheur, puis synthèse
  */
-export type PipelineMode = "sequential" | "council" | "parallel";
+export type PipelineMode = "sequential" | "council" | "parallel" | "iterative";
 
 /**
  * Portée documentaire RAG d'un agent (Board). `null` en base = `inherit` =

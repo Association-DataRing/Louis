@@ -66,6 +66,7 @@ export class Orchestrator {
     const mode = this.pipeline.mode ?? "sequential";
     if (mode === "council") return this.runCouncil(args);
     if (mode === "parallel") return this.runParallel(args);
+    if (mode === "iterative") return this.runIterative(args);
     return this.runSequential(args);
   }
 
@@ -345,6 +346,174 @@ export class Orchestrator {
     debaterCount: number
   ): string {
     const msg = `Le conseil de ${debaterCount} membres a délibéré sur ${rounds} tour(s). Lis attentivement TOUTES les positions exprimées (incluant les contradictions et révisions au fil des tours). En tant que synthétiseur, ton rôle est de produire la décision finale qui sera servie à l'utilisateur :\n\n1. Identifie les points de CONSENSUS clairs et expose-les en premier.\n2. Identifie les points de DÉSACCORD significatifs et explique-les honnêtement (« Sur ce point, deux écoles s'affrontent… »).\n3. Tranche quand tu peux : prends position en t'appuyant sur l'argumentation la plus solide.\n4. Quand tu ne peux pas trancher, dis-le et précise quelles informations manquent.\n\nNe recopie pas les positions verbatim — synthétise.`;
+    return base ? `${base}\n\n${msg}` : msg;
+  }
+
+  // ─── ITERATIVE ─────────────────────────────────────────────────────────
+
+  /**
+   * Approfondissement multi-tours : le 1er agent (chercheur) reprend SES
+   * PROPRES notes à chaque tour pour creuser les lacunes qu'il a lui-même
+   * identifiées, puis le dernier agent produit une note de recherche
+   * synthétique. Différent du council (un seul chercheur, profondeur vs débat).
+   * Reste souverain : les sources sont celles des outils de l'agent
+   * (Légifrance/Pappers/documents), jamais le web.
+   */
+  private async runIterative(args: OrchestratorRunArgs): Promise<void> {
+    const { ctx, writer } = args;
+    const factory = args.agentFactory ?? defaultAgentFactory;
+    const pipelineRunId = ctx.pipelineRunId ?? nanoid();
+    const rounds = Math.max(1, Math.min(this.pipeline.rounds ?? 2, 4));
+    const agents = this.pipeline.agents;
+    const researcher = agents[0];
+    const synthesizer = agents[agents.length - 1];
+    const hasSynth = agents.length > 1;
+    const priorOutputs: AgentPriorOutput[] = [...(ctx.priorOutputs ?? [])];
+
+    for (let round = 1; round <= rounds; round++) {
+      // Sans synthétiseur distinct, le DERNIER tour stream directement la réponse.
+      const streamLast = !hasSynth && round === rounds;
+      const startedAt = Date.now();
+      await this.emit(args, writer, {
+        type: "agent_start",
+        pipelineRunId,
+        agentId: researcher.id,
+        role: researcher.role,
+        label: researcher.label,
+        position: 0,
+        round,
+      });
+      try {
+        const agent = factory(researcher);
+        const runCtx: AgentContext = {
+          ...ctx,
+          pipelineRunId,
+          priorOutputs: [...priorOutputs],
+          systemPromptExtras: this.iterativeRoundInstructions(
+            ctx.systemPromptExtras,
+            round,
+            rounds
+          ),
+        };
+        if (streamLast) {
+          const result = await agent.run(runCtx);
+          await this.streamFinal({
+            args,
+            def: researcher,
+            pipelineRunId,
+            result,
+            startedAt,
+          });
+        } else {
+          const text = await withRetry(
+            async () => collectText(await agent.run(runCtx)),
+            {
+              onRetry: async (attempt, delayMs) => {
+                writer.write({
+                  type: "data-agent-retry",
+                  data: {
+                    pipelineRunId,
+                    agentId: researcher.id,
+                    role: researcher.role,
+                    label: researcher.label,
+                    attempt,
+                    delayMs,
+                    round,
+                  },
+                });
+              },
+            }
+          );
+          writer.write({
+            type: "data-agent-output",
+            data: {
+              pipelineRunId,
+              agentId: researcher.id,
+              role: researcher.role,
+              label: researcher.label,
+              output: text.value,
+              round,
+            },
+          });
+          await this.emit(args, writer, {
+            type: "agent_finish",
+            pipelineRunId,
+            agentId: researcher.id,
+            role: researcher.role,
+            label: researcher.label,
+            latencyMs: Date.now() - startedAt,
+            inputTokens: text.inputTokens,
+            outputTokens: text.outputTokens,
+            preview: preview(text.value),
+            round,
+            modelId: researcher.modelOverride ?? null,
+          });
+          priorOutputs.push({
+            agentId: researcher.id,
+            role: researcher.role,
+            label: researcher.label,
+            output: text.value,
+            round,
+          });
+        }
+      } catch (err) {
+        await this.emitError(args, writer, researcher, pipelineRunId, err, round);
+        throw err;
+      }
+    }
+
+    if (!hasSynth) return; // mono-agent : le dernier tour a déjà streamé
+
+    const startedAt = Date.now();
+    await this.emit(args, writer, {
+      type: "agent_start",
+      pipelineRunId,
+      agentId: synthesizer.id,
+      role: synthesizer.role,
+      label: synthesizer.label,
+      position: agents.length - 1,
+    });
+    try {
+      const agent = factory(synthesizer);
+      const result = await agent.run({
+        ...ctx,
+        pipelineRunId,
+        priorOutputs,
+        systemPromptExtras: this.iterativeSynthesisInstructions(
+          ctx.systemPromptExtras,
+          rounds
+        ),
+      });
+      await this.streamFinal({
+        args,
+        def: synthesizer,
+        pipelineRunId,
+        result,
+        startedAt,
+      });
+    } catch (err) {
+      await this.emitError(args, writer, synthesizer, pipelineRunId, err);
+      this.streamStaticText(writer, this.buildSynthesisFallback(priorOutputs));
+    }
+  }
+
+  private iterativeRoundInstructions(
+    base: string | undefined,
+    round: number,
+    totalRounds: number
+  ): string {
+    const msg =
+      round === 1
+        ? "PREMIER TOUR de recherche itérative. Établis le cadre : identifie le régime applicable et les premières sources via tes outils (Légifrance, Pappers, recherche documentaire). Termine en listant EXPLICITEMENT les LACUNES qui restent à creuser."
+        : `TOUR ${round}/${totalRounds}. Tes notes des tours précédents te sont fournies comme données de référence. CREUSE les lacunes que tu avais identifiées : nouvelles sources, jurisprudence, divergences doctrinales. N'redonne pas ce qui est déjà couvert — apporte du nouveau, puis liste les lacunes restantes.`;
+    return base ? `${base}\n\n${msg}` : msg;
+  }
+
+  private iterativeSynthesisInstructions(
+    base: string | undefined,
+    rounds: number
+  ): string {
+    const msg = `La recherche a été menée sur ${rounds} tour(s) d'approfondissement (notes fournies en référence). Produis une NOTE DE RECHERCHE structurée pour l'utilisateur : régime applicable, sources citées, points établis, points incertains, conclusion. Ne recopie pas les notes verbatim — synthétise.`;
     return base ? `${base}\n\n${msg}` : msg;
   }
 

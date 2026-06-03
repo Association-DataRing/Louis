@@ -27,7 +27,7 @@ async function requireUserId(): Promise<string> {
 const pipelineMetaSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).nullable().optional(),
-  mode: z.enum(["sequential", "council", "parallel"]).optional(),
+  mode: z.enum(["sequential", "council", "parallel", "iterative"]).optional(),
   rounds: z.number().int().min(1).max(6).optional(),
 });
 
@@ -213,7 +213,7 @@ export async function updatePipelineMeta(
   data: {
     name: string;
     description?: string | null;
-    mode?: "sequential" | "council" | "parallel";
+    mode?: "sequential" | "council" | "parallel" | "iterative";
     rounds?: number;
   }
 ): Promise<ActionResult> {

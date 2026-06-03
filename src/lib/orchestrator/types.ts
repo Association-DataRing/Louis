@@ -60,8 +60,11 @@ export interface AgentDefinition {
  *                  débattent, le dernier agent synthétise.
  * - `parallel`   : fan-out — tous les agents non-terminaux travaillent en
  *                  parallèle sur la même question, le terminal synthétise.
+ * - `iterative`  : approfondissement — le 1er agent (chercheur) reprend ses
+ *                  propres notes à chaque tour pour creuser les lacunes, puis
+ *                  le terminal produit une note de recherche synthétique.
  */
-export type PipelineMode = "sequential" | "council" | "parallel";
+export type PipelineMode = "sequential" | "council" | "parallel" | "iterative";
 
 export interface PipelineConfig {
   id?: string;

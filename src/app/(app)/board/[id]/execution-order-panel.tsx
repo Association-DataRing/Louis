@@ -32,7 +32,7 @@ export function ExecutionOrderPanel({
 }: {
   pipelineId: string;
   agents: PipelineAgent[];
-  mode: "sequential" | "council" | "parallel";
+  mode: "sequential" | "council" | "parallel" | "iterative";
   editable: boolean;
 }) {
   const router = useRouter();
