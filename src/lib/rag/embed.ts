@@ -1,20 +1,27 @@
-import { embedMany } from "ai";
+import { embedMany, type EmbeddingModel } from "ai";
 import { createMistral } from "@ai-sdk/mistral";
+import { createOpenAI } from "@ai-sdk/openai";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { providerKeys } from "@/db/schema";
 import { decrypt } from "@/lib/crypto";
 
-const EMBEDDING_MODEL = "mistral-embed";
+const MISTRAL_EMBEDDING_MODEL = "mistral-embed";
+const DEFAULT_SELFHOSTED_MODEL = "nomic-embed-text";
 const BATCH_SIZE = 64;
 
 export class NoEmbeddingProviderError extends Error {
   constructor() {
     super(
-      "Aucun provider Mistral actif. Le RAG documents nécessite une clé Mistral en v0.1."
+      "Aucun backend d'embedding disponible : configurez LOUIS_EMBEDDING_BASE_URL (endpoint OpenAI-compatible auto-hébergé) ou activez une clé Mistral."
     );
     this.name = "NoEmbeddingProviderError";
   }
+}
+
+/** Vrai si un backend d'embedding souverain (self-hosté) est configuré. */
+function selfHostedBaseUrl(): string | undefined {
+  return process.env.LOUIS_EMBEDDING_BASE_URL?.trim() || undefined;
 }
 
 async function loadMistralKey(userId: string): Promise<string> {
@@ -39,15 +46,42 @@ async function loadMistralKey(userId: string): Promise<string> {
   });
 }
 
+/**
+ * Résout le modèle d'embedding. PRIORITÉ au backend self-hostable
+ * (souveraineté) : si LOUIS_EMBEDDING_BASE_URL est défini, les embeddings sont
+ * calculés sur un endpoint OpenAI-compatible (Ollama, vLLM, HF TEI…) — les
+ * chunks de documents confidentiels ne quittent JAMAIS l'infra du cabinet.
+ * Sinon, repli sur mistral-embed via la clé Mistral de l'utilisateur
+ * (comportement historique).
+ *
+ * IMPORTANT : le modèle self-hosté DOIT produire des vecteurs de dimension
+ * EMBEDDING_DIM (1024, cf. db/schema/document-chunks.ts). À défaut, ajuster
+ * EMBEDDING_DIM dans le schéma et ré-indexer — Louis n'autorise qu'une seule
+ * dimension par déploiement (pas de mélange à chaud).
+ */
+async function resolveEmbeddingModel(
+  userId: string
+): Promise<EmbeddingModel> {
+  const baseUrl = selfHostedBaseUrl();
+  if (baseUrl) {
+    const model =
+      process.env.LOUIS_EMBEDDING_MODEL?.trim() || DEFAULT_SELFHOSTED_MODEL;
+    // Beaucoup de serveurs locaux n'exigent pas de clé ; on en fournit une
+    // factice pour satisfaire le SDK quand LOUIS_EMBEDDING_API_KEY est absent.
+    const apiKey = process.env.LOUIS_EMBEDDING_API_KEY?.trim() || "not-needed";
+    return createOpenAI({ baseURL: baseUrl, apiKey }).embedding(model);
+  }
+  const apiKey = await loadMistralKey(userId);
+  return createMistral({ apiKey }).embedding(MISTRAL_EMBEDDING_MODEL);
+}
+
 export async function embedTexts(
   userId: string,
   texts: string[]
 ): Promise<number[][]> {
   if (texts.length === 0) return [];
 
-  const apiKey = await loadMistralKey(userId);
-  const mistral = createMistral({ apiKey });
-  const model = mistral.embedding(EMBEDDING_MODEL);
+  const model = await resolveEmbeddingModel(userId);
 
   const out: number[][] = [];
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {
