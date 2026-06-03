@@ -109,7 +109,9 @@ export function DocumentRow({
   }
 
   const hasText =
-    entry.extractionStatus === "ok" || entry.extractionStatus === "truncated";
+    entry.extractionStatus === "ok" ||
+    entry.extractionStatus === "truncated" ||
+    entry.extractionStatus === "ocr";
   const indexed = chunkCount > 0;
 
   function reindex() {
@@ -150,6 +152,11 @@ export function DocumentRow({
           {entry.extractionStatus === "truncated" && (
             <Badge variant="outline" className="shrink-0 text-[10px]">
               tronqué
+            </Badge>
+          )}
+          {entry.extractionStatus === "ocr" && (
+            <Badge variant="outline" className="shrink-0 text-[10px]">
+              OCR
             </Badge>
           )}
           {entry.extractionStatus === "failed" && (

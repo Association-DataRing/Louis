@@ -3,7 +3,12 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentChunks, documentFolders } from "@/db/schema";
 import { uploadObject, deleteObject } from "@/lib/storage";
-import { extractText, isSupportedContentType } from "@/lib/extract";
+import {
+  extractText,
+  isSupportedContentType,
+  ScannedPdfError,
+} from "@/lib/extract";
+import { ocrPdf, NoOcrProviderError } from "@/lib/ocr";
 import { chunkText } from "@/lib/rag/chunk";
 import { embedTexts, NoEmbeddingProviderError } from "@/lib/rag/embed";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -131,8 +136,32 @@ export async function POST(req: Request) {
     extractedText = result.text;
     if (result.truncated) extractionStatus = "truncated";
   } catch (err) {
-    extractionStatus = "failed";
-    extractionError = err instanceof Error ? err.message : "Extraction failed";
+    // PDF scanné (aucune couche texte) → tentative d'OCR souverain plutôt que
+    // de dead-end le document. Les pièces scannées (assignations, jugements
+    // signifiés, PV d'huissier…) deviennent ainsi indexées et interrogeables.
+    if (err instanceof ScannedPdfError) {
+      try {
+        const ocrText = await ocrPdf(userId, buffer);
+        if (ocrText.length > 0) {
+          extractedText = ocrText;
+          extractionStatus = "ocr";
+        } else {
+          extractionStatus = "failed";
+          extractionError = err.message;
+        }
+      } catch (ocrErr) {
+        extractionStatus = "failed";
+        extractionError =
+          ocrErr instanceof NoOcrProviderError
+            ? ocrErr.message
+            : ocrErr instanceof Error
+              ? `OCR : ${ocrErr.message}`
+              : "OCR failed";
+      }
+    } else {
+      extractionStatus = "failed";
+      extractionError = err instanceof Error ? err.message : "Extraction failed";
+    }
   }
 
   let docId: string;
