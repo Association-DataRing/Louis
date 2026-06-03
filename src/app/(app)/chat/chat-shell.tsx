@@ -33,6 +33,11 @@ import { useStickToBottom } from "@/lib/use-stick-to-bottom";
 import { ThinkingIndicator } from "./thinking-indicator";
 import { AgentStepsWrapper } from "./agent-steps-wrapper";
 import {
+  ToolTimeline,
+  JsonDetail,
+  type ToolTimelineRow,
+} from "./tool-timeline";
+import {
   AssistantMessageActions,
   extractTextFromParts,
   type ModelOption,
@@ -500,6 +505,55 @@ function EditedDocumentCard({
       </footer>
     </div>
   );
+}
+
+/** Outils ayant un rendu RICHE dédié (carte download, citations…) — le reste
+ * tombe sur le détail JSON dans la timeline. */
+const RICH_TOOLS = new Set([
+  "generate_document",
+  "edit_document",
+  "search_documents",
+  "legifrance_search",
+  "pappers_search",
+  "pappers_get",
+]);
+
+/** Construit les lignes de la timeline d'outils à partir des parts d'un message. */
+function buildToolRows(
+  parts: { type: string; input?: unknown; output?: unknown; state?: string }[]
+): ToolTimelineRow[] {
+  const rows: ToolTimelineRow[] = [];
+  parts.forEach((part, i) => {
+    if (typeof part.type !== "string" || !part.type.startsWith("tool-")) return;
+    const name = part.type.replace(/^tool-/, "");
+    const pending =
+      part.state === "input-streaming" || part.state === "input-available";
+    rows.push({
+      id: `tool-${i}`,
+      name,
+      label: TOOL_LABEL[name] ?? name,
+      summary: formatToolInput(part.input),
+      pending,
+      autoExpand:
+        !pending && (name === "generate_document" || name === "edit_document"),
+      input: part.input,
+      output: part.output,
+    });
+  });
+  return rows;
+}
+
+/** Somme des latences d'agents (data-agent-event/agent_finish) du message. */
+function sumAgentLatency(parts: { type: string; data?: unknown }[]): number {
+  let total = 0;
+  for (const part of parts) {
+    if (part.type !== "data-agent-event") continue;
+    const d = part.data as { type?: string; latencyMs?: number } | undefined;
+    if (d?.type === "agent_finish" && typeof d.latencyMs === "number") {
+      total += d.latencyMs;
+    }
+  }
+  return total;
 }
 
 function ToolPart({
@@ -1758,6 +1812,37 @@ export function ChatShell({
                   )
                 : [];
 
+              // Timeline consolidée des outils de CE message (cf. ToolTimeline).
+              const toolRows = isUser
+                ? []
+                : buildToolRows(
+                    m.parts as {
+                      type: string;
+                      input?: unknown;
+                      output?: unknown;
+                      state?: string;
+                    }[]
+                  );
+              const firstToolIdx = m.parts.findIndex(
+                (p) =>
+                  typeof p.type === "string" && p.type.startsWith("tool-")
+              );
+              const toolDurationMs = sumAgentLatency(
+                m.parts as { type: string; data?: unknown }[]
+              );
+              const renderToolDetail = (row: ToolTimelineRow) =>
+                RICH_TOOLS.has(row.name) ? (
+                  <ToolPart
+                    name={row.name}
+                    input={row.input}
+                    output={row.output}
+                    state="output-available"
+                    onOpenDoc={handleOpenDoc}
+                  />
+                ) : (
+                  <JsonDetail input={row.input} output={row.output} />
+                );
+
               return (
                 <div
                   key={m.id}
@@ -1938,20 +2023,17 @@ export function ChatShell({
                       typeof part.type === "string" &&
                       part.type.startsWith("tool-")
                     ) {
-                      const p = part as {
-                        type: string;
-                        input?: unknown;
-                        output?: unknown;
-                        state?: string;
-                      };
+                      // Tous les outils du message sont consolidés dans UNE
+                      // timeline, rendue à la position du premier outil ; les
+                      // suivants sont skippés.
+                      if (i !== firstToolIdx) return null;
                       return (
-                        <ToolPart
+                        <ToolTimeline
                           key={i}
-                          name={part.type.replace(/^tool-/, "")}
-                          input={p.input}
-                          output={p.output}
-                          state={p.state}
-                          onOpenDoc={handleOpenDoc}
+                          rows={toolRows}
+                          durationMs={toolDurationMs}
+                          isStreaming={isLiveMessage}
+                          renderDetail={renderToolDetail}
                         />
                       );
                     }
