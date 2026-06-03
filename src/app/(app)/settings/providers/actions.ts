@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { providerKeys } from "@/db/schema";
 import { encrypt, decrypt } from "@/lib/crypto";
+import { assertSafeUrl, SsrfError } from "@/lib/net-guard";
 import { PROVIDER_TYPES } from "@/lib/providers/catalog";
 import { testProvider } from "@/lib/providers/test";
 import { recordAudit } from "@/lib/audit";
@@ -44,6 +45,15 @@ export async function createProviderKey(
   }
 
   const { type, label, apiKey, baseUrl } = parsed.data;
+
+  if (baseUrl) {
+    try {
+      assertSafeUrl(baseUrl);
+    } catch (err) {
+      if (err instanceof SsrfError) return { ok: false, error: err.message };
+      throw err;
+    }
+  }
 
   const blob = encrypt(apiKey);
 
@@ -170,6 +180,15 @@ export async function updateProviderKey(
 
   if (!parsed.success) {
     return { ok: false, error: "Champs invalides." };
+  }
+
+  if (parsed.data.baseUrl) {
+    try {
+      assertSafeUrl(parsed.data.baseUrl);
+    } catch (err) {
+      if (err instanceof SsrfError) return { ok: false, error: err.message };
+      throw err;
+    }
   }
 
   const updates: {
