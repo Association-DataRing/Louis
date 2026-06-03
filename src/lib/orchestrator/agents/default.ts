@@ -13,6 +13,8 @@ import {
   hasUntrustedContext,
   injectUntrustedContext,
 } from "../untrusted";
+import { applyContextBudget } from "../context-budget";
+import { applyCachedSystem } from "../provider-tuning";
 import type {
   Agent,
   AgentContext,
@@ -88,9 +90,8 @@ export class DefaultAgent implements Agent {
   async run(ctx: AgentContext): Promise<AgentRunResult> {
     const key = await loadProviderKey(ctx.userId, this.definition.providerKeyId);
     const model = modelFromKey(key, this.definition.modelOverride);
-    const modelMessages = injectUntrustedContext(
-      await convertToModelMessages(ctx.messages),
-      ctx
+    const modelMessages = applyContextBudget(
+      injectUntrustedContext(await convertToModelMessages(ctx.messages), ctx)
     );
 
     const system = composeSystem(DEFAULT_CHAT_SYSTEM_PROMPT, this.definition, ctx);
@@ -107,10 +108,17 @@ export class DefaultAgent implements Agent {
     if (hideDocumentaryRag) merged = omitDocumentaryRagTools(merged);
     const tools = filterTools(merged, this.definition.toolAllowlist);
 
-    const stream = streamText({
-      model,
+    const cached = applyCachedSystem({
+      keyType: key.type,
       system,
       messages: modelMessages,
+      hasTools: Object.keys(tools).length > 0,
+    });
+
+    const stream = streamText({
+      model,
+      system: cached.system,
+      messages: cached.messages,
       tools,
       stopWhen: stepCountIs(5),
       temperature: this.definition.temperature ?? undefined,
