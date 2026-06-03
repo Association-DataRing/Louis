@@ -3,7 +3,6 @@
 import Link from "next/link";
 import {
   IconPlus,
-  IconPaperclip,
   IconSparkles,
   IconBriefcase,
   IconSettings,
@@ -27,8 +26,6 @@ import {
 
 interface ComposerMenuProps {
   disabled?: boolean;
-  /** Ouvre le picker de documents joints. */
-  onPickDocument: () => void;
   /** Ouvre le picker de workflow (prompt insertion). */
   onPickWorkflow: () => void;
   /** Listing rapide des workflows utilisateur pour les exposer en sub-menu. */
@@ -53,7 +50,6 @@ interface ComposerMenuProps {
  */
 export function ComposerMenu({
   disabled,
-  onPickDocument,
   onPickWorkflow,
   workflows,
   pipelines,
@@ -81,11 +77,6 @@ export function ComposerMenu({
         <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
           Insérer
         </DropdownMenuLabel>
-
-        <DropdownMenuItem onSelect={onPickDocument}>
-          <IconPaperclip className="size-4" />
-          Joindre un document
-        </DropdownMenuItem>
 
         {workflows.length > 0 ? (
           <DropdownMenuSub>

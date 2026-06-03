@@ -52,6 +52,7 @@ import {
   IconArrowUp,
   IconArrowDown,
   IconPaperclip,
+  IconUpload,
   IconX,
   IconTool,
   IconPlayerStop,
@@ -1203,6 +1204,7 @@ export function ChatShell({
   // peut éditer/envoyer ou l'effacer.
   const [input, setInput] = useState(initialPrompt ?? "");
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize du composer : la hauteur suit le contenu jusqu'à
   // ~10 lignes, au-delà un scroll interne apparaît. Re-mesure à chaque
@@ -2248,7 +2250,6 @@ export function ChatShell({
                   accès rapide aux réglages. */}
               <ComposerMenu
                 disabled={isBusy}
-                onPickDocument={() => setDocPickerOpen(true)}
                 onPickWorkflow={() => setWorkflowPickerOpen(true)}
                 onPickWorkflowItem={(prompt) => setInput(prompt)}
                 workflows={workflows}
@@ -2261,34 +2262,65 @@ export function ChatShell({
                 onPipelineChange={(v) => setPipelineId(v)}
               />
 
-              {/* Les popovers existants restent pour les cas avancés
-                  (recherche dans tous les workflows, sélection multi-doc).
-                  Ils sont déclenchés depuis le menu via leur prop open. */}
+              {/* Input fichier caché — déclenché par « Téléverser » du trombone. */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length > 0) handleDroppedFiles(files);
+                  e.target.value = "";
+                }}
+              />
+
+              {/* Trombone : joindre un document. Ancré sur un VRAI bouton
+                  (et non un trigger caché) — corrige le bug de fermeture
+                  immédiate du picker. Menu : téléverser depuis l'ordinateur
+                  OU piocher dans les documents existants de Louis (RAG). */}
               <Popover open={docPickerOpen} onOpenChange={setDocPickerOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="sr-only"
-                    aria-hidden
-                    tabIndex={-1}
-                  />
+                    disabled={isBusy}
+                    aria-label="Joindre un document"
+                    title="Joindre un document"
+                    className="inline-flex items-center justify-center size-10 rounded-md hover:bg-accent transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+                  >
+                    <IconPaperclip className="size-4" />
+                  </button>
                 </PopoverTrigger>
-                <PopoverContent
-                  side="top"
-                  align="start"
-                  className="w-80 p-0"
-                >
-                  <DocPickerContent
-                    documents={mergedDocuments}
-                    selected={attachedDocIds}
-                    onToggle={(id) =>
-                      setAttachedDocIds((ids) =>
-                        ids.includes(id)
-                          ? ids.filter((x) => x !== id)
-                          : [...ids, id]
-                      )
-                    }
-                  />
+                <PopoverContent side="top" align="start" className="w-80 p-0">
+                  <div className="p-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDocPickerOpen(false);
+                        fileInputRef.current?.click();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md hover:bg-accent text-sm text-left transition-colors"
+                    >
+                      <IconUpload className="size-4 text-muted-foreground" />
+                      Téléverser depuis l&apos;ordinateur
+                    </button>
+                  </div>
+                  {mergedDocuments.length > 0 && (
+                    <div className="border-t border-border">
+                      <DocPickerContent
+                        documents={mergedDocuments}
+                        selected={attachedDocIds}
+                        onToggle={(id) =>
+                          setAttachedDocIds((ids) =>
+                            ids.includes(id)
+                              ? ids.filter((x) => x !== id)
+                              : [...ids, id]
+                          )
+                        }
+                      />
+                    </div>
+                  )}
                 </PopoverContent>
               </Popover>
 
