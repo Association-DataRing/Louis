@@ -16,3 +16,4 @@ export * from "./audit-log";
 export * from "./pipelines";
 export * from "./model-settings";
 export * from "./skills";
+export * from "./project-memories";

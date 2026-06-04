@@ -3,6 +3,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { McpServer, CachedMcpTool } from "@/db/schema/mcp-servers";
 import { decrypt } from "@/lib/crypto";
+import { assertSafeUrl } from "@/lib/net-guard";
 
 const CLIENT_INFO = { name: "louis", version: "0.0.1" };
 const CONNECT_TIMEOUT_MS = 15_000;
@@ -20,7 +21,10 @@ function decryptHeaders(server: McpServer): Record<string, string> {
 }
 
 async function buildTransport(server: McpServer) {
-  const url = new URL(server.url);
+  // Garde SSRF : l'URL du serveur MCP est fournie par l'utilisateur et fetchée
+  // depuis le réseau du cabinet. assertSafeUrl bloque les cibles link-local /
+  // métadonnées cloud (et, en mode strict, le LAN/localhost).
+  const url = assertSafeUrl(server.url);
   const headers = decryptHeaders(server);
 
   if (server.transport === "sse") {

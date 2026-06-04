@@ -9,6 +9,9 @@ import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { buildToolsForUser } from "@/lib/connectors/tools";
 import { buildMcpToolsForUser } from "@/lib/mcp/tools";
 import { composeSystem, filterTools } from "./default";
+import { injectUntrustedContext } from "../untrusted";
+import { applyContextBudget } from "../context-budget";
+import { applyCachedSystem } from "../provider-tuning";
 import { resolveAgentRag, omitDocumentaryRagTools } from "./rag-scope";
 import type {
   AgentContext,
@@ -47,7 +50,9 @@ export async function runAgentStream(
 ): Promise<AgentRunResult> {
   const key = await loadProviderKey(ctx.userId, def.providerKeyId);
   const model = modelFromKey(key, def.modelOverride);
-  const modelMessages = await convertToModelMessages(ctx.messages);
+  const modelMessages = applyContextBudget(
+    injectUntrustedContext(await convertToModelMessages(ctx.messages), ctx)
+  );
 
   const system = composeSystem(defaults.systemPrompt, def, ctx);
 
@@ -76,10 +81,17 @@ export async function runAgentStream(
 
   const stopWhen: StopCondition<ToolSet> = stepCountIs(defaults.maxSteps ?? 3);
 
-  const stream = streamText({
-    model,
+  const cached = applyCachedSystem({
+    keyType: key.type,
     system,
     messages: modelMessages,
+    hasTools: Object.keys(tools).length > 0,
+  });
+
+  const stream = streamText({
+    model,
+    system: cached.system,
+    messages: cached.messages,
     tools,
     stopWhen,
     temperature: def.temperature ?? undefined,

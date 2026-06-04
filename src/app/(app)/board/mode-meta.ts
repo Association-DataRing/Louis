@@ -2,10 +2,15 @@ import {
   IconCircleArrowRight,
   IconUsersGroup,
   IconLayoutGrid,
+  IconRefresh,
   type Icon,
 } from "@tabler/icons-react";
 
-export type PipelineModeKey = "sequential" | "council" | "parallel";
+export type PipelineModeKey =
+  | "sequential"
+  | "council"
+  | "parallel"
+  | "iterative";
 
 /**
  * Métadonnées d'affichage centralisées pour les 3 modes d'orchestration.
@@ -44,6 +49,14 @@ export const MODE_META: Record<
     short: "Fan-out",
     pitch:
       "Tous les agents travaillent en parallèle, le dernier synthétise.",
+    accent: "text-foreground/70 border-border",
+  },
+  iterative: {
+    icon: IconRefresh,
+    label: "Itératif",
+    short: "Approfondi",
+    pitch:
+      "Le chercheur reprend ses notes à chaque tour pour creuser les lacunes, puis le dernier synthétise.",
     accent: "text-foreground/70 border-border",
   },
 };

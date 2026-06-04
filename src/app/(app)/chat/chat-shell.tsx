@@ -30,8 +30,14 @@ import { ModuleHelp } from "@/components/module-help";
 import { Dropzone, uploadDocument } from "@/components/dropzone";
 import { useSmoothText } from "@/lib/use-smooth-text";
 import { useStickToBottom } from "@/lib/use-stick-to-bottom";
+import { cn } from "@/lib/utils";
 import { ThinkingIndicator } from "./thinking-indicator";
 import { AgentStepsWrapper } from "./agent-steps-wrapper";
+import {
+  ToolTimeline,
+  JsonDetail,
+  type ToolTimelineRow,
+} from "./tool-timeline";
 import {
   AssistantMessageActions,
   extractTextFromParts,
@@ -45,8 +51,12 @@ import { DocPanel } from "./doc-panel";
 import { EditCard } from "./edit-card";
 import {
   IconArrowUp,
+  IconArrowUpRight,
   IconArrowDown,
   IconPaperclip,
+  IconUpload,
+  IconFolder,
+  IconChevronRight,
   IconX,
   IconTool,
   IconPlayerStop,
@@ -94,6 +104,13 @@ type DocumentOption = {
   id: string;
   filename: string;
   sizeBytes: number;
+  folderId?: string | null;
+};
+
+type FolderOption = {
+  id: string;
+  name: string;
+  parentFolderId: string | null;
 };
 
 type Usage = {
@@ -152,6 +169,7 @@ type Props = {
     metadata?: unknown;
   }[];
   availableDocuments: DocumentOption[];
+  folders: FolderOption[];
   workflows: WorkflowOption[];
   pipelines: PipelineOption[];
   /**
@@ -502,6 +520,55 @@ function EditedDocumentCard({
   );
 }
 
+/** Outils ayant un rendu RICHE dédié (carte download, citations…) — le reste
+ * tombe sur le détail JSON dans la timeline. */
+const RICH_TOOLS = new Set([
+  "generate_document",
+  "edit_document",
+  "search_documents",
+  "legifrance_search",
+  "pappers_search",
+  "pappers_get",
+]);
+
+/** Construit les lignes de la timeline d'outils à partir des parts d'un message. */
+function buildToolRows(
+  parts: { type: string; input?: unknown; output?: unknown; state?: string }[]
+): ToolTimelineRow[] {
+  const rows: ToolTimelineRow[] = [];
+  parts.forEach((part, i) => {
+    if (typeof part.type !== "string" || !part.type.startsWith("tool-")) return;
+    const name = part.type.replace(/^tool-/, "");
+    const pending =
+      part.state === "input-streaming" || part.state === "input-available";
+    rows.push({
+      id: `tool-${i}`,
+      name,
+      label: TOOL_LABEL[name] ?? name,
+      summary: formatToolInput(part.input),
+      pending,
+      // Tout est replié par défaut (look minimaliste) — le détail s'ouvre au clic.
+      autoExpand: false,
+      input: part.input,
+      output: part.output,
+    });
+  });
+  return rows;
+}
+
+/** Somme des latences d'agents (data-agent-event/agent_finish) du message. */
+function sumAgentLatency(parts: { type: string; data?: unknown }[]): number {
+  let total = 0;
+  for (const part of parts) {
+    if (part.type !== "data-agent-event") continue;
+    const d = part.data as { type?: string; latencyMs?: number } | undefined;
+    if (d?.type === "agent_finish" && typeof d.latencyMs === "number") {
+      total += d.latencyMs;
+    }
+  }
+  return total;
+}
+
 function ToolPart({
   name,
   input,
@@ -771,15 +838,164 @@ const AssistantMarkdownPart = memo(function AssistantMarkdownPart({
   );
 });
 
+/** Ligne document (feuille) avec case à cocher, indentée selon la profondeur. */
+function DocLeaf({
+  doc,
+  depth,
+  selected,
+  onToggle,
+}: {
+  doc: DocumentOption;
+  depth: number;
+  selected: boolean;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <label
+      className="flex items-center gap-2.5 py-1.5 pr-3 hover:bg-accent cursor-pointer rounded-md"
+      style={{ paddingLeft: 12 + depth * 16 }}
+    >
+      <Checkbox checked={selected} onCheckedChange={() => onToggle(doc.id)} />
+      <span className="flex-1 text-sm truncate">{doc.filename}</span>
+    </label>
+  );
+}
+
+/** Nœud dossier repliable + son contenu (sous-dossiers puis documents). */
+function FolderNode({
+  folder,
+  depth,
+  childrenByParent,
+  docsByFolder,
+  selected,
+  collapsed,
+  toggleCollapse,
+  onToggle,
+}: {
+  folder: FolderOption;
+  depth: number;
+  childrenByParent: Map<string | null, FolderOption[]>;
+  docsByFolder: Map<string | null, DocumentOption[]>;
+  selected: string[];
+  collapsed: Set<string>;
+  toggleCollapse: (id: string) => void;
+  onToggle: (id: string) => void;
+}) {
+  const isCollapsed = collapsed.has(folder.id);
+  const subFolders = (childrenByParent.get(folder.id) ?? []).filter((f) =>
+    folderHasDocs(f.id, childrenByParent, docsByFolder)
+  );
+  const docs = docsByFolder.get(folder.id) ?? [];
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => toggleCollapse(folder.id)}
+        className="w-full flex items-center gap-1.5 py-1.5 pr-3 hover:bg-accent rounded-md text-left"
+        style={{ paddingLeft: 8 + depth * 16 }}
+      >
+        <IconChevronRight
+          className={cn(
+            "size-3.5 shrink-0 text-muted-foreground transition-transform",
+            !isCollapsed && "rotate-90"
+          )}
+        />
+        <IconFolder className="size-4 shrink-0 text-muted-foreground" />
+        <span className="flex-1 text-sm font-medium truncate">{folder.name}</span>
+      </button>
+      {!isCollapsed && (
+        <>
+          {subFolders.map((f) => (
+            <FolderNode
+              key={f.id}
+              folder={f}
+              depth={depth + 1}
+              childrenByParent={childrenByParent}
+              docsByFolder={docsByFolder}
+              selected={selected}
+              collapsed={collapsed}
+              toggleCollapse={toggleCollapse}
+              onToggle={onToggle}
+            />
+          ))}
+          {docs.map((doc) => (
+            <DocLeaf
+              key={doc.id}
+              doc={doc}
+              depth={depth + 1}
+              selected={selected.includes(doc.id)}
+              onToggle={onToggle}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Vrai si le dossier (ou un descendant) contient au moins un document. */
+function folderHasDocs(
+  folderId: string,
+  childrenByParent: Map<string | null, FolderOption[]>,
+  docsByFolder: Map<string | null, DocumentOption[]>
+): boolean {
+  if ((docsByFolder.get(folderId) ?? []).length > 0) return true;
+  return (childrenByParent.get(folderId) ?? []).some((f) =>
+    folderHasDocs(f.id, childrenByParent, docsByFolder)
+  );
+}
+
+/**
+ * Picker de documents en ARBORESCENCE réelle : dossiers et sous-dossiers
+ * (parentFolderId) repliables, documents en feuilles. Les dossiers sans aucun
+ * document (direct ou descendant) sont élagués. Les documents sans dossier
+ * (racine, ex. fichiers tout juste téléversés) apparaissent en bas.
+ */
 function DocPickerContent({
   documents,
+  folders,
   selected,
   onToggle,
 }: {
   documents: DocumentOption[];
+  folders: FolderOption[];
   selected: string[];
   onToggle: (id: string) => void;
 }) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const { childrenByParent, docsByFolder, rootFolders, rootDocs } = useMemo(() => {
+    const childrenByParent = new Map<string | null, FolderOption[]>();
+    for (const f of folders) {
+      const key = f.parentFolderId;
+      const arr = childrenByParent.get(key) ?? [];
+      arr.push(f);
+      childrenByParent.set(key, arr);
+    }
+    const folderIds = new Set(folders.map((f) => f.id));
+    const docsByFolder = new Map<string | null, DocumentOption[]>();
+    for (const d of documents) {
+      // Un folderId inconnu (dossier filtré/supprimé) retombe en racine.
+      const key = d.folderId && folderIds.has(d.folderId) ? d.folderId : null;
+      const arr = docsByFolder.get(key) ?? [];
+      arr.push(d);
+      docsByFolder.set(key, arr);
+    }
+    return {
+      childrenByParent,
+      docsByFolder,
+      rootFolders: childrenByParent.get(null) ?? [],
+      rootDocs: docsByFolder.get(null) ?? [],
+    };
+  }, [documents, folders]);
+
   if (documents.length === 0) {
     return (
       <div className="p-4 text-center">
@@ -795,6 +1011,11 @@ function DocPickerContent({
       </div>
     );
   }
+
+  const visibleRootFolders = rootFolders.filter((f) =>
+    folderHasDocs(f.id, childrenByParent, docsByFolder)
+  );
+
   return (
     <div className="max-h-72 overflow-y-auto py-1">
       <div className="px-3 py-2 border-b border-border">
@@ -803,21 +1024,30 @@ function DocPickerContent({
           Le texte extrait sera inséré dans le system prompt.
         </p>
       </div>
-      {documents.map((doc) => {
-        const isSelected = selected.includes(doc.id);
-        return (
-          <label
+      <div className="p-1">
+        {visibleRootFolders.map((f) => (
+          <FolderNode
+            key={f.id}
+            folder={f}
+            depth={0}
+            childrenByParent={childrenByParent}
+            docsByFolder={docsByFolder}
+            selected={selected}
+            collapsed={collapsed}
+            toggleCollapse={toggleCollapse}
+            onToggle={onToggle}
+          />
+        ))}
+        {rootDocs.map((doc) => (
+          <DocLeaf
             key={doc.id}
-            className="flex items-center gap-2.5 px-3 py-2 hover:bg-accent cursor-pointer"
-          >
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={() => onToggle(doc.id)}
-            />
-            <span className="flex-1 text-sm truncate">{doc.filename}</span>
-          </label>
-        );
-      })}
+            doc={doc}
+            depth={0}
+            selected={selected.includes(doc.id)}
+            onToggle={onToggle}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -833,6 +1063,7 @@ export function ChatShell({
   projectContext,
   initialMessages,
   availableDocuments,
+  folders,
   workflows,
   pipelines,
   enabledModels,
@@ -1149,6 +1380,7 @@ export function ChatShell({
   // peut éditer/envoyer ou l'effacer.
   const [input, setInput] = useState(initialPrompt ?? "");
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize du composer : la hauteur suit le contenu jusqu'à
   // ~10 lignes, au-delà un scroll interne apparaît. Re-mesure à chaque
@@ -1199,6 +1431,7 @@ export function ChatShell({
                   id: result.id,
                   filename: result.filename,
                   sizeBytes: result.sizeBytes,
+                  folderId: null,
                 },
               ]
         );
@@ -1740,7 +1973,12 @@ export function ChatShell({
         aria-label="Conversation avec Louis"
       >
         {isEmpty ? (
-          <EmptyState />
+          <EmptyState
+            onPickSuggestion={(text) => {
+              setInput(text);
+              composerRef.current?.focus();
+            }}
+          />
         ) : (
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
             {messages.map((m, msgIdx) => {
@@ -1757,6 +1995,37 @@ export function ChatShell({
                     m.parts as { type: string; data?: unknown }[]
                   )
                 : [];
+
+              // Timeline consolidée des outils de CE message (cf. ToolTimeline).
+              const toolRows = isUser
+                ? []
+                : buildToolRows(
+                    m.parts as {
+                      type: string;
+                      input?: unknown;
+                      output?: unknown;
+                      state?: string;
+                    }[]
+                  );
+              const firstToolIdx = m.parts.findIndex(
+                (p) =>
+                  typeof p.type === "string" && p.type.startsWith("tool-")
+              );
+              const toolDurationMs = sumAgentLatency(
+                m.parts as { type: string; data?: unknown }[]
+              );
+              const renderToolDetail = (row: ToolTimelineRow) =>
+                RICH_TOOLS.has(row.name) ? (
+                  <ToolPart
+                    name={row.name}
+                    input={row.input}
+                    output={row.output}
+                    state="output-available"
+                    onOpenDoc={handleOpenDoc}
+                  />
+                ) : (
+                  <JsonDetail input={row.input} output={row.output} />
+                );
 
               return (
                 <div
@@ -1938,20 +2207,17 @@ export function ChatShell({
                       typeof part.type === "string" &&
                       part.type.startsWith("tool-")
                     ) {
-                      const p = part as {
-                        type: string;
-                        input?: unknown;
-                        output?: unknown;
-                        state?: string;
-                      };
+                      // Tous les outils du message sont consolidés dans UNE
+                      // timeline, rendue à la position du premier outil ; les
+                      // suivants sont skippés.
+                      if (i !== firstToolIdx) return null;
                       return (
-                        <ToolPart
+                        <ToolTimeline
                           key={i}
-                          name={part.type.replace(/^tool-/, "")}
-                          input={p.input}
-                          output={p.output}
-                          state={p.state}
-                          onOpenDoc={handleOpenDoc}
+                          rows={toolRows}
+                          durationMs={toolDurationMs}
+                          isStreaming={isLiveMessage}
+                          renderDetail={renderToolDetail}
                         />
                       );
                     }
@@ -2166,7 +2432,6 @@ export function ChatShell({
                   accès rapide aux réglages. */}
               <ComposerMenu
                 disabled={isBusy}
-                onPickDocument={() => setDocPickerOpen(true)}
                 onPickWorkflow={() => setWorkflowPickerOpen(true)}
                 onPickWorkflowItem={(prompt) => setInput(prompt)}
                 workflows={workflows}
@@ -2179,34 +2444,66 @@ export function ChatShell({
                 onPipelineChange={(v) => setPipelineId(v)}
               />
 
-              {/* Les popovers existants restent pour les cas avancés
-                  (recherche dans tous les workflows, sélection multi-doc).
-                  Ils sont déclenchés depuis le menu via leur prop open. */}
+              {/* Input fichier caché — déclenché par « Téléverser » du trombone. */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length > 0) handleDroppedFiles(files);
+                  e.target.value = "";
+                }}
+              />
+
+              {/* Trombone : joindre un document. Ancré sur un VRAI bouton
+                  (et non un trigger caché) — corrige le bug de fermeture
+                  immédiate du picker. Menu : téléverser depuis l'ordinateur
+                  OU piocher dans les documents existants de Louis (RAG). */}
               <Popover open={docPickerOpen} onOpenChange={setDocPickerOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="sr-only"
-                    aria-hidden
-                    tabIndex={-1}
-                  />
+                    disabled={isBusy}
+                    aria-label="Joindre un document"
+                    title="Joindre un document"
+                    className="inline-flex items-center justify-center size-10 rounded-md hover:bg-accent transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+                  >
+                    <IconPaperclip className="size-4" />
+                  </button>
                 </PopoverTrigger>
-                <PopoverContent
-                  side="top"
-                  align="start"
-                  className="w-80 p-0"
-                >
-                  <DocPickerContent
-                    documents={mergedDocuments}
-                    selected={attachedDocIds}
-                    onToggle={(id) =>
-                      setAttachedDocIds((ids) =>
-                        ids.includes(id)
-                          ? ids.filter((x) => x !== id)
-                          : [...ids, id]
-                      )
-                    }
-                  />
+                <PopoverContent side="top" align="start" className="w-80 p-0">
+                  <div className="p-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDocPickerOpen(false);
+                        fileInputRef.current?.click();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md hover:bg-accent text-sm text-left transition-colors"
+                    >
+                      <IconUpload className="size-4 text-muted-foreground" />
+                      Téléverser depuis l&apos;ordinateur
+                    </button>
+                  </div>
+                  {mergedDocuments.length > 0 && (
+                    <div className="border-t border-border">
+                      <DocPickerContent
+                        documents={mergedDocuments}
+                        folders={folders}
+                        selected={attachedDocIds}
+                        onToggle={(id) =>
+                          setAttachedDocIds((ids) =>
+                            ids.includes(id)
+                              ? ids.filter((x) => x !== id)
+                              : [...ids, id]
+                          )
+                        }
+                      />
+                    </div>
+                  )}
                 </PopoverContent>
               </Popover>
 
@@ -2300,72 +2597,76 @@ export function ChatShell({
   );
 }
 
-function EmptyState() {
-  // Stagger d'entrée subtile : le logo fade rapide, le titre slide-up
-  // doux, les 3 points d'entrée arrivent l'un après l'autre. Wrappé
-  // sous `motion-safe` pour respecter prefers-reduced-motion.
+const EMPTY_SUGGESTIONS = [
+  "Rédige une mise en demeure pour loyers impayés.",
+  "Cherche la jurisprudence récente sur la clause de non-concurrence.",
+  "Résume les points clés d'une décision de justice.",
+  "Explique le régime de la responsabilité civile (art. 1240 C. civ.).",
+];
+
+function EmptyState({
+  onPickSuggestion,
+}: {
+  onPickSuggestion: (text: string) => void;
+}) {
+  // Stagger d'entrée subtile : logo, titre, puis les suggestions l'une après
+  // l'autre. Wrappé sous `motion-safe` (respecte prefers-reduced-motion).
   return (
     <div className="h-full flex flex-col items-center justify-center px-6">
-      <div className="max-w-xl w-full">
+      <div className="max-w-2xl w-full">
         <LouisLogo className="size-10 text-primary mb-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500" />
         <div className="flex items-center gap-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700">
           <h1 className="font-heading text-4xl md:text-5xl tracking-tight">
             Une nouvelle conversation.
           </h1>
           <ModuleHelp slug="user/chat" title="Utiliser le chat">
-            Choisissez un modèle, posez votre question. Joignez un document
-            (trombone) ou insérez un workflow (étoiles). Chaque appel
-            d&apos;outil est inspectable.
+            Posez une question, joignez une pièce (trombone) ou laissez Louis
+            chercher dans le droit (Légifrance, Pappers) et vos documents. Il
+            peut aussi rédiger des actes en .docx. Chaque appel d&apos;outil est
+            inspectable.
           </ModuleHelp>
         </div>
         <p className="mt-3 text-base text-muted-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-700 motion-safe:delay-150">
-          Tapez votre question dans le composer ci-dessous — ou parcourez
-          ces points d&apos;entrée.
+          Posez une question juridique, joignez une pièce, ou partez d&apos;un
+          exemple.
         </p>
-        <ul className="mt-8 space-y-3 text-sm">
-          <li
-            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
-            style={{ animationDelay: "260ms", animationFillMode: "both" }}
-          >
-            <span className="text-muted-foreground tabular-nums">·</span>
-            <span>
-              <strong className="text-foreground">Joindre un document</strong>
-              <span className="text-muted-foreground">
-                {" "}
-                — cliquez sur l&apos;icône trombone pour interroger un PDF
-                ou un DOCX que vous avez importé.
+
+        <div className="mt-8 grid sm:grid-cols-2 gap-2.5">
+          {EMPTY_SUGGESTIONS.map((s, i) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onPickSuggestion(s)}
+              className="group text-left rounded-xl border border-border bg-card/40 hover:bg-accent/50 px-4 py-3 transition-colors motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
+              style={{
+                animationDelay: `${260 + i * 70}ms`,
+                animationFillMode: "both",
+              }}
+            >
+              <span className="flex items-start gap-2">
+                <span className="flex-1 text-sm text-foreground/90">{s}</span>
+                <IconArrowUpRight className="size-4 shrink-0 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </span>
-            </span>
-          </li>
-          <li
-            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
-            style={{ animationDelay: "340ms", animationFillMode: "both" }}
-          >
-            <span className="text-muted-foreground tabular-nums">·</span>
-            <span>
-              <strong className="text-foreground">Insérer un workflow</strong>
-              <span className="text-muted-foreground">
-                {" "}
-                — icône étoiles pour piquer un prompt prêt à l&apos;emploi
-                (résumé d&apos;arrêt, analyse de clause…).
-              </span>
-            </span>
-          </li>
-          <li
-            className="flex gap-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500"
-            style={{ animationDelay: "420ms", animationFillMode: "both" }}
-          >
-            <span className="text-muted-foreground tabular-nums">·</span>
-            <span>
-              <strong className="text-foreground">Choisir un modèle</strong>
-              <span className="text-muted-foreground">
-                {" "}
-                — sélecteur en bas à gauche, le badge FR / UE / US reste
-                visible pendant toute la conversation.
-              </span>
-            </span>
-          </li>
-        </ul>
+            </button>
+          ))}
+        </div>
+
+        <p
+          className="mt-6 text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-700"
+          style={{ animationDelay: "560ms", animationFillMode: "both" }}
+        >
+          <span className="inline-flex items-center gap-1">
+            <IconPaperclip className="size-3.5" /> joindre une pièce ou un
+            document de Louis
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            <strong className="text-foreground/80">+</strong> trames, board
+            multi-agents et réglages
+          </span>
+          <span aria-hidden>·</span>
+          <span>badge FR / UE / US = souveraineté du modèle</span>
+        </p>
       </div>
     </div>
   );

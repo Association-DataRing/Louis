@@ -11,8 +11,15 @@ import {
   conversations,
   documents,
   messages,
+  projectMemories,
   type SavedPart,
 } from "@/db/schema";
+import {
+  extractAndStoreMemories,
+  memoryExtractionEnabled,
+} from "@/lib/memory-extract";
+import { assessDeliverable } from "@/lib/orchestrator/verify";
+import { recordAudit } from "@/lib/audit";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { getProjectScope } from "@/lib/projects/scope";
 import { indexMessageForProject } from "@/lib/rag/message-search";
@@ -30,6 +37,7 @@ import {
   Orchestrator,
   chatSimplePipeline,
   type OrchestratorEvent,
+  type UntrustedBlock,
 } from "@/lib/orchestrator";
 import { loadPipelineForUser } from "@/lib/orchestrator/repository";
 
@@ -189,36 +197,49 @@ export async function POST(req: Request) {
     }
   }
 
-  let systemPromptExtras: string | undefined;
+  // Contenu NON-FIABLE du tour. Documents joints et compétences sont des
+  // sources que Louis n'a pas écrites → injectées comme messages `user`
+  // préfixés (cf. injectUntrustedContext), jamais dans le prompt système, pour
+  // qu'une instruction cachée dans un PDF client ne soit pas lue avec la même
+  // autorité que la déontologie ou la politique d'outils.
+  const untrustedBlocks: UntrustedBlock[] = [];
   if (documentIds && documentIds.length > 0) {
     const docs = await db
       .select({
         filename: documents.filename,
         extractedText: documents.extractedText,
+        extractionStatus: documents.extractionStatus,
       })
       .from(documents)
       .where(
         and(eq(documents.userId, userId), inArray(documents.id, documentIds))
       );
 
-    const docBlocks = docs
-      .filter((d) => d.extractedText)
-      .map(
-        (d, i) =>
-          `--- Document ${i + 1} : ${d.filename} ---\n${d.extractedText}\n--- Fin document ${i + 1} ---`
-      );
-
-    if (docBlocks.length > 0) {
-      systemPromptExtras = `Les documents suivants ont été joints à la conversation par l'utilisateur. Réponds en t'appuyant sur leur contenu quand c'est pertinent et cite explicitement le nom du document quand tu en reprends un extrait.\n\n${docBlocks.join("\n\n")}`;
+    for (const d of docs) {
+      if (d.extractedText) {
+        // Quand le texte a été tronqué à l'extraction (gros document), on le
+        // signale DANS le bloc : sans ça le modèle répond avec assurance sur un
+        // contrat à moitié lu. Il sait alors qu'il doit déférer à search_documents
+        // (RAG) pour le reste.
+        const notice =
+          d.extractionStatus === "truncated"
+            ? "\n\n[⚠️ Document tronqué à l'extraction — seul le début est inclus ici. Pour le reste, utilise search_documents (RAG) plutôt que de répondre sur la seule partie visible.]"
+            : "";
+        untrustedBlocks.push({
+          kind: "document",
+          label: d.filename,
+          text: `${d.extractedText}${notice}`,
+        });
+      }
     }
   }
 
   // ─── Détection automatique de skills ────────────────────────────────
   // Avant de lancer l'orchestrateur, on demande à un classificateur
   // léger quelles skills (parmi celles activées par l'utilisateur) sont
-  // pertinentes pour la demande. Leurs system prompts sont alors empilés
-  // dans systemPromptExtras → injectés dans le prompt système du
-  // modèle principal. L'utilisateur n'a rien à toggle manuellement.
+  // pertinentes pour la demande. Leurs system prompts sont alors injectés
+  // comme bloc non-fiable (une compétence est éditable par l'utilisateur,
+  // donc traitée comme donnée). L'utilisateur n'a rien à toggle manuellement.
   let detectedSkillSlugs: string[] = [];
   try {
     const lastUserText = extractTextPreview(lastUser);
@@ -243,9 +264,11 @@ export async function POST(req: Request) {
           );
           const skillsBlock = composeSkillsPrompt(selected);
           if (skillsBlock) {
-            systemPromptExtras = systemPromptExtras
-              ? `${systemPromptExtras}\n\n---\n\n${skillsBlock}`
-              : skillsBlock;
+            untrustedBlocks.push({
+              kind: "skill",
+              label: "Compétences activées",
+              text: skillsBlock,
+            });
           }
         }
       }
@@ -253,6 +276,34 @@ export async function POST(req: Request) {
   } catch {
     // Best-effort : si la détection plante (capacity, timeout…), on
     // continue sans skills plutôt que de bloquer la conversation.
+  }
+
+  // ─── Recall mémoire du dossier ──────────────────────────────────────
+  // On injecte UNIQUEMENT les faits VALIDÉS par un humain (status approved) —
+  // les faits « pending » n'influencent jamais une réponse. Scopé au dossier
+  // (jamais global) et traité comme donnée non-fiable.
+  if (effectiveProjectId) {
+    const mems = await db
+      .select({
+        category: projectMemories.category,
+        text: projectMemories.text,
+      })
+      .from(projectMemories)
+      .where(
+        and(
+          eq(projectMemories.userId, userId),
+          eq(projectMemories.projectId, effectiveProjectId),
+          eq(projectMemories.status, "approved")
+        )
+      )
+      .limit(100);
+    if (mems.length > 0) {
+      untrustedBlocks.push({
+        kind: "memory",
+        label: "Mémoire validée du dossier",
+        text: mems.map((m) => `- [${m.category}] ${m.text}`).join("\n"),
+      });
+    }
   }
 
   // États mutables capturés par les callbacks de streamText (savedParts du
@@ -290,7 +341,7 @@ export async function POST(req: Request) {
           conversationId: finalConversationId,
           messages: uiMessages,
           documentIds,
-          systemPromptExtras,
+          untrustedBlocks: untrustedBlocks.length > 0 ? untrustedBlocks : undefined,
           projectId: effectiveProjectId,
           projectDocumentIds: projectScope?.documentIds,
           projectFolderId: projectScope?.folderId ?? null,
@@ -454,6 +505,24 @@ export async function POST(req: Request) {
         })
         .returning({ id: messages.id });
 
+      // Vérification du livrable : si un outil effectif (generate/edit_document)
+      // a été utilisé, on trace dans l'audit s'il a réellement abouti. Capture
+      // le cas « le modèle annonce avoir créé le document alors que l'outil a
+      // silencieusement échoué » — défendabilité d'un livrable juridique.
+      const deliverable = assessDeliverable(savedParts);
+      if (deliverable.hadEffectful) {
+        await recordAudit({
+          userId,
+          action: deliverable.allOk
+            ? "deliverable.verified"
+            : "deliverable.failed",
+          target: finalConversationId,
+          meta: deliverable.allOk
+            ? undefined
+            : { failures: deliverable.failures },
+        });
+      }
+
       // H9 : insère l'audit trail multi-agent, rattaché au message assistant
       // (messageId), pour qu'il soit relisible/exportable par message.
       if (pendingRuns.length > 0) {
@@ -481,6 +550,32 @@ export async function POST(req: Request) {
           );
         }
         await indexMessageForProject(userId, insertedAssistant.id, finalText);
+      }
+
+      // Extraction mémoire (désactivée par défaut — coût d'un appel LLM). Crée
+      // des faits en statut « pending » (jamais utilisés avant validation
+      // humaine). Best-effort, ne perturbe jamais le chat.
+      if (
+        effectiveProjectId &&
+        userMessageText &&
+        memoryExtractionEnabled()
+      ) {
+        try {
+          const model = modelFromKey(
+            await loadProviderKey(userId, providerKeyId),
+            modelOverride ?? null
+          );
+          await extractAndStoreMemories({
+            model,
+            userId,
+            projectId: effectiveProjectId,
+            sourceMessageId: userMessageId,
+            userText: userMessageText,
+            assistantText: finalText,
+          });
+        } catch {
+          // best-effort
+        }
       }
     },
   });

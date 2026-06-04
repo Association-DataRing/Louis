@@ -1,4 +1,4 @@
-import { decrypt } from "@/lib/crypto";
+import { tryDecrypt } from "@/lib/crypto";
 import type { ProviderKey } from "@/db/schema";
 import { MODEL_CATALOG } from "./models";
 
@@ -49,11 +49,19 @@ export class LiveCatalogError extends Error {
 export async function fetchLiveModels(
   key: ProviderKey
 ): Promise<LiveModel[]> {
-  const apiKey = decrypt({
+  const dec = tryDecrypt({
     ciphertext: key.apiKeyCiphertext,
     iv: key.apiKeyIv,
     tag: key.apiKeyTag,
   });
+  if (!dec.ok) {
+    // Clé indéchiffrable (ENCRYPTION_KEY changée ?) → erreur actionnable dans
+    // l'UI plutôt qu'un crash crypto opaque. L'utilisateur re-saisit la clé.
+    throw new LiveCatalogError(
+      "Clé du provider non déchiffrable — la clé de chiffrement (ENCRYPTION_KEY) a-t-elle changé ? Re-saisissez la clé d'API du provider."
+    );
+  }
+  const apiKey = dec.value;
 
   switch (key.type) {
     case "mistral":

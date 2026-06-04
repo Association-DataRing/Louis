@@ -3,13 +3,14 @@
 import Link from "next/link";
 import {
   IconPlus,
-  IconPaperclip,
   IconSparkles,
   IconBriefcase,
   IconSettings,
   IconFileText,
   IconKey,
   IconCpu,
+  IconPlugConnected,
+  IconBolt,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -25,8 +26,6 @@ import {
 
 interface ComposerMenuProps {
   disabled?: boolean;
-  /** Ouvre le picker de documents joints. */
-  onPickDocument: () => void;
   /** Ouvre le picker de workflow (prompt insertion). */
   onPickWorkflow: () => void;
   /** Listing rapide des workflows utilisateur pour les exposer en sub-menu. */
@@ -51,7 +50,6 @@ interface ComposerMenuProps {
  */
 export function ComposerMenu({
   disabled,
-  onPickDocument,
   onPickWorkflow,
   workflows,
   pipelines,
@@ -79,11 +77,6 @@ export function ComposerMenu({
         <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
           Insérer
         </DropdownMenuLabel>
-
-        <DropdownMenuItem onSelect={onPickDocument}>
-          <IconPaperclip className="size-4" />
-          Joindre un document
-        </DropdownMenuItem>
 
         {workflows.length > 0 ? (
           <DropdownMenuSub>
@@ -175,6 +168,24 @@ export function ComposerMenu({
           <Link href="/settings/models">
             <IconCpu className="size-4" />
             Modèles
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/skills">
+            <IconSparkles className="size-4" />
+            Skills
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/connectors">
+            <IconPlugConnected className="size-4" />
+            Connecteurs
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/mcp">
+            <IconBolt className="size-4" />
+            Serveurs MCP
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

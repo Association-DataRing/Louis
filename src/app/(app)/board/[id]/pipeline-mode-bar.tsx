@@ -39,7 +39,12 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
     });
   }
 
-  const modes: PipelineModeKey[] = ["sequential", "council", "parallel"];
+  const modes: PipelineModeKey[] = [
+    "sequential",
+    "council",
+    "parallel",
+    "iterative",
+  ];
   const radioRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function handleRadioKeyDown(
@@ -69,7 +74,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
           </div>
         </div>
 
-        {mode === "council" && (
+        {(mode === "council" || mode === "iterative") && (
           <Select
             value={String(rounds)}
             onValueChange={(v) => update({ rounds: Number(v) })}

@@ -57,6 +57,23 @@ export function LoginForm() {
                   aria-describedby={state.error ? "login-error" : undefined}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="totp">
+                  Code 2FA{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (si activé)
+                  </span>
+                </Label>
+                <Input
+                  id="totp"
+                  name="totp"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456 ou code de secours"
+                  aria-invalid={!!state.error}
+                  aria-describedby={state.error ? "login-error" : undefined}
+                />
+              </div>
 
               {state.error && (
                 <Alert variant="destructive" id="login-error">

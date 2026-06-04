@@ -52,7 +52,49 @@ export const MODEL_PRICING: Record<string, ProviderPricing> = {
   "gpt-4.1-mini": { inputPerMillion: 0.4, outputPerMillion: 1.6, currency: "USD" },
   "gpt-4.1": { inputPerMillion: 2.0, outputPerMillion: 8.0, currency: "USD" },
   "o3-mini": { inputPerMillion: 1.1, outputPerMillion: 4.4, currency: "USD" },
+  // GPT-5 (estimations tarif public ; à réviser). gpt-5.5 retombe sur la
+  // famille gpt-5 via le matching par préfixe ci-dessous.
+  "gpt-5-mini": { inputPerMillion: 0.25, outputPerMillion: 2.0, currency: "USD" },
+  "gpt-5": { inputPerMillion: 1.25, outputPerMillion: 10, currency: "USD" },
 };
+
+/**
+ * Matching par FAMILLE (préfixe), essayé après l'échec du match exact. Couvre
+ * les IDs versionnés/datés et les nouveaux modèles d'une famille connue (ex.
+ * `gpt-5.5`, `claude-opus-4-8-20260101`). Ordonné du plus SPÉCIFIQUE au plus
+ * général (le premier préfixe qui matche gagne).
+ */
+const MODEL_PRICING_PREFIXES: Array<[string, ProviderPricing]> = [
+  ["gpt-5-mini", { inputPerMillion: 0.25, outputPerMillion: 2.0, currency: "USD" }],
+  ["gpt-5", { inputPerMillion: 1.25, outputPerMillion: 10, currency: "USD" }],
+  ["gpt-4.1-mini", { inputPerMillion: 0.4, outputPerMillion: 1.6, currency: "USD" }],
+  ["gpt-4.1", { inputPerMillion: 2.0, outputPerMillion: 8.0, currency: "USD" }],
+  ["gpt-4o-mini", { inputPerMillion: 0.15, outputPerMillion: 0.6, currency: "USD" }],
+  ["gpt-4o", { inputPerMillion: 2.5, outputPerMillion: 10, currency: "USD" }],
+  ["claude-opus-4", { inputPerMillion: 15, outputPerMillion: 75, currency: "USD" }],
+  ["claude-sonnet-4", { inputPerMillion: 3, outputPerMillion: 15, currency: "USD" }],
+  ["claude-haiku-4", { inputPerMillion: 1, outputPerMillion: 5, currency: "USD" }],
+  ["mistral-large", { inputPerMillion: 2.0, outputPerMillion: 6.0, currency: "EUR" }],
+  ["mistral-medium", { inputPerMillion: 0.4, outputPerMillion: 2.0, currency: "EUR" }],
+  ["mistral-small", { inputPerMillion: 0.2, outputPerMillion: 0.6, currency: "EUR" }],
+];
+
+/**
+ * Résout le tarif d'un modèle de façon tolérante : match exact, puis ID
+ * normalisé (minuscule + suffixe de date retiré), puis famille par préfixe.
+ */
+function resolveModelPricing(modelId: string): ProviderPricing | undefined {
+  if (MODEL_PRICING[modelId]) return MODEL_PRICING[modelId];
+  const norm = modelId
+    .toLowerCase()
+    .replace(/-\d{4}-\d{2}-\d{2}$/, "") // -2026-01-31
+    .replace(/-\d{8}$/, ""); // -20260131
+  if (MODEL_PRICING[norm]) return MODEL_PRICING[norm];
+  for (const [prefix, pricing] of MODEL_PRICING_PREFIXES) {
+    if (norm.startsWith(prefix)) return pricing;
+  }
+  return undefined;
+}
 
 export type Cost = {
   amount: number;
@@ -65,7 +107,7 @@ export function computeCost(
   outputTokens: number
 ): Cost | null {
   if (!modelId) return null;
-  const p = MODEL_PRICING[modelId];
+  const p = resolveModelPricing(modelId);
   if (!p) return null;
   const amount =
     (inputTokens * p.inputPerMillion + outputTokens * p.outputPerMillion) /

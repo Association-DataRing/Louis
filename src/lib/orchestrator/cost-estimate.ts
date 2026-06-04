@@ -10,8 +10,9 @@ import type { PipelineMode } from "./types";
  * - sequential : un appel par agent (A → B → C).
  * - council    : débatteurs (agents − 1) × tours + 1 synthèse.
  * - parallel   : workers (agents − 1) en parallèle + 1 synthèse = agents.
+ * - iterative  : le chercheur tourne `rounds` fois + 1 synthèse (si ≥ 2 agents).
  *
- * Un pipeline mono-agent (ou vide) = 1 appel.
+ * Un pipeline mono-agent (ou vide) = 1 appel (sauf itératif : `rounds` appels).
  */
 export function estimateCalls(opts: {
   mode: PipelineMode;
@@ -19,8 +20,12 @@ export function estimateCalls(opts: {
   rounds?: number;
 }): number {
   const agents = Math.max(1, Math.floor(opts.agents));
-  if (agents <= 1) return 1;
   const rounds = Math.max(1, Math.floor(opts.rounds ?? 1));
+  if (opts.mode === "iterative") {
+    // Le chercheur (1er agent) tourne `rounds` fois ; +1 synthèse si terminal distinct.
+    return rounds + (agents > 1 ? 1 : 0);
+  }
+  if (agents <= 1) return 1;
   switch (opts.mode) {
     case "council":
       return rounds * (agents - 1) + 1;

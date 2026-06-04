@@ -9,7 +9,15 @@ export type {
   OrchestratorEventListener,
   PipelineConfig,
   StreamHandle,
+  UntrustedBlock,
+  UntrustedKind,
 } from "./types";
+export {
+  UNTRUSTED_CONTEXT_POLICY,
+  buildUntrustedBlocks,
+  hasUntrustedContext,
+  injectUntrustedContext,
+} from "./untrusted";
 export {
   Orchestrator,
   defaultAgentFactory,

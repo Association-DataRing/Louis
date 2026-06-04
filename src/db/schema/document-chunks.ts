@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -32,6 +33,11 @@ export const documentChunks = pgTable(
     index("document_chunks_embedding_idx")
       .using("hnsw", t.embedding.op("vector_cosine_ops")),
     index("document_chunks_document_idx").on(t.documentId),
+    // GIN FTS (français) pour la recherche hybride vecteur+mot-clé (rag/search.ts).
+    index("document_chunks_fts_idx").using(
+      "gin",
+      sql`to_tsvector('french', ${t.content})`
+    ),
   ]
 );
 
