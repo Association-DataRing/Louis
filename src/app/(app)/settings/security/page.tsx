@@ -1,5 +1,4 @@
 import { eq } from "drizzle-orm";
-import { IconShieldLock } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -16,15 +15,19 @@ export default async function SecurityPage() {
     .limit(1);
 
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center gap-2 mb-1">
-        <IconShieldLock className="size-5" />
-        <h1 className="text-lg font-semibold">Sécurité</h1>
+    <main className="mx-auto w-full max-w-3xl px-6 py-8 md:px-8 md:py-10">
+      <header className="mb-8 max-w-2xl">
+        <p className="text-xs text-foreground/70 uppercase tracking-wider">
+          Compte
+        </p>
+        <h1 className="mt-1 font-heading text-3xl tracking-tight">Sécurité</h1>
+        <p className="mt-2 text-muted-foreground text-sm">
+          Protégez l&apos;accès à votre compte.
+        </p>
+      </header>
+      <div className="max-w-2xl">
+        <TwoFactorSetup enabled={user?.totpEnabled ?? false} />
       </div>
-      <p className="text-sm text-muted-foreground mb-6">
-        Protégez l&apos;accès à votre compte.
-      </p>
-      <TwoFactorSetup enabled={user?.totpEnabled ?? false} />
-    </div>
+    </main>
   );
 }

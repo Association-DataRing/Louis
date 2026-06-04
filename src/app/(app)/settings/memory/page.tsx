@@ -1,5 +1,4 @@
 import { desc, eq } from "drizzle-orm";
-import { IconBrain } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { projectMemories, projects } from "@/db/schema";
@@ -27,18 +26,22 @@ export default async function MemoryPage() {
   const approved = rows.filter((r) => r.status === "approved") as MemoryItem[];
 
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center gap-2 mb-1">
-        <IconBrain className="size-5" />
-        <h1 className="text-lg font-semibold">Mémoire des dossiers</h1>
-      </div>
-      <p className="text-sm text-muted-foreground mb-6">
-        Faits durables extraits de vos conversations, par dossier (parties,
-        échéances, conventions de rédaction…). Un fait n&apos;influence les
-        réponses qu&apos;une fois <strong>validé</strong> par vous — rien
-        n&apos;est utilisé automatiquement. Chaque fait reste rattaché à son
-        dossier (jamais partagé entre clients).
-      </p>
+    <main className="mx-auto w-full max-w-3xl px-6 py-8 md:px-8 md:py-10">
+      <header className="mb-8 max-w-2xl">
+        <p className="text-xs text-foreground/70 uppercase tracking-wider">
+          Intégrations
+        </p>
+        <h1 className="mt-1 font-heading text-3xl tracking-tight">
+          Mémoire des dossiers
+        </h1>
+        <p className="mt-2 text-muted-foreground text-sm">
+          Faits durables extraits de vos conversations, par dossier (parties,
+          échéances, conventions de rédaction…). Un fait n&apos;influence les
+          réponses qu&apos;une fois <strong>validé</strong>{" "}par vous — rien
+          n&apos;est utilisé automatiquement. Chaque fait reste rattaché à son
+          dossier (jamais partagé entre clients).
+        </p>
+      </header>
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground border rounded-lg px-4 py-8 text-center">
@@ -84,6 +87,6 @@ export default async function MemoryPage() {
           </section>
         </div>
       )}
-    </div>
+    </main>
   );
 }
