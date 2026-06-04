@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { IconShieldCheck, IconShieldLock } from "@tabler/icons-react";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,16 +107,23 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
     return (
       <div className="rounded-lg border p-4 space-y-3">
         <p className="text-sm">
-          Dans votre application d&apos;authentification (Google Authenticator,
-          Aegis, 1Password…), ajoutez un compte par <strong>saisie manuelle</strong>{" "}
-          avec cette clé :
+          Scannez ce QR code avec votre application d&apos;authentification
+          (Google Authenticator, Aegis, 1Password…).
         </p>
-        <div className="rounded bg-muted px-3 py-2 font-mono text-sm break-all">
-          {stage.secret}
+        <div className="flex justify-center py-1">
+          {/* Fond blanc + bordures quiet zone : scanne aussi en thème sombre. */}
+          <div className="rounded-lg bg-white p-3 border border-border">
+            <QRCodeSVG value={stage.uri} size={168} level="M" marginSize={0} />
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground break-all">
-          ou via l&apos;URI : <code>{stage.uri}</code>
-        </p>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer select-none hover:text-foreground transition-colors">
+            Impossible de scanner ? Saisie manuelle
+          </summary>
+          <div className="mt-2 rounded bg-muted px-3 py-2 font-mono text-sm break-all text-foreground">
+            {stage.secret}
+          </div>
+        </details>
         <div className="space-y-2 pt-1">
           <Label htmlFor="totp-confirm">Code à 6 chiffres généré par l&apos;app</Label>
           <Input
