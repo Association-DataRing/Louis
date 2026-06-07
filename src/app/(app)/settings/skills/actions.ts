@@ -1,22 +1,16 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import { skills, type Skill } from "@/db/schema";
 import { SKILL_PRESETS, findSkillPreset } from "@/lib/skills/presets";
 
-export type ActionResult =
-  | { ok: true }
-  | { ok: false; error: string };
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
+export type ActionResult = BaseActionResult;
 
 const upsertSchema = z.object({
   name: z.string().trim().min(1).max(120),

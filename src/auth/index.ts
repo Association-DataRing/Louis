@@ -7,11 +7,77 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { recordAudit } from "@/lib/audit";
 import { verifyTotp } from "@/lib/totp";
+import { rateLimit } from "@/lib/rate-limit";
 
 const loginSchema = z.object({
   email: z.email(),
   password: z.string().min(1),
 });
+
+/**
+ * Hash bcrypt (coût 12, comme les vrais) d'une valeur factice. On le compare
+ * quand l'utilisateur est inconnu/inactif pour que le temps de réponse soit
+ * identique à celui d'un compte existant — sinon le retour immédiat (sans
+ * bcrypt) permet d'énumérer les comptes valides par timing.
+ */
+const DUMMY_PASSWORD_HASH =
+  "$2b$12$/UhpgtrIsu3oraRqMFfceusRyGfNtEboKmT1qI7fkb2rxNEuITKNK";
+
+/**
+ * Première étape du login en deux temps : vérifie l'email + le mot de passe
+ * SANS créer de session, et indique si un second facteur (TOTP) est requis.
+ *
+ * Sert au formulaire multi-étapes (src/app/login) : on ne révèle l'écran
+ * « code 2FA » qu'après un mot de passe valide — sinon on divulguerait à un
+ * attaquant quels comptes ont la 2FA activée (énumération + ciblage).
+ *
+ * Le log d'audit d'échec est calqué sur `authorize` ci-dessous : comme un
+ * échec à cette étape n'atteint jamais `signIn`/`authorize`, c'est ici qu'il
+ * faut tracer la tentative ratée. Le succès, lui, n'est PAS loggé ici (aucune
+ * session établie) — il le sera par `authorize` lors du `signIn` final.
+ */
+export async function verifyPasswordStep(
+  email: string,
+  password: string
+): Promise<{ status: "invalid" } | { status: "ok"; needsTotp: boolean }> {
+  const parsed = loginSchema.safeParse({ email, password });
+  if (!parsed.success) return { status: "invalid" };
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, parsed.data.email))
+    .limit(1);
+
+  if (!user || !user.isActive) {
+    // Compare contre un hash factice : même coût CPU qu'un compte réel, pour
+    // ne pas révéler par timing si l'email existe.
+    await bcrypt.compare(parsed.data.password, DUMMY_PASSWORD_HASH);
+    await recordAudit({
+      userId: null,
+      action: "auth.login.failed",
+      target: parsed.data.email,
+      meta: { reason: user ? "inactive" : "unknown" },
+    });
+    return { status: "invalid" };
+  }
+
+  const passwordMatch = await bcrypt.compare(
+    parsed.data.password,
+    user.passwordHash
+  );
+  if (!passwordMatch) {
+    await recordAudit({
+      userId: user.id,
+      action: "auth.login.failed",
+      target: parsed.data.email,
+      meta: { reason: "bad_password" },
+    });
+    return { status: "invalid" };
+  }
+
+  return { status: "ok", needsTotp: user.totpEnabled };
+}
 
 // En dev on tourne sur http://localhost — donc PAS de cookie Secure
 // (sinon le navigateur ne le renvoie pas et l'utilisateur est
@@ -72,6 +138,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .limit(1);
 
         if (!user || !user.isActive) {
+          // Timing parity (voir DUMMY_PASSWORD_HASH) — évite l'énumération.
+          await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
           // Log failed attempt sans userId (utilisateur inconnu ou désactivé)
           await recordAudit({
             userId: null,
@@ -96,6 +164,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Second facteur (TOTP) si activé : un code à 6 chiffres OU un code de
         // secours à usage unique (haché). Sans second facteur valide, on rejette.
         if (user.totpEnabled) {
+          // Plafond par compte : empêche le brute-force du code à 6 chiffres
+          // (le plafond login par IP ne couvre pas un attaquant distribué).
+          const rl = await rateLimit("totp", user.id);
+          if (!rl.allowed) {
+            await recordAudit({
+              userId: user.id,
+              action: "auth.totp.failed",
+              target: email,
+              meta: { reason: "rate_limited" },
+            });
+            return null;
+          }
           const rawCredentials = credentials as Record<string, unknown>;
           const code =
             typeof rawCredentials.totp === "string"
@@ -150,6 +230,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.avatarUrl,
           role: user.role,
+          tokenVersion: user.tokenVersion,
         };
       },
     }),
@@ -159,6 +240,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id!;
         token.role = user.role;
+        token.tokenVersion = user.tokenVersion ?? 0;
         return token;
       }
       // Sessions existantes : on revalide le compte à CHAQUE accès. Sans ça,
@@ -172,11 +254,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.id) {
         try {
           const [u] = await db
-            .select({ isActive: users.isActive, role: users.role })
+            .select({
+              isActive: users.isActive,
+              role: users.role,
+              tokenVersion: users.tokenVersion,
+            })
             .from(users)
             .where(eq(users.id, token.id))
             .limit(1);
           if (!u || !u.isActive) return null; // compte supprimé/désactivé → session détruite
+          // Invalidation des sessions : un changement de mot de passe ou une
+          // désactivation 2FA incrémente tokenVersion → les JWT antérieurs sont
+          // rejetés (les tokens émis avant l'ajout de la colonne ont une version
+          // absente → comparée à 0, donc préservés, pas de déconnexion massive).
+          if ((token.tokenVersion ?? 0) !== u.tokenVersion) return null;
           token.role = u.role; // propage un changement de rôle immédiatement
         } catch {
           // blip DB → on conserve la session existante

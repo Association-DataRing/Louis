@@ -93,7 +93,7 @@ function CardShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs flex flex-col gap-1.5 max-w-[85%]">
+    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs flex flex-col gap-1.5 max-w-[85%] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
       <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
         <span className="font-medium text-foreground">{source}</span>

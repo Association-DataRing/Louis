@@ -149,15 +149,24 @@ function writeSection(
       });
       doc.moveDown(0.6);
       return;
-    case "list":
+    case "list": {
       doc.font(fonts.regular).fontSize(11).fillColor("black");
-      section.items.forEach((item, i) => {
-        const prefix = section.ordered ? `${i + 1}. ` : "•  ";
+      const baseX = doc.x;
+      // Compteur de numérotation par niveau (un niveau plus profond repart à 1).
+      const counters: number[] = [];
+      section.items.forEach((item) => {
+        const level = Math.max(item.level, 0);
+        counters[level] = (counters[level] ?? 0) + 1;
+        counters.length = level + 1;
+        doc.x = baseX + level * 16;
+        const prefix = section.ordered ? `${counters[level]}. ` : "•  ";
         doc.text(prefix, { continued: true });
-        writeInline(doc, parseInline(item), fonts, { lineGap: 2 });
+        writeInline(doc, parseInline(item.text), fonts, { lineGap: 2 });
       });
+      doc.x = baseX;
       doc.moveDown(0.5);
       return;
+    }
     case "blockquote": {
       doc.moveDown(0.3);
       doc.font(fonts.italic).fontSize(11).fillColor("#333");

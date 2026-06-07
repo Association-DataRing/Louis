@@ -46,7 +46,11 @@ import {
 import { ModelPicker } from "./model-picker";
 import { editUserMessageAndTrim } from "./actions";
 import { uiPartsFromSaved } from "@/lib/ai/saved-parts";
-import type { SavedPart } from "@/db/schema/messages";
+import {
+  unwrapToolResult,
+  type DocumentArtifactMeta,
+} from "@/lib/ai/tool-result";
+import type { SavedPart, MessageMetadata } from "@/db/schema/messages";
 import { DocPanel } from "./doc-panel";
 import { EditCard } from "./edit-card";
 import {
@@ -67,6 +71,7 @@ import {
   IconFileTypeDocx,
   IconAlertTriangle,
   IconPencil,
+  IconEye,
 } from "@tabler/icons-react";
 import {
   Popover,
@@ -228,8 +233,22 @@ function linkifyDocMentions(
   let out = raw;
   for (const d of sorted) {
     if (!d.filename) continue;
-    const pattern = new RegExp(`(?<!\\]\\()(${escapeRegex(d.filename)})(?!\\))`, "g");
-    out = out.replace(pattern, `[$1](louis-doc:${d.id})`);
+    const fn = escapeRegex(d.filename);
+    // 1) Lien markdown EXPLICITE du modèle [filename](url) → on réécrit le
+    //    href vers louis-doc: pour ouvrir le panneau (au lieu de naviguer
+    //    vers une URL souvent erronée). Couvre aussi les conversations
+    //    rechargées, où les tool parts ne sont plus là pour rendre la carte.
+    out = out.replace(
+      new RegExp(`\\[(${fn})\\]\\([^)]*\\)`, "g"),
+      `[$1](louis-doc:${d.id})`
+    );
+    // 2) Mention BRUTE du filename (hors lien) → rendue cliquable. On exclut
+    //    le texte déjà dans un lien (?<!\[ … ?!\]) pour ne pas ré-emballer ce
+    //    que l'étape 1 vient de produire.
+    out = out.replace(
+      new RegExp(`(?<!\\]\\()(?<!\\[)(${fn})(?!\\))(?!\\])`, "g"),
+      `[$1](louis-doc:${d.id})`
+    );
   }
   return out;
 }
@@ -308,54 +327,94 @@ type EditedDocument = {
   }>;
 };
 
+type DocCard =
+  | { variant: "edited"; documentId: string; doc: EditedDocument }
+  | {
+      variant: "download";
+      documentId: string;
+      filename: string;
+      format: "docx" | "pdf";
+      title: string;
+    };
+
 /**
- * L'AI SDK v6 emballe la sortie d'un tool dans `{type: "json", value: {...}}`
- * (ou `{type: "text", text: "..."}` pour les retours scalaires). Notre tool
- * renvoie ensuite une envelope ToolResult `{ok: true, data: {...}}`. On
- * unwrap successivement ces couches pour récupérer la `data` métier.
- *
- * Cas gérés :
- *   - { type: "json", value: { ok: true, data: T } }   ← AI SDK + ToolResult
- *   - { type: "text", text: "<json>" }                  ← AI SDK provider-executed
- *   - { ok: true, data: T }                             ← envelope brute
- *   - T                                                 ← objet déjà dépouillé
- *   - "<json>"                                          ← string serialisée
+ * Construit les cartes d'artefact document d'un message assistant (façon
+ * Claude/Sana), dédupliquées par documentId. Trois sources, par priorité :
+ *  1. Tool parts LIVE (pendant le stream) → carte la plus riche (édition avec
+ *     ses détails de changes).
+ *  2. metadata PERSISTÉE (messages.metadata.documents) → survit au remount de
+ *     ChatShell (key=?id au 1er message) ET au reload dur, indépendamment de
+ *     ce que le modèle écrit. C'est la source de vérité quand les tool parts
+ *     ne se reconstruisent pas de façon fiable depuis la DB.
+ *  3. Filet ultime : un document CONNU cité par son nom de fichier dans le
+ *     texte (legacy / messages sans metadata).
  */
-function unwrapToolResult<T>(o: unknown): T | null {
-  if (!o) return null;
-  let candidate: unknown = o;
+function buildDocCards(
+  parts: { type: string; output?: unknown }[],
+  persisted: DocumentArtifactMeta[],
+  text: string,
+  knownDocs: { id: string; filename: string }[]
+): DocCard[] {
+  const byId = new Map<string, DocCard>();
 
-  // Couche 1 : si string, parse en JSON
-  if (typeof candidate === "string") {
-    try {
-      candidate = JSON.parse(candidate);
-    } catch {
-      return null;
+  // 1. Tool parts live (les plus riches).
+  for (const p of parts) {
+    if (p.type === "tool-generate_document") {
+      const d = unwrapToolResult<GeneratedDocument>(p.output);
+      if (d?.document_id && !byId.has(d.document_id)) {
+        byId.set(d.document_id, {
+          variant: "download",
+          documentId: d.document_id,
+          filename: d.filename,
+          format: d.format,
+          title: "Document généré",
+        });
+      }
+    } else if (p.type === "tool-edit_document") {
+      const d = unwrapToolResult<EditedDocument>(p.output);
+      if (d?.document_id && !byId.has(d.document_id)) {
+        byId.set(d.document_id, {
+          variant: "edited",
+          documentId: d.document_id,
+          doc: d,
+        });
+      }
     }
   }
-  if (typeof candidate !== "object" || candidate === null) return null;
 
-  // Couche 2 : enveloppe AI SDK {type, value/text}
-  const aiObj = candidate as Record<string, unknown>;
-  if ("type" in aiObj && "value" in aiObj && aiObj.type === "json") {
-    candidate = aiObj.value;
-  } else if ("type" in aiObj && "text" in aiObj && aiObj.type === "text") {
-    try {
-      candidate = JSON.parse(String(aiObj.text));
-    } catch {
-      return null;
+  // 2. metadata persistée (survit remount/reload, source de vérité).
+  for (const a of persisted) {
+    if (byId.has(a.documentId)) continue;
+    byId.set(a.documentId, {
+      variant: "download",
+      documentId: a.documentId,
+      filename: a.filename,
+      format: a.format,
+      title: a.kind === "edited" ? "Document modifié" : "Document généré",
+    });
+  }
+
+  // 3. Filet ultime : mention du filename d'un doc connu dans le texte. Ne
+  // s'active QUE si aucun artefact n'a été capté par les sources fiables (#1
+  // tool parts, #2 metadata) — sinon un simple rappel d'un fichier existant
+  // (« comme dans contrat.docx ») créait une fausse carte de téléchargement.
+  // Les mentions légitimes restent cliquables via linkifyDocMentions (inline).
+  if (text && byId.size === 0) {
+    for (const d of knownDocs) {
+      if (!d.filename || byId.has(d.id)) continue;
+      if (text.includes(d.filename)) {
+        byId.set(d.id, {
+          variant: "download",
+          documentId: d.id,
+          filename: d.filename,
+          format: /\.pdf$/i.test(d.filename) ? "pdf" : "docx",
+          title: "Document",
+        });
+      }
     }
   }
-  if (typeof candidate !== "object" || candidate === null) return null;
 
-  // Couche 3 : envelope ToolResult {ok, data}
-  const env = candidate as Record<string, unknown>;
-  if ("ok" in env && "data" in env) {
-    if (env.ok === false) return null;
-    return env.data as T;
-  }
-
-  return env as T;
+  return [...byId.values()];
 }
 
 function DocumentDownloadCard({
@@ -373,7 +432,7 @@ function DocumentDownloadCard({
 }) {
   const Icon = format === "pdf" ? IconFileTypePdf : IconFileTypeDocx;
   return (
-    <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 max-w-[85%] flex items-center gap-3">
+    <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 max-w-[85%] flex items-center gap-3 transition-shadow hover:shadow-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-300">
       <button
         type="button"
         onClick={onPreview}
@@ -393,17 +452,27 @@ function DocumentDownloadCard({
         </p>
         <p className="text-sm font-medium truncate">{filename}</p>
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          Cliquez pour prévisualiser
+          {format === "pdf" ? "Document PDF" : "Document Word (.docx)"}
         </p>
       </button>
-      <a
-        href={`/api/documents/${documentId}/file?download=1`}
-        download={filename}
-        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
-      >
-        <IconDownload className="size-3.5" />
-        Télécharger
-      </a>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onPreview}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium hover:bg-accent transition-colors"
+        >
+          <IconEye className="size-3.5" />
+          Voir
+        </button>
+        <a
+          href={`/api/documents/${documentId}/file?download=1`}
+          download={filename}
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+        >
+          <IconDownload className="size-3.5" />
+          Télécharger
+        </a>
+      </div>
     </div>
   );
 }
@@ -426,7 +495,7 @@ function EditedDocumentCard({
   onPreview: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden max-w-[85%]">
+    <div className="rounded-lg border border-border bg-card overflow-hidden max-w-[85%] transition-shadow hover:shadow-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-300">
       <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
         <button
           type="button"
@@ -520,11 +589,12 @@ function EditedDocumentCard({
   );
 }
 
-/** Outils ayant un rendu RICHE dédié (carte download, citations…) — le reste
- * tombe sur le détail JSON dans la timeline. */
+/** Outils ayant un rendu RICHE dédié (citations…) dans le détail de la
+ * timeline — le reste tombe sur le détail JSON. NB : generate_document /
+ * edit_document ne sont PLUS ici : leur artefact est désormais une carte
+ * proéminente au niveau du message (cf. extractDocArtifacts), inutile de le
+ * dupliquer dans le détail dépliable. */
 const RICH_TOOLS = new Set([
-  "generate_document",
-  "edit_document",
   "search_documents",
   "legifrance_search",
   "pappers_search",
@@ -825,8 +895,10 @@ const AssistantMarkdownPart = memo(function AssistantMarkdownPart({
               </button>
             );
           }
+          // Tout autre lien (écrit par le modèle) s'ouvre dans un nouvel
+          // onglet : un clic ne doit jamais détruire la session de chat.
           return (
-            <a {...rest} href={href}>
+            <a {...rest} href={href} target="_blank" rel="noopener noreferrer">
               {children}
             </a>
           );
@@ -1104,13 +1176,25 @@ export function ChatShell({
   >(() => {
     const initial: Record<string, string[]> = {};
     for (const m of initialMessages) {
-      const meta = m.metadata as { documentIds?: string[] } | null;
+      const meta = m.metadata as MessageMetadata | null;
       if (meta?.documentIds && meta.documentIds.length > 0) {
         initial[m.id] = meta.documentIds;
       }
     }
     return initial;
   });
+  // Artefacts documents persistés par message id — source de vérité de la
+  // carte d'artefact (survit au remount ChatShell key=?id ET au reload dur,
+  // sans dépendre de la prose ni de la reconstruction fragile des tool parts).
+  // Reconstruit à chaque mount depuis les initialMessages DB (frais au remount).
+  const documentArtifactsByMessageId = useMemo(() => {
+    const map: Record<string, DocumentArtifactMeta[]> = {};
+    for (const m of initialMessages) {
+      const docs = (m.metadata as MessageMetadata | null)?.documents;
+      if (docs && docs.length > 0) map[m.id] = docs;
+    }
+    return map;
+  }, [initialMessages]);
   // Tampon des docIds en attente d'être associés au prochain message user
   // qui apparaît dans le store useChat (l'AI SDK génère l'ID côté client,
   // on ne le connaît pas avant que le message ne soit pushé).
@@ -1187,6 +1271,24 @@ export function ChatShell({
     },
     [initialConversationId]
   );
+  // Fermeture animée du DocPanel : on joue le slide-out (via la prop
+  // `closing`) puis on démonte au bout de la durée d'anim. Sous
+  // prefers-reduced-motion, on ferme directement (pas de délai mort).
+  const [docClosing, setDocClosing] = useState(false);
+  const closeDoc = useCallback(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setOpenDoc(null);
+      return;
+    }
+    setDocClosing(true);
+    window.setTimeout(() => {
+      setOpenDoc(null);
+      setDocClosing(false);
+    }, 220);
+  }, [setOpenDoc]);
   // Adaptateur stable (signature ReactMarkdown/ToolPart → setOpenDoc) pour que
   // `React.memo(AssistantMarkdownPart)` ne se ré-invalide pas à chaque token :
   // les messages historiques ne re-rendent plus pendant le streaming.
@@ -1202,6 +1304,15 @@ export function ChatShell({
     typeof window !== "undefined"
       ? window.sessionStorage.getItem("louis:lastAutoOpenedDoc")
       : null
+  );
+  // Ids des messages présents AU MONTAGE (chargés depuis la DB). L'auto-open
+  // du DocPanel ne doit se déclencher que pour une génération FRAÎCHE de la
+  // session — pas pour un document reconstruit au reload/réouverture d'une
+  // conversation (sinon le panneau s'ouvrirait tout seul à chaque réouverture
+  // maintenant que les tool parts se reconstruisent au reload).
+  const initialMessageIds = useMemo(
+    () => new Set(initialMessages.map((m) => m.id)),
+    [initialMessages]
   );
 
 
@@ -1845,6 +1956,9 @@ export function ChatShell({
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last || last.role !== "assistant" || !last.parts) return;
+    // Message chargé depuis la DB (présent au montage) → pas d'auto-open :
+    // on n'ouvre le panneau que lorsqu'une génération vient de se terminer.
+    if (initialMessageIds.has(last.id)) return;
     for (let i = last.parts.length - 1; i >= 0; i--) {
       const p = last.parts[i] as { type: string; output?: unknown };
       if (
@@ -1862,7 +1976,7 @@ export function ChatShell({
       setOpenDoc({ documentId: d.document_id, targetText: "" });
       return;
     }
-  }, [messages, setOpenDoc]);
+  }, [messages, setOpenDoc, initialMessageIds]);
 
   return (
     <Dropzone
@@ -1873,9 +1987,11 @@ export function ChatShell({
       className="flex-1 flex h-full min-w-0 w-full"
     >
     <div className="flex-1 flex flex-col h-full min-w-0 bg-background">
-      {/* Top header — light, breadcrumb project + usage + sovereignty */}
-      <header className="border-b border-border px-6 py-3 flex items-center gap-3 text-xs h-[52px]">
-        {projectContext && (
+      {/* Breadcrumb projet — affiché UNIQUEMENT en contexte projet. Le coût
+          et le badge de souveraineté ont migré dans le composer (immersion :
+          plus de barre permanente en haut de l'écran). */}
+      {projectContext && (
+        <header className="border-b border-border px-6 py-2.5 flex items-center gap-3 text-xs">
           <Link
             href={`/projects/${projectContext.id}`}
             className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -1884,79 +2000,8 @@ export function ChatShell({
             <span className="size-1.5 rounded-full bg-primary" />
             <span className="truncate max-w-[200px]">{projectContext.name}</span>
           </Link>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-        {(usage.inputTokens > 0 || usage.outputTokens > 0) && (() => {
-          // Header allégé : un seul pill « coût », cliquable pour révéler
-          // le détail tokens d'entrée/sortie. Évite la triplette
-          // tokens↗ / tokens↘ / coût qui surchargeait le header sans
-          // valeur ajoutée — un avocat veut savoir « combien ça coûte »,
-          // les tokens sont du détail métier accessoire.
-          const cost = computeCost(
-            modelId,
-            usage.inputTokens,
-            usage.outputTokens
-          );
-          return (
-            <Popover>
-              <PopoverTrigger
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 px-2 py-0.5 text-[11px] text-muted-foreground tabular-nums hover:bg-accent hover:text-foreground transition-colors"
-                aria-label="Détails d'usage de la conversation"
-              >
-                {cost ? formatCost(cost) : `${formatTokens(usage.inputTokens + usage.outputTokens)} tokens`}
-              </PopoverTrigger>
-              <PopoverContent
-                side="bottom"
-                align="end"
-                className="w-64 p-3"
-              >
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-                  Usage de la conversation
-                </p>
-                <dl className="space-y-1.5 text-xs">
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-muted-foreground">Tokens entrée</dt>
-                    <dd className="tabular-nums">
-                      {usage.inputTokens.toLocaleString("fr-FR")}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-muted-foreground">Tokens sortie</dt>
-                    <dd className="tabular-nums">
-                      {usage.outputTokens.toLocaleString("fr-FR")}
-                    </dd>
-                  </div>
-                  {cost && (
-                    <div className="flex justify-between gap-3 pt-1.5 border-t border-border">
-                      <dt className="font-medium">Coût estimé</dt>
-                      <dd className="tabular-nums font-medium">
-                        {formatCost(cost)}
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-                <p className="mt-2 text-[10px] text-muted-foreground">
-                  Tarifs publics du provider — facturation réelle peut
-                  varier.
-                </p>
-              </PopoverContent>
-            </Popover>
-          );
-        })()}
-        <Badge
-          variant={
-            selectedMeta.sovereignty === "fr"
-              ? "default"
-              : selectedMeta.sovereignty === "eu"
-                ? "secondary"
-                : "outline"
-          }
-          className="text-[10px]"
-        >
-          {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
-        </Badge>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Messages or empty state */}
       {/* Région live dédiée : annonce uniquement une string de complétion
@@ -2011,6 +2056,18 @@ export function ChatShell({
                 (p) =>
                   typeof p.type === "string" && p.type.startsWith("tool-")
               );
+              // Cartes d'artefact document → live tool parts ∪ metadata
+              // persistée (survit remount/reload) ∪ fallback prose, dédupliqué.
+              const docCards = isUser
+                ? []
+                : buildDocCards(
+                    m.parts as { type: string; output?: unknown }[],
+                    documentArtifactsByMessageId[m.id] ?? [],
+                    extractTextFromParts(
+                      m.parts as { type: string; text?: string }[]
+                    ),
+                    mergedDocuments
+                  );
               const toolDurationMs = sumAgentLatency(
                 m.parts as { type: string; data?: unknown }[]
               );
@@ -2031,7 +2088,7 @@ export function ChatShell({
                 <div
                   key={m.id}
                   aria-label={isUser ? "Vous" : "Louis"}
-                  className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start group/msg"}`}
+                  className={`flex flex-col gap-1.5 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 ${isUser ? "items-end" : "items-start group/msg"}`}
                 >
                   {/* Wrapper d'étapes : utile UNIQUEMENT pour pipelines
                       multi-agents (2+ agents distincts). En mode chat-simple
@@ -2223,6 +2280,37 @@ export function ChatShell({
                     }
                     return null;
                   })}
+
+                  {/* Artefacts documents — cartes proéminentes (façon Claude/
+                      Sana) : un document généré/édité doit être un objet de
+                      premier plan, pas un lien noyé dans la prose. */}
+                  {!isUser && docCards.length > 0 && (
+                    <div className="flex w-full flex-col gap-2">
+                      {docCards.map((c) =>
+                        c.variant === "edited" ? (
+                          <EditedDocumentCard
+                            key={`art-${c.documentId}`}
+                            documentId={c.documentId}
+                            filename={c.doc.filename}
+                            applied={c.doc.applied}
+                            errors={c.doc.errors}
+                            appliedCount={c.doc.applied_count}
+                            errorsCount={c.doc.errors_count}
+                            onPreview={() => handleOpenDoc(c.documentId, "")}
+                          />
+                        ) : (
+                          <DocumentDownloadCard
+                            key={`art-${c.documentId}`}
+                            title={c.title}
+                            filename={c.filename}
+                            documentId={c.documentId}
+                            format={c.format}
+                            onPreview={() => handleOpenDoc(c.documentId, "")}
+                          />
+                        )
+                      )}
+                    </div>
+                  )}
                   {/* Actions au survol du message assistant — masquées
                       pendant le streaming et sur les messages user. */}
                   {!isUser && !isLiveMessage && (
@@ -2544,6 +2632,76 @@ export function ChatShell({
                 disabled={isBusy}
               />
 
+              {/* Coût de la conversation + souveraineté du modèle — déplacés
+                  ici depuis l'ex top-header (immersion). Groupés avec le
+                  sélecteur de modèle car ils s'y rapportent ; l'action
+                  d'envoi reste seule à droite (ml-auto). */}
+              {(usage.inputTokens > 0 || usage.outputTokens > 0) &&
+                (() => {
+                  const cost = computeCost(
+                    modelId,
+                    usage.inputTokens,
+                    usage.outputTokens
+                  );
+                  return (
+                    <Popover>
+                      <PopoverTrigger
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border/60 px-2 py-0.5 text-[11px] text-muted-foreground tabular-nums hover:bg-accent hover:text-foreground transition-colors"
+                        aria-label="Détails d'usage de la conversation"
+                      >
+                        {cost
+                          ? formatCost(cost)
+                          : `${formatTokens(usage.inputTokens + usage.outputTokens)} tokens`}
+                      </PopoverTrigger>
+                      <PopoverContent side="top" align="start" className="w-64 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+                          Usage de la conversation
+                        </p>
+                        <dl className="space-y-1.5 text-xs">
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">Tokens entrée</dt>
+                            <dd className="tabular-nums">
+                              {usage.inputTokens.toLocaleString("fr-FR")}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">Tokens sortie</dt>
+                            <dd className="tabular-nums">
+                              {usage.outputTokens.toLocaleString("fr-FR")}
+                            </dd>
+                          </div>
+                          {cost && (
+                            <div className="flex justify-between gap-3 pt-1.5 border-t border-border">
+                              <dt className="font-medium">Coût estimé</dt>
+                              <dd className="tabular-nums font-medium">
+                                {formatCost(cost)}
+                              </dd>
+                            </div>
+                          )}
+                        </dl>
+                        <p className="mt-2 text-[10px] text-muted-foreground">
+                          Tarifs publics du provider — facturation réelle peut
+                          varier.
+                        </p>
+                      </PopoverContent>
+                    </Popover>
+                  );
+                })()}
+
+              <Badge
+                variant={
+                  selectedMeta.sovereignty === "fr"
+                    ? "default"
+                    : selectedMeta.sovereignty === "eu"
+                      ? "secondary"
+                      : "outline"
+                }
+                className="text-[10px]"
+                title="Souveraineté du modèle"
+              >
+                {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
+              </Badge>
+
               <div className="ml-auto">
                 {isBusy ? (
                   <button
@@ -2590,7 +2748,9 @@ export function ChatShell({
         key={`${openDoc.documentId}::${openDoc.targetText.slice(0, 32)}`}
         documentId={openDoc.documentId}
         targetText={openDoc.targetText}
-        onClose={() => setOpenDoc(null)}
+        closing={docClosing}
+        onClose={closeDoc}
+        onReplace={(id) => setOpenDoc({ documentId: id, targetText: "" })}
       />
     )}
     </Dropzone>

@@ -1,9 +1,11 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import { providerKeys } from "@/db/schema";
 import { encrypt, decrypt } from "@/lib/crypto";
@@ -19,13 +21,7 @@ const createSchema = z.object({
   baseUrl: z.url().optional().or(z.literal("")),
 });
 
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
-
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResult = BaseActionResult;
 
 export async function createProviderKey(
   _prev: ActionResult | null,
@@ -145,16 +141,21 @@ export async function setProviderKeyDefault(id: string): Promise<void> {
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)))
     .limit(1);
   if (!target) return;
-  await db
-    .update(providerKeys)
-    .set({ isDefault: false })
-    .where(
-      and(eq(providerKeys.userId, userId), eq(providerKeys.type, target.type))
-    );
-  await db
-    .update(providerKeys)
-    .set({ isDefault: true })
-    .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
+  // Transaction : démarquer l'ancien défaut puis marquer le nouveau doivent
+  // être atomiques, sinon un échec entre les deux laisse l'utilisateur sans
+  // aucune clé par défaut pour ce type de provider.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(providerKeys)
+      .set({ isDefault: false })
+      .where(
+        and(eq(providerKeys.userId, userId), eq(providerKeys.type, target.type))
+      );
+    await tx
+      .update(providerKeys)
+      .set({ isDefault: true })
+      .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
+  });
   revalidatePath("/settings/providers");
 }
 

@@ -11,6 +11,12 @@
 
 export type Alignment = "left" | "center" | "right" | "justify";
 
+/**
+ * Item de liste avec son niveau d'imbrication (0 = racine). Permet de
+ * préserver les clauses multi-niveaux d'un acte au lieu de les aplatir.
+ */
+export type ListItem = { text: string; level: number };
+
 export type Section =
   | {
       kind: "heading";
@@ -28,7 +34,7 @@ export type Section =
   | {
       kind: "list";
       ordered: boolean;
-      items: string[];
+      items: ListItem[];
     }
   | {
       kind: "blockquote";

@@ -1,5 +1,7 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -14,9 +16,7 @@ const schema = z.object({
   legalDisclaimer: z.string().trim().max(1000),
 });
 
-export type ActionResult =
-  | { ok: true }
-  | { ok: false; error: string };
+export type ActionResult = BaseActionResult;
 
 export async function updateCabinetSettings(
   _prev: ActionResult | null,

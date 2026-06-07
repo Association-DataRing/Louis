@@ -4,6 +4,7 @@ import {
   text,
   integer,
   timestamp,
+  index,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
@@ -43,7 +44,13 @@ export const documents = pgTable("documents", {
   extractionStatus: text("extraction_status").notNull().default("pending"),
   extractionError: text("extraction_error"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => [
+  // Arbre /documents + familles de versions : filtrés par propriétaire,
+  // dossier, et document racine (lookup version au /save).
+  index("documents_user_idx").on(t.userId),
+  index("documents_folder_idx").on(t.folderId),
+  index("documents_parent_idx").on(t.parentDocumentId),
+]);
 
 export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;

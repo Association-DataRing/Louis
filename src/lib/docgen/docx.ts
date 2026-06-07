@@ -95,17 +95,17 @@ function sectionToDocxChildren(
         }),
       ];
     case "list":
-      return section.items.map(
-        (item) =>
-          new Paragraph({
-            numbering: section.ordered
-              ? { reference: "ordered", level: 0 }
-              : undefined,
-            bullet: section.ordered ? undefined : { level: 0 },
-            spacing: { after: 80 },
-            children: makeRuns(item, font),
-          })
-      );
+      return section.items.map((item) => {
+        const level = Math.min(Math.max(item.level, 0), 4);
+        return new Paragraph({
+          numbering: section.ordered
+            ? { reference: "ordered", level }
+            : undefined,
+          bullet: section.ordered ? undefined : { level },
+          spacing: { after: 80 },
+          children: makeRuns(item.text, font),
+        });
+      });
     case "blockquote":
       return [
         new Paragraph({
@@ -319,13 +319,14 @@ export async function generateDocx(spec: DocumentSpec): Promise<Buffer> {
       config: [
         {
           reference: "ordered",
+          // Niveaux d'imbrication 0–4 (1. → a. → i. → 1. → a.), pour rendre les
+          // clauses multi-niveaux d'un acte au lieu de les aplatir.
           levels: [
-            {
-              level: 0,
-              format: "decimal",
-              text: "%1.",
-              alignment: AlignmentType.LEFT,
-            },
+            { level: 0, format: "decimal", text: "%1.", alignment: AlignmentType.LEFT },
+            { level: 1, format: "lowerLetter", text: "%2.", alignment: AlignmentType.LEFT },
+            { level: 2, format: "lowerRoman", text: "%3.", alignment: AlignmentType.LEFT },
+            { level: 3, format: "decimal", text: "%4.", alignment: AlignmentType.LEFT },
+            { level: 4, format: "lowerLetter", text: "%5.", alignment: AlignmentType.LEFT },
           ],
         },
       ],

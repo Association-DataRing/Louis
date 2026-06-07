@@ -2,10 +2,14 @@
 
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
-import { signIn } from "@/auth";
+import { signIn, verifyPasswordStep } from "@/auth";
 import { rateLimit } from "@/lib/rate-limit";
 
+export type LoginStep = "credentials" | "totp";
+
 export type LoginState = {
+  /** Étape que l'UI doit afficher après cette action. */
+  step: LoginStep;
   error?: string;
 };
 
@@ -25,16 +29,29 @@ async function getClientIp(): Promise<string> {
   return "unknown";
 }
 
+/**
+ * Login en deux temps, piloté par le champ caché `step` :
+ *
+ *  1. `credentials` — on valide email + mot de passe (sans session). Si le
+ *     compte a la 2FA, on renvoie `{ step: "totp" }` pour révéler l'écran de
+ *     code. Sinon on finalise directement (signIn → redirect).
+ *  2. `totp` — email + mot de passe sont rejoués avec le code ; `signIn`
+ *     revalide tout (mot de passe + second facteur) et établit la session.
+ *
+ * Pour un compte sans 2FA, l'utilisateur ne voit qu'une seule étape : le
+ * premier submit le connecte. Le double bcrypt (vérif d'étape 1 puis re-vérif
+ * dans `authorize`) est négligeable sur ce chemin froid.
+ */
 export async function loginAction(
   _prev: LoginState,
   formData: FormData
 ): Promise<LoginState> {
+  const step = formData.get("step") === "totp" ? "totp" : "credentials";
   const email = formData.get("email");
   const password = formData.get("password");
-  const totp = formData.get("totp");
 
   if (typeof email !== "string" || typeof password !== "string") {
-    return { error: "Champs requis manquants." };
+    return { step: "credentials", error: "Champs requis manquants." };
   }
 
   // Rate-limit anti brute-force par IP. La fenêtre est globale (toute
@@ -46,10 +63,27 @@ export async function loginAction(
   if (!rl.allowed) {
     const retryS = Math.ceil((rl.resetAt - Date.now()) / 1000);
     return {
+      step,
       error: `Trop de tentatives. Réessayez dans ${retryS} secondes.`,
     };
   }
 
+  // --- Étape 1 : vérifier les identifiants, déterminer si la 2FA est requise.
+  if (step === "credentials") {
+    const res = await verifyPasswordStep(email, password);
+    if (res.status === "invalid") {
+      return { step: "credentials", error: "Identifiants invalides." };
+    }
+    if (res.needsTotp) {
+      // Mot de passe valide mais 2FA activée → on demande le code. Aucune
+      // session n'est établie tant que le second facteur n'est pas fourni.
+      return { step: "totp" };
+    }
+    // Pas de 2FA : on enchaîne sur la finalisation ci-dessous.
+  }
+
+  // --- Finalisation : étape 1 sans 2FA, OU étape 2 avec le code.
+  const totp = formData.get("totp");
   try {
     await signIn("credentials", {
       email,
@@ -57,10 +91,16 @@ export async function loginAction(
       totp: typeof totp === "string" ? totp : "",
       redirectTo: "/dashboard",
     });
-    return {};
+    // Inatteignable : signIn lève un redirect en cas de succès.
+    return { step };
   } catch (err) {
     if (err instanceof AuthError) {
-      return { error: "Identifiants invalides." };
+      // À l'étape 2, le mot de passe a déjà été validé : un échec ici = code
+      // 2FA invalide. On reste sur l'écran de code.
+      if (step === "totp") {
+        return { step: "totp", error: "Code de vérification invalide." };
+      }
+      return { step: "credentials", error: "Identifiants invalides." };
     }
     // Next.js redirect throws are expected — re-throw.
     throw err;

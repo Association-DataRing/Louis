@@ -160,6 +160,8 @@ export const agentRuns = pgTable(
   (t) => [
     index("agent_runs_conversation_idx").on(t.conversationId),
     index("agent_runs_pipeline_idx").on(t.pipelineId),
+    // Trail d'audit groupé par message assistant (export, fiche conversation).
+    index("agent_runs_message_idx").on(t.messageId),
   ]
 );
 

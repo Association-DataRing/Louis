@@ -18,10 +18,18 @@ export const ACTION_LABEL: Record<string, string> = {
   "provider.toggle": "Clé provider activée/désactivée",
   "connector.add": "Connecteur ajouté",
   "connector.delete": "Connecteur supprimé",
+  "mcp.add": "Serveur MCP ajouté",
+  "mcp.delete": "Serveur MCP supprimé",
+  "mcp.toggle": "Serveur MCP activé/désactivé",
   "doc.delete": "Document supprimé",
+  "doc.save": "Document enregistré",
   "cabinet.update": "Configuration cabinet modifiée",
   "auth.login": "Connexion",
   "auth.login.failed": "Échec de connexion",
+  "auth.password.change": "Mot de passe modifié",
+  "auth.totp.enabled": "2FA activée",
+  "auth.totp.disabled": "2FA désactivée",
+  "auth.totp.failed": "Échec 2FA",
 };
 
 export function labelForAction(action: string): string {

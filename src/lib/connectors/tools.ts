@@ -305,9 +305,17 @@ export async function buildToolsForUser(
     }),
     execute: async ({ format, sections, ...rest }) =>
       runTool(async () => {
+        // Le modèle produit des listes plates (items = string[]) ; on les
+        // convertit au modèle interne ListItem (niveau 0). La numérotation
+        // multi-niveaux est réservée au round-trip éditeur (from-prosemirror).
+        const normalizedSections = sections.map((s) =>
+          s.kind === "list"
+            ? { ...s, items: s.items.map((text) => ({ text, level: 0 })) }
+            : s
+        );
         const result = await generateAndStore({
           format,
-          spec: { ...rest, sections },
+          spec: { ...rest, sections: normalizedSections },
           userId,
           folderId: generatedDocFolderId,
         });

@@ -50,9 +50,14 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   function turnOff() {
     start(async () => {
       try {
-        await disableTotp();
-        setStage({ step: "idle" });
-        toast.success("2FA désactivée.");
+        const res = await disableTotp(code);
+        if (res.ok) {
+          setStage({ step: "idle" });
+          setCode("");
+          toast.success("2FA désactivée.");
+        } else {
+          toast.error(res.error);
+        }
       } catch {
         toast.error("Impossible de désactiver la 2FA.");
       }
@@ -69,7 +74,24 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
         <p className="text-sm text-muted-foreground">
           Un code à 6 chiffres vous sera demandé à chaque connexion.
         </p>
-        <Button variant="outline" size="sm" disabled={pending} onClick={turnOff}>
+        <div className="space-y-2 pt-1">
+          <Label htmlFor="totp-disable">
+            Saisissez un code 2FA actuel pour désactiver
+          </Label>
+          <Input
+            id="totp-disable"
+            inputMode="numeric"
+            placeholder="123456"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending || code.length < 6}
+          onClick={turnOff}
+        >
           Désactiver la 2FA
         </Button>
       </div>

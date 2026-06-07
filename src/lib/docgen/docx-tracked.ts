@@ -177,6 +177,44 @@ function flattenRuns(paraChildren: XNode[]): {
 }
 
 /**
+ * Texte « courant » d'un paragraphe pour la LECTURE (read_document) : inclut le
+ * texte des insertions suivies (w:ins) et EXCLUT les suppressions suivies
+ * (w:del) — soit le document tel qu'il sera accepté. Distinct de flattenRuns,
+ * qui sert au chemin d'écriture (indices de runs top-level) et ne DOIT PAS
+ * descendre dans w:ins sous peine de fausser le splice. Sans ça, read_document
+ * renvoyait un texte amputé des insertions précédentes (le modèle relisait un
+ * document faux) avec une double-espace là où une suppression avait eu lieu.
+ */
+function paragraphCurrentText(paraChildren: XNode[]): string {
+  let text = "";
+  const walk = (nodes: XNode[]) => {
+    for (const child of nodes) {
+      const name = elName(child);
+      if (!name) continue;
+      // Texte marqué supprimé → hors du texte courant.
+      if (name === "w:del") continue;
+      if (name === "w:t") {
+        for (const piece of elChildren(child)) {
+          if (elName(piece) === "#text") {
+            const v = (piece as Record<string, unknown>)["#text"];
+            if (typeof v === "string") text += v;
+          }
+        }
+      } else if (
+        name === "w:r" ||
+        name === "w:ins" ||
+        name === "w:hyperlink" ||
+        name === "w:smartTag"
+      ) {
+        walk(elChildren(child));
+      }
+    }
+  };
+  walk(paraChildren);
+  return text;
+}
+
+/**
  * Cherche `find` dans le texte normalisé du paragraphe avec un contexte
  * optionnel autour. Renvoie la position dans le texte ORIGINAL (non
  * normalisé) ou null. Multi-match -> "ambiguous".
@@ -539,7 +577,7 @@ export async function extractDocxBodyText(docxBytes: Buffer): Promise<string> {
   if (!body) return "";
   const out: string[] = [];
   forEachParagraph(body, (children) => {
-    out.push(flattenRuns(children).text);
+    out.push(paragraphCurrentText(children));
   });
   return out.filter((s) => s.length > 0).join("\n");
 }

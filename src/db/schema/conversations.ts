@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, index } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { providerKeys } from "./provider-keys";
 import { projects } from "./projects";
@@ -19,7 +19,10 @@ export const conversations = pgTable("conversations", {
   pinnedAt: timestamp("pinned_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => [
+  // Liste des conversations d'un utilisateur (sidebar) sur chaque page chat.
+  index("conversations_user_idx").on(t.userId),
+]);
 
 export type Conversation = typeof conversations.$inferSelect;
 export type NewConversation = typeof conversations.$inferInsert;

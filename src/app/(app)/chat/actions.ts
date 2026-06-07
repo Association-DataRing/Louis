@@ -2,19 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import { agentRuns, conversations, messages } from "@/db/schema";
 
 const titleSchema = z.string().trim().min(1).max(120);
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
 
 export async function renameConversation(
   id: string,
@@ -113,27 +107,40 @@ export async function editUserMessageAndTrim(
     return { ok: false, error: "Seuls les messages utilisateur sont éditables." };
   }
 
-  // Drop tout ce qui a été écrit après le message édité (réponses
-  // assistant, tool calls, agent events…). Comparaison stricte sur
-  // createdAt pour conserver le message lui-même.
-  await db
-    .delete(messages)
-    .where(
-      and(
-        eq(messages.conversationId, conversationId),
-        gt(messages.createdAt, target.createdAt)
+  // Transaction : élagage + édition doivent être atomiques. Sans ça, un crash
+  // entre le delete et l'update tronquerait l'historique tout en perdant
+  // l'édition. On supprime aussi le trail d'audit des messages élagués
+  // (agent_runs.messageId est ON DELETE SET NULL → suppression explicite).
+  await db.transaction(async (tx) => {
+    // Drop tout ce qui a été écrit après le message édité (réponses
+    // assistant, tool calls, agent events…). Comparaison stricte sur
+    // createdAt pour conserver le message lui-même.
+    const removed = await tx
+      .delete(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          gt(messages.createdAt, target.createdAt)
+        )
       )
-    );
-
-  await db
-    .update(messages)
-    .set({ content: parsed.data })
-    .where(eq(messages.id, messageId));
-
-  await db
-    .update(conversations)
-    .set({ updatedAt: new Date() })
-    .where(eq(conversations.id, conversationId));
+      .returning({ id: messages.id });
+    if (removed.length > 0) {
+      await tx.delete(agentRuns).where(
+        inArray(
+          agentRuns.messageId,
+          removed.map((r) => r.id)
+        )
+      );
+    }
+    await tx
+      .update(messages)
+      .set({ content: parsed.data })
+      .where(eq(messages.id, messageId));
+    await tx
+      .update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, conversationId));
+  });
 
   revalidatePath("/chat");
   return { ok: true };

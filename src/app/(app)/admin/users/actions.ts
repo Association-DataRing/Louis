@@ -1,5 +1,7 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -16,7 +18,7 @@ const createSchema = z.object({
   role: z.enum(["admin", "member"]),
 });
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResult = BaseActionResult;
 
 export async function createUser(
   _prev: ActionResult | null,

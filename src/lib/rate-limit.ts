@@ -26,7 +26,7 @@ export type RateLimitResult = {
   limit: number;
 };
 
-export type RateLimitBucket = "chat" | "upload" | "login";
+export type RateLimitBucket = "chat" | "upload" | "login" | "totp";
 
 const BUCKET_CONFIG: Record<
   RateLimitBucket,
@@ -49,6 +49,15 @@ const BUCKET_CONFIG: Record<
     defaultMax: 10,
     windowSeconds: 900,
     label: "login/15min",
+  },
+  // Plafond PAR COMPTE sur la vérification d'un second facteur (TOTP ou code
+  // de secours), en complément du plafond login par IP. Bloque le brute-force
+  // distribué d'un code à 6 chiffres quand l'attaquant a déjà le mot de passe.
+  totp: {
+    envVar: "RATE_LIMIT_TOTP_PER_15MIN",
+    defaultMax: 10,
+    windowSeconds: 900,
+    label: "totp/15min",
   },
 };
 

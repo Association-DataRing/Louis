@@ -1,6 +1,11 @@
 import { nanoid } from "nanoid";
 import { DefaultAgent, resolveAgentConstructor } from "./agents";
 import { withRetry } from "./retry";
+import {
+  DEFAULT_ITERATIVE_ROUNDS,
+  MAX_COUNCIL_ROUNDS,
+  MAX_ITERATIVE_ROUNDS,
+} from "./types";
 import type {
   Agent,
   AgentContext,
@@ -161,7 +166,10 @@ export class Orchestrator {
     const { ctx, writer } = args;
     const factory = args.agentFactory ?? defaultAgentFactory;
     const pipelineRunId = ctx.pipelineRunId ?? nanoid();
-    const rounds = Math.max(1, Math.min(this.pipeline.rounds ?? 1, 6));
+    const rounds = Math.max(
+      1,
+      Math.min(this.pipeline.rounds ?? 1, MAX_COUNCIL_ROUNDS)
+    );
     const agents = this.pipeline.agents;
     const synthesizer = agents[agents.length - 1];
     const debaters = agents.slice(0, -1);
@@ -363,7 +371,10 @@ export class Orchestrator {
     const { ctx, writer } = args;
     const factory = args.agentFactory ?? defaultAgentFactory;
     const pipelineRunId = ctx.pipelineRunId ?? nanoid();
-    const rounds = Math.max(1, Math.min(this.pipeline.rounds ?? 2, 4));
+    const rounds = Math.max(
+      1,
+      Math.min(this.pipeline.rounds ?? DEFAULT_ITERATIVE_ROUNDS, MAX_ITERATIVE_ROUNDS)
+    );
     const agents = this.pipeline.agents;
     const researcher = agents[0];
     const synthesizer = agents[agents.length - 1];
@@ -719,10 +730,11 @@ export class Orchestrator {
         modelId: def.modelOverride ?? null,
       });
     } else {
-      args.writer.write({
-        type: "data-final-text",
-        data: { text: result.text },
-      });
+      // Agent terminal renvoyant du texte (non-stream) : on émet du VRAI texte
+      // (text-start/delta/end), seule voie effectivement rendue ET persistée
+      // par route.ts. Auparavant on écrivait data-final-text, consommé nulle
+      // part → la réponse était silencieusement perdue.
+      this.streamStaticText(args.writer, result.text);
       await this.emit(args, args.writer, {
         type: "agent_finish",
         pipelineRunId,

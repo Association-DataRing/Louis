@@ -64,6 +64,9 @@ export async function generateAndStore({
  * Persiste un Buffer (docx ou pdf) dans S3 + row dans documents.
  * Utilisé par generate_document (sortie de generateDocx/Pdf) et par
  * edit_document (sortie de applyTrackedEdits).
+ *
+ * `parentDocumentId` + `version` permettent d'enregistrer une révision
+ * (édition WYSIWYG du DocPanel) rattachée à la famille du document d'origine.
  */
 export async function storeBuffer({
   buffer,
@@ -72,6 +75,8 @@ export async function storeBuffer({
   userId,
   projectId,
   folderId,
+  parentDocumentId,
+  version,
 }: {
   buffer: Buffer;
   contentType: string;
@@ -79,6 +84,8 @@ export async function storeBuffer({
   userId: string;
   projectId?: string | null;
   folderId?: string | null;
+  parentDocumentId?: string | null;
+  version?: number;
 }): Promise<{ documentId: string; filename: string; format: DocFormat }> {
   const baseKey = `${userId}/louis-generated/${nanoid()}-${filename}`;
   await uploadObject(baseKey, buffer, contentType);
@@ -122,6 +129,8 @@ export async function storeBuffer({
       userId,
       projectId: projectId ?? null,
       folderId: folderId ?? null,
+      parentDocumentId: parentDocumentId ?? null,
+      version: version ?? 1,
       filename,
       contentType,
       sizeBytes: buffer.length,

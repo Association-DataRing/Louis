@@ -1,5 +1,13 @@
 import { computeCost, type Cost } from "@/lib/providers/pricing";
-import type { PipelineMode } from "./types";
+import {
+  DEFAULT_ITERATIVE_ROUNDS,
+  MAX_COUNCIL_ROUNDS,
+  MAX_ITERATIVE_ROUNDS,
+  type PipelineMode,
+} from "./types";
+
+const clampRounds = (rounds: number, max: number): number =>
+  Math.max(1, Math.min(Math.floor(rounds), max));
 
 /**
  * Nombre d'appels LLM qu'un run de pipeline déclenchera, selon le mode.
@@ -20,15 +28,20 @@ export function estimateCalls(opts: {
   rounds?: number;
 }): number {
   const agents = Math.max(1, Math.floor(opts.agents));
-  const rounds = Math.max(1, Math.floor(opts.rounds ?? 1));
   if (opts.mode === "iterative") {
+    // Même défaut (2) et même plafond (4) que l'exécution (orchestrator).
+    const rounds = clampRounds(
+      opts.rounds ?? DEFAULT_ITERATIVE_ROUNDS,
+      MAX_ITERATIVE_ROUNDS
+    );
     // Le chercheur (1er agent) tourne `rounds` fois ; +1 synthèse si terminal distinct.
     return rounds + (agents > 1 ? 1 : 0);
   }
   if (agents <= 1) return 1;
   switch (opts.mode) {
     case "council":
-      return rounds * (agents - 1) + 1;
+      // Même plafond (6) que l'exécution, sinon le coût sur-estime.
+      return clampRounds(opts.rounds ?? 1, MAX_COUNCIL_ROUNDS) * (agents - 1) + 1;
     case "parallel":
       return agents - 1 + 1;
     case "sequential":

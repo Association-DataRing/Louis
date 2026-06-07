@@ -3,19 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import { documents, documentFolders } from "@/db/schema";
 import { deleteObject } from "@/lib/storage";
 import { recordAudit } from "@/lib/audit";
 import { reindexDocument, type ReindexResult } from "@/lib/rag/index-document";
 import { diffLines, collapseDiff, type DisplayOp } from "@/lib/diff/line-diff";
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
 
 export async function deleteDocument(id: string): Promise<void> {
   const userId = await requireUserId();

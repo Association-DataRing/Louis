@@ -3,9 +3,10 @@ import {
   createUIMessageStreamResponse,
   type UIMessage,
 } from "ai";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
+import { log } from "@/lib/log";
 import {
   agentRuns,
   conversations,
@@ -19,6 +20,10 @@ import {
   memoryExtractionEnabled,
 } from "@/lib/memory-extract";
 import { assessDeliverable } from "@/lib/orchestrator/verify";
+import {
+  documentArtifactFromToolResult,
+  type DocumentArtifactMeta,
+} from "@/lib/ai/tool-result";
 import { recordAudit } from "@/lib/audit";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { getProjectScope } from "@/lib/projects/scope";
@@ -50,6 +55,14 @@ type Body = {
   projectId?: string | null;
   /** Pipeline orchestrateur à utiliser. null/undefined → chat-simple. */
   pipelineId?: string | null;
+  /**
+   * Émis par DefaultChatTransport : `submit-message` pour un nouvel envoi,
+   * `regenerate-message` pour une régénération. En régénération le message
+   * user existe déjà — on ne le ré-insère pas et on remplace l'ancienne
+   * réponse au lieu de l'empiler.
+   */
+  trigger?: "submit-message" | "regenerate-message";
+  messageId?: string;
 };
 
 export async function POST(req: Request) {
@@ -95,6 +108,7 @@ export async function POST(req: Request) {
     projectId: projectIdFromBody,
     pipelineId,
   } = body;
+  const isRegenerate = body.trigger === "regenerate-message";
   let conversationId = body.conversationId ?? null;
 
   if (!providerKeyId) {
@@ -171,10 +185,53 @@ export async function POST(req: Request) {
     ? await getProjectScope(userId, effectiveProjectId)
     : null;
 
+  // Régénération : le message user existe déjà (tour initial). On purge
+  // l'ancienne réponse assistant + son trail d'audit pour que la nouvelle la
+  // REMPLACE au lieu de s'empiler (sinon doublons + coût compté deux fois).
+  // Transaction : la suppression du message et de ses agent_runs est atomique.
+  if (isRegenerate) {
+    const [lastUserRow] = await db
+      .select({ createdAt: messages.createdAt })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, finalConversationId),
+          eq(messages.role, "user")
+        )
+      )
+      .orderBy(desc(messages.createdAt))
+      .limit(1);
+    if (lastUserRow) {
+      await db.transaction(async (tx) => {
+        const removed = await tx
+          .delete(messages)
+          .where(
+            and(
+              eq(messages.conversationId, finalConversationId),
+              gt(messages.createdAt, lastUserRow.createdAt)
+            )
+          )
+          .returning({ id: messages.id });
+        if (removed.length > 0) {
+          // agent_runs.messageId est en ON DELETE SET NULL → on les supprime
+          // explicitement pour ne pas laisser de runs orphelins dans l'audit.
+          await tx.delete(agentRuns).where(
+            inArray(
+              agentRuns.messageId,
+              removed.map((r) => r.id)
+            )
+          );
+        }
+      });
+    }
+  }
+
   let userMessageId: string | null = null;
   let userMessageText = "";
   const lastUser = uiMessages.at(-1);
-  if (lastUser?.role === "user") {
+  // En régénération, NE PAS ré-insérer le message user (déjà en base) — sinon
+  // il apparaît en double au reload.
+  if (!isRegenerate && lastUser?.role === "user") {
     const text = extractTextPreview(lastUser);
     if (text) {
       userMessageText = text;
@@ -310,6 +367,11 @@ export async function POST(req: Request) {
   // message final pour ré-hydrater les tool calls au reload) et par
   // onEvent (audit trail multi-agent dans agent_runs).
   const savedParts: SavedPart[] = [];
+  // Artefacts documents (generate/edit_document) produits ce tour — persistés
+  // dans messages.metadata, source de vérité pour la carte d'artefact côté
+  // client. Indépendant de la reconstruction des tool parts (fragile au reload)
+  // et de la prose du modèle.
+  const docArtifacts: DocumentArtifactMeta[] = [];
   let finalText = "";
   const finalUsage: { inputTokens?: number; outputTokens?: number } = {};
   const agentStarts = new Map<string, number>();
@@ -430,11 +492,29 @@ export async function POST(req: Request) {
         });
       }
     },
+    onError: (error) => {
+      // Sans onError, l'AI SDK renvoie un générique "An error occurred." au
+      // client ET n'écrit rien côté serveur : les erreurs riches de
+      // l'orchestrateur (échec provider, retries épuisés, débatteurs en
+      // échec…) étaient masquées et non diagnostiquables. On logue le détail
+      // et on renvoie un message exploitable.
+      log.error("chat-stream", "Erreur pendant la génération", {
+        conversationId: finalConversationId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return error instanceof Error && error.message
+        ? error.message
+        : "Une erreur est survenue pendant la génération.";
+    },
     onFinish: async ({ messages: streamMessages }) => {
       // Décision : un « Stop » n'enregistre PAS de réponse partielle. Le tour
       // est annulé proprement (pas de message tronqué, pas d'agent_runs
       // orphelins). L'utilisateur relance s'il le souhaite.
       if (req.signal.aborted) return;
+      // H3 : toute la persistance est gardée. Un échec DB (insert message,
+      // agent_runs…) est loggé au lieu d'être silencieusement avalé et ne fait
+      // plus planter la finalisation du stream sans trace.
+      try {
       // Reconstitue les parts brutes du dernier message assistant (le
       // texte final + les tool calls/results) pour les re-render au load.
       for (const m of streamMessages) {
@@ -475,6 +555,21 @@ export async function POST(req: Request) {
                 toolName,
                 output: toolPart.output,
               });
+              // Capture l'artefact document pour le persister en metadata
+              // (état terminal output-available garanti, contrairement au
+              // tool-call/input-available qui peut manquer après agrégation).
+              const artifact = documentArtifactFromToolResult(
+                toolName,
+                toolPart.output
+              );
+              if (
+                artifact &&
+                !docArtifacts.some(
+                  (a) => a.documentId === artifact.documentId
+                )
+              ) {
+                docArtifacts.push(artifact);
+              }
             }
           } else if (PERSISTED_DATA_PARTS.has(part.type)) {
             // H3a : persiste le trail multi-agents (events/outputs/retries) +
@@ -499,6 +594,8 @@ export async function POST(req: Request) {
           role: "assistant",
           content: finalText,
           parts: savedParts.length > 0 ? savedParts : null,
+          metadata:
+            docArtifacts.length > 0 ? { documents: docArtifacts } : null,
           inputTokens: finalUsage.inputTokens ?? null,
           outputTokens: finalUsage.outputTokens ?? null,
           modelId: modelOverride ?? null,
@@ -576,6 +673,12 @@ export async function POST(req: Request) {
         } catch {
           // best-effort
         }
+      }
+      } catch (err) {
+        log.error("chat-persist", "Échec de la persistance de la réponse", {
+          conversationId: finalConversationId,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     },
   });

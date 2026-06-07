@@ -1,6 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { pipelineAgents, pipelines } from "@/db/schema";
+import { PIPELINE_MODES } from "./types";
 import type {
   AgentDefinition,
   AgentRole,
@@ -8,10 +9,8 @@ import type {
   PipelineMode,
 } from "./types";
 
-const KNOWN_MODES: PipelineMode[] = ["sequential", "council", "parallel"];
-
 function isPipelineMode(value: string): value is PipelineMode {
-  return (KNOWN_MODES as string[]).includes(value);
+  return (PIPELINE_MODES as readonly string[]).includes(value);
 }
 
 const KNOWN_ROLES: AgentRole[] = [

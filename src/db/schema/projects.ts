@@ -3,6 +3,7 @@ import {
   uuid,
   text,
   timestamp,
+  index,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
@@ -25,7 +26,10 @@ export const projects = pgTable("projects", {
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => [
+  // Liste des projets d'un utilisateur (sidebar, page projets).
+  index("projects_user_idx").on(t.userId),
+]);
 
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;

@@ -64,7 +64,22 @@ export interface AgentDefinition {
  *                  propres notes à chaque tour pour creuser les lacunes, puis
  *                  le terminal produit une note de recherche synthétique.
  */
-export type PipelineMode = "sequential" | "council" | "parallel" | "iterative";
+export const PIPELINE_MODES = [
+  "sequential",
+  "council",
+  "parallel",
+  "iterative",
+] as const;
+export type PipelineMode = (typeof PIPELINE_MODES)[number];
+
+/**
+ * Plafonds/défauts de tours appliqués À LA FOIS à l'exécution (orchestrator)
+ * et à l'estimation de coût (cost-estimate) — source unique pour qu'ils ne
+ * divergent pas (sinon le coût affiché sur-estime un run réellement clampé).
+ */
+export const MAX_COUNCIL_ROUNDS = 6;
+export const MAX_ITERATIVE_ROUNDS = 4;
+export const DEFAULT_ITERATIVE_ROUNDS = 2;
 
 export interface PipelineConfig {
   id?: string;

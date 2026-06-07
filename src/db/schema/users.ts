@@ -33,6 +33,12 @@ export const users = pgTable("users", {
   totpSecretPending: text("totp_secret_pending"),
   totpEnabled: boolean("totp_enabled").default(false).notNull(),
   backupCodes: jsonb("backup_codes").$type<string[]>(),
+  // Version d'identifiants : stampée dans le JWT à la connexion, incrémentée au
+  // changement de mot de passe et à la désactivation 2FA. Le callback jwt
+  // rejette tout token dont la version a divergé → les sessions existantes sont
+  // invalidées quand l'utilisateur change son mot de passe (remédiation réelle
+  // après suspicion de compromission, malgré la stratégie JWT 30 jours).
+  tokenVersion: integer("token_version").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

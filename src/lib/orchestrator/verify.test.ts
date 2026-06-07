@@ -54,6 +54,35 @@ describe("effectfulOutcomes / assessDeliverable", () => {
     expect(a.failures[0].tool).toBe("edit_document");
   });
 
+  it("décode l'enveloppe AI SDK {type:json,value} (régression: faux deliverable.failed)", () => {
+    // L'output peut arriver enveloppé par l'AI SDK v6. La lecture brute de
+    // `o.ok` retournait undefined → ok:false sur un livrable pourtant réussi.
+    const parts: SavedPart[] = [
+      toolResult("generate_document", {
+        type: "json",
+        value: { ok: true, data: { document_id: "doc1" } },
+      }),
+    ];
+    const a = assessDeliverable(parts);
+    expect(a.hadEffectful).toBe(true);
+    expect(a.allOk).toBe(true);
+    expect(a.failures).toEqual([]);
+  });
+
+  it("décode aussi un échec enveloppé {type:json,value:{ok:false}}", () => {
+    const parts: SavedPart[] = [
+      toolResult("edit_document", {
+        type: "json",
+        value: { ok: false, error: "ancre introuvable" },
+      }),
+    ];
+    const a = assessDeliverable(parts);
+    expect(a.allOk).toBe(false);
+    expect(a.failures).toEqual([
+      { tool: "edit_document", error: "ancre introuvable" },
+    ]);
+  });
+
   it("agrège plusieurs outils effectifs", () => {
     const parts: SavedPart[] = [
       toolResult("generate_document", { ok: true, data: {} }),

@@ -5,6 +5,7 @@ import type { UserRole } from "@/db/schema/users";
 declare module "next-auth" {
   interface User {
     role: UserRole;
+    tokenVersion?: number;
   }
   interface Session {
     user: {
@@ -21,5 +22,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: UserRole;
+    tokenVersion?: number;
   }
 }

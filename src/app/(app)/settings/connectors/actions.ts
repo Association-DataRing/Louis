@@ -1,9 +1,11 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import { connectorKeys } from "@/db/schema";
 import { encrypt } from "@/lib/crypto";
@@ -17,13 +19,7 @@ const baseSchema = z.object({
   label: z.string().trim().min(1).max(80),
 });
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
+export type ActionResult = BaseActionResult;
 
 export async function createConnectorKey(
   _prev: ActionResult | null,

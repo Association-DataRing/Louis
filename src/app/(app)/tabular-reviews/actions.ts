@@ -1,12 +1,14 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { and, eq, inArray, isNotNull, lt } from "drizzle-orm";
 import { z } from "zod";
 import { generateText, Output, type LanguageModel } from "ai";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import {
   documents,
@@ -52,15 +54,7 @@ function buildValuesSchema(columns: ReviewColumn[]) {
   );
 }
 
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
-
-export type ActionResult =
-  | { ok: true; id?: string }
-  | { ok: false; error: string };
+export type ActionResult = BaseActionResult<{ id?: string }>;
 
 const columnSchema = z.object({
   label: z.string().trim().min(1).max(80),

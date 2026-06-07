@@ -14,10 +14,10 @@ export function uiPartsFromSaved(
     string,
     Extract<SavedPart, { type: "tool-result" }>
   >();
+  const callIds = new Set<string>();
   for (const p of saved) {
-    if (p.type === "tool-result") {
-      resultByCallId.set(p.toolCallId, p);
-    }
+    if (p.type === "tool-result") resultByCallId.set(p.toolCallId, p);
+    else if (p.type === "tool-call") callIds.add(p.toolCallId);
   }
 
   const out: UIMessage["parts"] = [];
@@ -33,12 +33,25 @@ export function uiPartsFromSaved(
         input: p.input,
         output: result?.output,
       } as never);
+    } else if (p.type === "tool-result" && !callIds.has(p.toolCallId)) {
+      // tool-result ORPHELIN : pas de tool-call apparié. L'agrégation
+      // multi-agents d'AI SDK v6 ne conserve souvent que l'état terminal
+      // (output-available) ; sans ce cas, la part outil n'était jamais
+      // réémise au reload → le rendu riche (cartes document, citations
+      // Légifrance/Pappers) disparaissait. On la reconstruit avec son output.
+      out.push({
+        type: `tool-${p.toolName}`,
+        toolCallId: p.toolCallId,
+        state: "output-available",
+        input: undefined,
+        output: p.output,
+      } as never);
     } else if (p.type === "data") {
       // Ré-émet le data part tel que les consommateurs (theatre, badges,
       // skills) l'attendent : { type: "data-agent-event", data }.
       out.push({ type: p.dataType, data: p.data } as never);
     }
-    // tool-result : déjà pairé avec son tool-call ci-dessus, on saute.
+    // tool-result apparié à un tool-call : déjà émis ci-dessus, on saute.
   }
   return out;
 }

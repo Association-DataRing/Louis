@@ -2,15 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import { projectMemories } from "@/db/schema";
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
 
 /** Valide un fait : il pourra désormais influencer les réponses du dossier. */
 export async function approveMemory(id: string): Promise<void> {

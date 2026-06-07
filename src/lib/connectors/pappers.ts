@@ -126,9 +126,18 @@ export async function pappersGet(
   userId: string,
   siren: string
 ): Promise<ToolResult<PappersCompanyDetails>> {
+  // Valide AVANT l'appel facturé : un SIREN non conforme (9 chiffres) gaspille
+  // une requête API et renvoie de toute façon une erreur côté Pappers.
+  const cleaned = siren.replace(/\s/g, "");
+  if (!/^\d{9}$/.test(cleaned)) {
+    return toolError(
+      "config",
+      "SIREN invalide : 9 chiffres attendus (ex. 552032534)."
+    );
+  }
   return runTool(() =>
     pappersFetch<PappersCompanyDetails>(userId, "/entreprise", {
-      siren: siren.replace(/\s/g, ""),
+      siren: cleaned,
     })
   );
 }

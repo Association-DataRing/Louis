@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { recordAudit } from "@/lib/audit";
+import { rateLimit } from "@/lib/rate-limit";
 import {
   generateTotpSecret,
   otpauthUri,
@@ -46,6 +47,13 @@ export async function confirmTotpEnrollment(
   code: string
 ): Promise<ConfirmResult> {
   const user = await requireUser();
+  const rl = await rateLimit("totp", user.id);
+  if (!rl.allowed) {
+    return {
+      ok: false,
+      error: "Trop de tentatives. Réessayez dans quelques minutes.",
+    };
+  }
   const [row] = await db
     .select({ pending: users.totpSecretPending })
     .from(users)
@@ -80,8 +88,42 @@ export async function confirmTotpEnrollment(
   return { ok: true, backupCodes };
 }
 
-export async function disableTotp(): Promise<void> {
+export type DisableResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Désactive la 2FA — exige un code TOTP courant valide (step-up). Sans cette
+ * ré-authentification, une session volée suffirait à retirer le second facteur
+ * du compte. Throttlé par compte pour éviter le brute-force du code.
+ */
+export async function disableTotp(code: string): Promise<DisableResult> {
   const user = await requireUser();
+  const rl = await rateLimit("totp", user.id);
+  if (!rl.allowed) {
+    return {
+      ok: false,
+      error: "Trop de tentatives. Réessayez dans quelques minutes.",
+    };
+  }
+  const [row] = await db
+    .select({ secret: users.totpSecret })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+  if (!row?.secret) {
+    return { ok: false, error: "La 2FA n'est pas active." };
+  }
+  if (!verifyTotp(row.secret, code)) {
+    await recordAudit({
+      userId: user.id,
+      action: "auth.totp.failed",
+      target: user.email,
+      meta: { context: "disable" },
+    });
+    return {
+      ok: false,
+      error: "Code invalide. Saisissez un code de votre application.",
+    };
+  }
   await db
     .update(users)
     .set({
@@ -89,6 +131,8 @@ export async function disableTotp(): Promise<void> {
       totpSecret: null,
       totpSecretPending: null,
       backupCodes: null,
+      // Désactiver la 2FA invalide aussi les sessions existantes (cf. jwt).
+      tokenVersion: sql`${users.tokenVersion} + 1`,
     })
     .where(eq(users.id, user.id));
   await recordAudit({
@@ -97,4 +141,5 @@ export async function disableTotp(): Promise<void> {
     target: user.email,
   });
   revalidatePath("/settings/security");
+  return { ok: true };
 }

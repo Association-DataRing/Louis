@@ -1,12 +1,15 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import { mcpServers, type CachedMcpTool } from "@/db/schema";
 import { encrypt } from "@/lib/crypto";
+import { recordAudit } from "@/lib/audit";
 import { mcpListTools } from "@/lib/mcp/client";
 
 const TRANSPORTS = ["sse", "http"] as const;
@@ -18,13 +21,7 @@ const createSchema = z.object({
   headers: z.string().optional().or(z.literal("")),
 });
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
+export type ActionResult = BaseActionResult;
 
 function parseHeaders(raw: string | undefined | null): Record<string, string> | null {
   if (!raw || !raw.trim()) return null;
@@ -117,6 +114,14 @@ export async function createMcpServer(
       .where(eq(mcpServers.id, inserted.id));
   }
 
+  // Audit : un serveur MCP est un sink de credentials sortant — tracé comme
+  // les providers/connecteurs.
+  await recordAudit({
+    userId,
+    action: "mcp.add",
+    target: parsed.data.label,
+  });
+
   revalidatePath("/settings/mcp");
   revalidatePath("/chat");
   return { ok: true };
@@ -124,9 +129,17 @@ export async function createMcpServer(
 
 export async function deleteMcpServer(id: string): Promise<void> {
   const userId = await requireUserId();
+  const [server] = await db
+    .select({ label: mcpServers.label })
+    .from(mcpServers)
+    .where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId)))
+    .limit(1);
   await db
     .delete(mcpServers)
     .where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId)));
+  if (server) {
+    await recordAudit({ userId, action: "mcp.delete", target: server.label });
+  }
   revalidatePath("/settings/mcp");
 }
 
@@ -135,7 +148,7 @@ export async function toggleMcpServerActive(
 ): Promise<ActionResult> {
   const userId = await requireUserId();
   const [current] = await db
-    .select({ isActive: mcpServers.isActive })
+    .select({ isActive: mcpServers.isActive, label: mcpServers.label })
     .from(mcpServers)
     .where(and(eq(mcpServers.id, id), eq(mcpServers.userId, userId)))
     .limit(1);
@@ -148,6 +161,12 @@ export async function toggleMcpServerActive(
   } catch {
     return { ok: false, error: "Impossible de modifier l'état du serveur." };
   }
+  await recordAudit({
+    userId,
+    action: "mcp.toggle",
+    target: current.label,
+    meta: { active: !current.isActive },
+  });
   revalidatePath("/settings/mcp");
   return { ok: true };
 }

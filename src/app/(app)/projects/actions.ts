@@ -1,10 +1,12 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import {
   projects,
@@ -18,13 +20,7 @@ const createSchema = z.object({
   description: z.string().trim().max(500).optional(),
 });
 
-export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
+export type ActionResult = BaseActionResult<{ id?: string }>;
 
 export async function createProject(
   _prev: ActionResult | null,
@@ -74,31 +70,37 @@ export async function createProject(
     }
   }
 
-  if (!folderId) {
-    const nameRaw = formData.get("folderName");
-    const folderName =
-      (typeof nameRaw === "string" && nameRaw.trim()) || parsed.data.name;
-    const [folder] = await db
-      .insert(documentFolders)
-      .values({ userId, name: folderName.slice(0, 80), parentFolderId: null })
-      .returning({ id: documentFolders.id });
-    folderId = folder.id;
-  }
-
-  const [row] = await db
-    .insert(projects)
-    .values({
-      userId,
-      name: parsed.data.name,
-      description: parsed.data.description || null,
-      folderId,
-    })
-    .returning({ id: projects.id });
+  // Transaction : création du dossier-racine (si besoin) + du projet de manière
+  // atomique — sinon un échec après l'insert du dossier laisse un dossier
+  // orphelin sans projet.
+  const newId = await db.transaction(async (tx) => {
+    let resolvedFolderId = folderId;
+    if (!resolvedFolderId) {
+      const nameRaw = formData.get("folderName");
+      const folderName =
+        (typeof nameRaw === "string" && nameRaw.trim()) || parsed.data.name;
+      const [folder] = await tx
+        .insert(documentFolders)
+        .values({ userId, name: folderName.slice(0, 80), parentFolderId: null })
+        .returning({ id: documentFolders.id });
+      resolvedFolderId = folder.id;
+    }
+    const [row] = await tx
+      .insert(projects)
+      .values({
+        userId,
+        name: parsed.data.name,
+        description: parsed.data.description || null,
+        folderId: resolvedFolderId,
+      })
+      .returning({ id: projects.id });
+    return row.id;
+  });
 
   revalidatePath("/projects");
   revalidatePath("/documents");
   revalidatePath("/chat");
-  return { ok: true, id: row.id };
+  return { ok: true, id: newId };
 }
 
 export async function updateProject(

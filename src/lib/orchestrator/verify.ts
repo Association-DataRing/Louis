@@ -1,4 +1,5 @@
 import type { SavedPart } from "@/db/schema";
+import { toolResultOk } from "@/lib/ai/tool-result";
 
 /**
  * Outils EFFECTIFS : ceux qui produisent un livrable (document) plutôt que de
@@ -18,12 +19,10 @@ export function effectfulOutcomes(parts: SavedPart[]): EffectfulOutcome[] {
   const out: EffectfulOutcome[] = [];
   for (const p of parts) {
     if (p.type !== "tool-result" || !EFFECTFUL_TOOLS.has(p.toolName)) continue;
-    const o = p.output as { ok?: unknown; error?: unknown } | null | undefined;
-    const ok = !!(o && typeof o === "object" && o.ok === true);
-    const error =
-      o && typeof o === "object" && typeof o.error === "string"
-        ? o.error
-        : undefined;
+    // toolResultOk décode l'enveloppe AI SDK ({type:"json",value:{ok,...}})
+    // avant de lire `ok` — sinon un livrable réussi mais enveloppé était lu
+    // comme ok:false (faux « deliverable.failed »).
+    const { ok, error } = toolResultOk(p.output);
     out.push({ tool: p.toolName, ok, error });
   }
   return out;

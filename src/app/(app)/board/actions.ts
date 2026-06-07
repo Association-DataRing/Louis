@@ -1,9 +1,11 @@
 "use server";
 
+import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
+
 import { revalidatePath } from "next/cache";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import {
   pipelineAgents,
@@ -13,16 +15,8 @@ import {
 } from "@/db/schema";
 import { findPreset, seedPresetsForUser } from "@/lib/orchestrator";
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
-export type ActionResultWith<T> =
-  | ({ ok: true } & T)
-  | { ok: false; error: string };
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return session.user.id;
-}
+export type ActionResult = BaseActionResult;
+export type ActionResultWith<T> = BaseActionResult<T>;
 
 const pipelineMetaSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -136,34 +130,39 @@ export async function clonePipeline(
   const baseName = newName ?? `${source.pipeline.name} (copie)`;
   const slug = await uniqueSlug(userId, source.pipeline.slug);
 
-  const [created] = await db
-    .insert(pipelines)
-    .values({
-      userId,
-      slug,
-      name: baseName,
-      description: source.pipeline.description,
-      isPreset: false,
-    })
-    .returning({ id: pipelines.id });
+  // Transaction : pipeline + ses agents insérés atomiquement, sinon un échec
+  // après l'insert du pipeline laisse un pipeline sans aucun agent.
+  const newId = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(pipelines)
+      .values({
+        userId,
+        slug,
+        name: baseName,
+        description: source.pipeline.description,
+        isPreset: false,
+      })
+      .returning({ id: pipelines.id });
 
-  if (source.agents.length > 0) {
-    await db.insert(pipelineAgents).values(
-      source.agents.map((a, i) => ({
-        pipelineId: created.id,
-        role: a.role,
-        label: a.label,
-        providerKeyId: a.providerKeyId,
-        modelOverride: a.modelOverride,
-        systemPrompt: a.systemPrompt,
-        toolAllowlist: a.toolAllowlist,
-        position: i,
-      }))
-    );
-  }
+    if (source.agents.length > 0) {
+      await tx.insert(pipelineAgents).values(
+        source.agents.map((a, i) => ({
+          pipelineId: created.id,
+          role: a.role,
+          label: a.label,
+          providerKeyId: a.providerKeyId,
+          modelOverride: a.modelOverride,
+          systemPrompt: a.systemPrompt,
+          toolAllowlist: a.toolAllowlist,
+          position: i,
+        }))
+      );
+    }
+    return created.id;
+  });
 
   revalidatePath("/board");
-  return { ok: true, id: created.id };
+  return { ok: true, id: newId };
 }
 
 export async function clonePresetBySlug(
@@ -175,37 +174,41 @@ export async function clonePresetBySlug(
 
   const newSlug = await uniqueSlug(userId, slug);
 
-  const [created] = await db
-    .insert(pipelines)
-    .values({
-      userId,
-      slug: newSlug,
-      name: `${preset.name} (copie)`,
-      description: preset.description,
-      isPreset: false,
-      mode: preset.mode ?? "sequential",
-      rounds: preset.rounds ?? 1,
-    })
-    .returning({ id: pipelines.id });
+  // Transaction : pipeline + agents atomiques (cf. clonePipeline).
+  const newId = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(pipelines)
+      .values({
+        userId,
+        slug: newSlug,
+        name: `${preset.name} (copie)`,
+        description: preset.description,
+        isPreset: false,
+        mode: preset.mode ?? "sequential",
+        rounds: preset.rounds ?? 1,
+      })
+      .returning({ id: pipelines.id });
 
-  if (preset.agents.length > 0) {
-    await db.insert(pipelineAgents).values(
-      preset.agents.map((a, i) => ({
-        pipelineId: created.id,
-        role: a.role,
-        label: a.label,
-        providerKeyId: null,
-        modelOverride: null,
-        systemPrompt: a.systemPrompt ?? null,
-        toolAllowlist:
-          a.toolAllowlist === undefined ? null : a.toolAllowlist,
-        position: i,
-      }))
-    );
-  }
+    if (preset.agents.length > 0) {
+      await tx.insert(pipelineAgents).values(
+        preset.agents.map((a, i) => ({
+          pipelineId: created.id,
+          role: a.role,
+          label: a.label,
+          providerKeyId: null,
+          modelOverride: null,
+          systemPrompt: a.systemPrompt ?? null,
+          toolAllowlist:
+            a.toolAllowlist === undefined ? null : a.toolAllowlist,
+          position: i,
+        }))
+      );
+    }
+    return created.id;
+  });
 
   revalidatePath("/board");
-  return { ok: true, id: created.id };
+  return { ok: true, id: newId };
 }
 
 export async function updatePipelineMeta(
