@@ -95,7 +95,48 @@ export async function mcpListTools(server: McpServer): Promise<CachedMcpTool[]> 
   });
 }
 
+// Circuit-breaker en mémoire (best-effort, par process) : après plusieurs
+// échecs/timeouts d'affilée sur un serveur, on coupe court pendant un cooldown
+// au lieu de repayer le timeout à chaque appel d'outil du tour.
+const CIRCUIT_THRESHOLD = 3;
+const CIRCUIT_COOLDOWN_MS = 60_000;
+const circuits = new Map<string, { failures: number; openUntil: number }>();
+
+function circuitOpen(serverId: string): boolean {
+  const c = circuits.get(serverId);
+  return c != null && Date.now() < c.openUntil;
+}
+function recordCircuitSuccess(serverId: string): void {
+  circuits.delete(serverId);
+}
+function recordCircuitFailure(serverId: string): void {
+  const c = circuits.get(serverId) ?? { failures: 0, openUntil: 0 };
+  c.failures += 1;
+  if (c.failures >= CIRCUIT_THRESHOLD) c.openUntil = Date.now() + CIRCUIT_COOLDOWN_MS;
+  circuits.set(serverId, c);
+}
+
 export async function mcpCallTool(
+  server: McpServer,
+  toolName: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  if (circuitOpen(server.id)) {
+    throw new Error(
+      `Serveur MCP « ${server.label} » temporairement indisponible (trop d'échecs récents).`
+    );
+  }
+  try {
+    const res = await mcpCallToolInner(server, toolName, args);
+    recordCircuitSuccess(server.id);
+    return res;
+  } catch (err) {
+    recordCircuitFailure(server.id);
+    throw err;
+  }
+}
+
+function mcpCallToolInner(
   server: McpServer,
   toolName: string,
   args: Record<string, unknown>

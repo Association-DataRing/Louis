@@ -90,7 +90,40 @@ export function trimMessages(
   return sanitizeToolMessages(kept);
 }
 
+/**
+ * Garde-fou : un SEUL message peut à lui seul dépasser le budget — typiquement
+ * le bloc de référence non-fiable (gros document joint), que trimMessages ne
+ * rogne JAMAIS car il fait partie des 2 derniers messages conservés. Sur un
+ * petit modèle souverain, l'appel échouerait. On plafonne donc le contenu
+ * textuel d'un message surdimensionné, avec un marqueur neutre — le modèle
+ * complète via search_documents / read_document (cf. règles du prompt système).
+ */
+const MAX_SINGLE_MESSAGE_FRACTION = 0.6;
+
+function capOversizedMessages(
+  messages: ModelMessage[],
+  budgetTokens: number
+): ModelMessage[] {
+  const maxChars = Math.floor(budgetTokens * 4 * MAX_SINGLE_MESSAGE_FRACTION);
+  return messages.map((m) => {
+    // Seuls user/system/assistant portent un contenu string ; un message `tool`
+    // a un contenu structuré (parts) et n'est pas concerné.
+    if (
+      m.role !== "tool" &&
+      typeof m.content === "string" &&
+      m.content.length > maxChars
+    ) {
+      return {
+        ...m,
+        content: `${m.content.slice(0, maxChars)}\n\n[…contenu tronqué : bloc trop volumineux pour le contexte. Le reste du document reste accessible via search_documents / read_document.]`,
+      };
+    }
+    return m;
+  });
+}
+
 /** Applique le budget résolu depuis l'environnement. */
 export function applyContextBudget(messages: ModelMessage[]): ModelMessage[] {
-  return trimMessages(messages, resolveContextBudgetTokens());
+  const budget = resolveContextBudgetTokens();
+  return capOversizedMessages(trimMessages(messages, budget), budget);
 }

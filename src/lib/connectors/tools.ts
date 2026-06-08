@@ -233,18 +233,38 @@ export async function buildToolsForUser(
     }),
     z.object({
       kind: z.literal("list"),
-      ordered: z.boolean(),
-      items: z.array(z.string().min(1)).min(1),
+      ordered: z
+        .boolean()
+        .describe("true = liste numérotée (1. 2. 3.), false = puces."),
+      items: z
+        .array(z.string().min(1))
+        .min(1)
+        .describe(
+          "Éléments de la liste, un par entrée ; **gras** / _italique_ inline autorisé."
+        ),
     }),
     z.object({
       kind: z.literal("blockquote"),
-      content: z.string().min(1),
+      content: z
+        .string()
+        .min(1)
+        .describe(
+          "Citation en retrait — ex. reproduction d'un article de loi ou d'une clause contractuelle."
+        ),
     }),
     z.object({
       kind: z.literal("table"),
-      headers: z.array(z.string()).min(1),
-      rows: z.array(z.array(z.string())).min(1),
-      caption: z.string().optional(),
+      headers: z.array(z.string()).min(1).describe("En-têtes de colonnes."),
+      rows: z
+        .array(z.array(z.string()))
+        .min(1)
+        .describe(
+          "Lignes ; chaque ligne doit comporter autant de cellules que d'en-têtes. Markdown inline autorisé."
+        ),
+      caption: z
+        .string()
+        .optional()
+        .describe("Légende optionnelle affichée sous le tableau."),
     }),
     z.object({
       kind: z.literal("pageBreak"),
