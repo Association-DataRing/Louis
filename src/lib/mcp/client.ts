@@ -7,6 +7,26 @@ import { assertSafeUrl } from "@/lib/net-guard";
 
 const CLIENT_INFO = { name: "louis", version: "0.0.1" };
 const CONNECT_TIMEOUT_MS = 15_000;
+// Timeout d'APPEL (listTools / callTool) : sans ça, un serveur qui accepte la
+// connexion puis ne répond jamais bloque le tour de chat jusqu'à l'abort.
+const CALL_TIMEOUT_MS = 30_000;
+
+/** Race une promesse contre un timeout, en nettoyant le timer. */
+function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      }
+    );
+  });
+}
 
 function decryptHeaders(server: McpServer): Record<string, string> {
   if (!server.headersCiphertext || !server.headersIv || !server.headersTag) {
@@ -49,20 +69,16 @@ async function withClient<T>(
   const transport = await buildTransport(server);
   const client = new Client(CLIENT_INFO);
 
-  // Race the connect against a timeout so a hanging server doesn't pin the
-  // request indefinitely.
-  await Promise.race([
+  // Timeout sur le connect ET sur l'appel, pour qu'un serveur lent/mort ne
+  // bloque jamais le tour indéfiniment.
+  await withTimeout(
     client.connect(transport),
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("MCP connect timed out")),
-        CONNECT_TIMEOUT_MS
-      )
-    ),
-  ]);
+    CONNECT_TIMEOUT_MS,
+    "MCP connect timed out"
+  );
 
   try {
-    return await fn(client);
+    return await withTimeout(fn(client), CALL_TIMEOUT_MS, "MCP call timed out");
   } finally {
     await client.close().catch(() => {});
   }

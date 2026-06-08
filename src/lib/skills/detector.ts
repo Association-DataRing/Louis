@@ -56,7 +56,13 @@ Quelles compétences activer ?`,
       maxRetries: 1,
     });
     const valid = new Set(enabled.map((s) => s.slug));
-    return result.object.selectedSkillSlugs.filter((slug) => valid.has(slug));
+    // Plafond dur : empiler plus de 3 compétences alourdit le contexte et
+    // multiplie les consignes contradictoires. Le system prompt le suggère
+    // déjà ; ici on le garantit (slice plutôt que .max() sur le schéma, qui
+    // ferait échouer la validation et tomberait à 0 skill).
+    return result.object.selectedSkillSlugs
+      .filter((slug) => valid.has(slug))
+      .slice(0, 3);
   } catch {
     // On avale silencieusement — le chat doit toujours répondre, même
     // sans skills auto-détectées. Le user pourra activer manuellement.

@@ -99,7 +99,7 @@ export async function buildToolsForUser(
     if (hasChunks.length > 0) {
       tools.search_documents = tool({
         description:
-          "Recherche sémantique dans les documents importés par l'utilisateur. Renvoie les passages les plus pertinents avec leur nom de fichier source. Préférez ce tool dès que la question porte sur le contenu d'un document précis, un contrat, un mémo, etc.",
+          "Recherche sémantique dans les documents importés par l'utilisateur. Renvoie les passages les plus pertinents avec leur nom de fichier source. Préférez ce tool dès que la question porte sur le contenu d'un document précis, un contrat, un mémo, etc. Échelle de décision : pour le TEXTE EXACT d'un document identifié → read_document ; pour localiser une chaîne précise avant un edit → find_in_document ; si vous ne connaissez pas l'identifiant du document → list_documents d'abord.",
         inputSchema: z.object({
           query: z
             .string()
@@ -189,7 +189,7 @@ export async function buildToolsForUser(
   if (active.includes("piste")) {
     tools.legifrance_search = tool({
       description:
-        "Recherche dans Légifrance (codes, lois, décrets, jurisprudence) via la passerelle officielle PISTE. Renvoie jusqu'à 5 résultats avec leur identifiant, titre et URL Légifrance. Utilisez cet outil dès que la question porte sur un article de code, un texte législatif ou une décision officielle.",
+        "Recherche dans Légifrance (codes, lois, décrets, jurisprudence) via la passerelle officielle PISTE. Renvoie jusqu'à 5 résultats avec leur identifiant, titre et URL Légifrance. Utilisez cet outil dès que la question porte sur un article de code, un texte législatif ou une décision officielle. Si 0 résultat, réessayez avec la seule référence d'article (ex. « L. 442-1 ») ou changez `fond` (JURI pour la jurisprudence, CODE_DATE pour les codes consolidés).",
       inputSchema: z.object({
         query: z
           .string()

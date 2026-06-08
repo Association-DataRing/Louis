@@ -11,6 +11,28 @@ const OAUTH_URL = "https://oauth.piste.gouv.fr/api/oauth/token";
 const API_BASE = "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app";
 const TIMEOUT_MS = 15_000;
 
+/**
+ * Construit l'URL Légifrance selon le TYPE de document, déduit du préfixe de
+ * l'identifiant. Un article de code (`LEGIARTI`), une jurisprudence
+ * (`JURITEXT`/`CETATEXT`), une loi/décret (`LEGITEXT`/`JORFTEXT`) et une
+ * convention collective (`KALI…`) n'ont pas la même route. L'ancien code forçait
+ * `/codes/article_lc/` pour TOUT → liens faux (jurisprudence, lois) présentés
+ * comme « source officielle » par le citator. Type inconnu → page de recherche
+ * plutôt qu'une URL d'article fabriquée.
+ */
+export function legifranceUrlForId(id: string): string {
+  const base = "https://www.legifrance.gouv.fr";
+  if (!id) return `${base}/`;
+  if (id.startsWith("LEGIARTI")) return `${base}/codes/article_lc/${id}`;
+  if (id.startsWith("LEGITEXT")) return `${base}/loda/id/${id}`;
+  if (id.startsWith("JORFARTI") || id.startsWith("JORFTEXT"))
+    return `${base}/jorf/id/${id}`;
+  if (id.startsWith("JURITEXT")) return `${base}/juri/id/${id}`;
+  if (id.startsWith("CETATEXT")) return `${base}/ceta/id/${id}`;
+  if (id.startsWith("KALI")) return `${base}/conv_coll/id/${id}`;
+  return `${base}/search/all?query=${encodeURIComponent(id)}`;
+}
+
 type PisteCreds = { client_id: string; client_secret: string };
 
 type CachedToken = { token: string; expiresAt: number };
@@ -171,9 +193,7 @@ export async function legifranceSearch(
         return {
           id,
           title,
-          url: id
-            ? `https://www.legifrance.gouv.fr/codes/article_lc/${id}`
-            : "https://www.legifrance.gouv.fr/",
+          url: legifranceUrlForId(id),
           excerpt: excerpt?.slice(0, 280),
         };
       });

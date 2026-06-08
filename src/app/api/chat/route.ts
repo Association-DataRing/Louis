@@ -300,15 +300,23 @@ export async function POST(req: Request) {
   let detectedSkillSlugs: string[] = [];
   try {
     const lastUserText = extractTextPreview(lastUser);
-    if (lastUserText) {
+    // Les simples accusés de réception (« ok », « merci », « continue »…) n'ont
+    // jamais besoin d'une compétence : on évite l'appel LLM de classification,
+    // qui est bloquant avant le 1er token. On NE filtre PAS sur la longueur
+    // seule — une requête juridique peut être courte (« bail ? », « art. L442-1 ? »).
+    const isAck =
+      /^(ok(ay)?|merci|oui|non|parfait|super|nickel|continue|vas[- ]?y|go|d['’ ]?accord)[\s.!…]*$/i.test(
+        lastUserText.trim()
+      );
+    if (lastUserText && !isAck) {
       const userSkills = await getEnabledSkills(userId);
       if (userSkills.length > 0) {
-        // Modèle classificateur = même clé que la conversation. AI SDK
-        // gère le streaming pour la réponse principale ; ici on fait
-        // juste un generateObject one-shot.
+        // Classification de slugs : on n'a pas besoin du gros modèle de la
+        // conversation. On force le modèle PAR DÉFAUT de la clé (moins cher)
+        // plutôt que l'override choisi par l'utilisateur (qui peut être un Opus).
         const detectorModel = modelFromKey(
           await loadProviderKey(userId, providerKeyId),
-          modelOverride ?? null
+          null
         );
         detectedSkillSlugs = await detectRelevantSkills({
           model: detectorModel,

@@ -32,6 +32,12 @@ Quand l'utilisateur demande explicitement un document (« rédige une mise en de
 
 Même règle pour edit_document, search_documents, legifrance_search, pappers_search : appelle d'abord, commente ensuite. Si tu as besoin de plusieurs tools en chaîne, enchaîne-les sans phrases de transition (« Je vais maintenant chercher… »).
 
+CHOIX DE L'OUTIL — n'appelle un outil que s'il t'est EFFECTIVEMENT proposé ce tour (la liste dépend des connecteurs actifs de l'utilisateur). Si l'outil nécessaire n'est pas disponible, dis-le franchement plutôt que d'inventer un appel ou un résultat.
+- Question portant sur le contenu d'un document de l'utilisateur → search_documents (recherche sémantique large) ou read_document / find_in_document (texte exact d'un document identifié) AVANT de répondre. Ne réponds pas de mémoire sur un document que tu peux lire.
+- Toute règle de droit, article ou décision que tu t'apprêtes à citer → vérifie-la d'abord via legifrance_search, puis reporte la référence ET l'URL Légifrance renvoyées. Ne cite JAMAIS un article ou un arrêt de ta seule mémoire.
+- Entreprise ou dirigeant français → pappers_search / pappers_get.
+Après un appel d'outil, fonde ta réponse sur ce qu'il a réellement renvoyé et cite la source ; s'il ne renvoie rien d'utile, dis-le et n'invente pas.
+
 Quand tu proposes une réécriture inline (sans génération de document complet) — clause contractuelle, paragraphe à reformuler — emballe-la dans un bloc Markdown spécial avec la langue "edit", au format suivant :
 
 \`\`\`edit
@@ -43,7 +49,9 @@ texte proposé
 (optionnel) justification courte
 \`\`\`
 
-L'interface rendra ce bloc comme une carte d'édition que l'utilisateur peut accepter ou ignorer en un clic.`;
+L'interface rendra ce bloc comme une carte d'édition que l'utilisateur peut accepter ou ignorer en un clic.
+
+Frontière : une réécriture courte proposée DANS le chat → bloc \`\`\`edit. Pour modifier un fichier .docx importé par l'utilisateur → tool edit_document (révisions Word suivies). Ne confonds pas les deux.`;
 
 export function filterTools(
   tools: ToolSet,
@@ -120,7 +128,14 @@ export class DefaultAgent implements Agent {
       system: cached.system,
       messages: cached.messages,
       tools,
-      stopWhen: stepCountIs(5),
+      // Budget de pas élargi : un tour réaliste (vérifier un article + lire le
+      // document joint + générer le .docx) peut chaîner 4-5 outils ; 5 ne
+      // laissait aucune marge et coupait le modèle en plein milieu. Au dernier
+      // pas autorisé, on retire les outils pour forcer une vraie conclusion
+      // plutôt qu'un appel d'outil tronqué.
+      stopWhen: stepCountIs(8),
+      prepareStep: ({ stepNumber }) =>
+        stepNumber >= 7 ? { toolChoice: "none" } : {},
       temperature: this.definition.temperature ?? undefined,
       abortSignal: ctx.abortSignal,
     });
