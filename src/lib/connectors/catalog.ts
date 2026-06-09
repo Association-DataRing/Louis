@@ -46,8 +46,8 @@ export const CONNECTOR_CATALOG: Record<ConnectorType, ConnectorMeta> = {
     // Seul Légifrance est réellement câblé (lib/connectors/tools.ts). Les
     // autres sous-APIs PISTE sont annoncées « à venir » plutôt que prétendues
     // débloquées.
-    unlocks: ["Légifrance"],
-    comingSoon: ["Judilibre", "JADE", "INPI", "BODACC"],
+    unlocks: ["Légifrance", "Judilibre", "BOFIP"],
+    comingSoon: ["JADE"],
     credentialFields: [
       {
         name: "client_id",

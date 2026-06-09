@@ -8,6 +8,9 @@ import {
   IconBuilding,
   IconHistory,
   IconTool,
+  IconGavel,
+  IconReceipt,
+  IconBookmark,
   type Icon,
 } from "@tabler/icons-react";
 
@@ -30,6 +33,10 @@ const META: Record<string, ToolMeta> = {
   read_document: { icon: IconBook2, chip: "lecture", category: "lecture", primary: false },
   list_documents: { icon: IconList, chip: "lecture", category: "lecture", primary: false },
   legifrance_search: { icon: IconScale, chip: "Légifrance", category: "recherche", primary: false },
+  judilibre_search: { icon: IconGavel, chip: "Judilibre", category: "recherche", primary: false },
+  judilibre_decision: { icon: IconGavel, chip: "Judilibre", category: "recherche", primary: false },
+  bofip_search: { icon: IconBookmark, chip: "BOFIP", category: "recherche", primary: false },
+  bodacc_search: { icon: IconReceipt, chip: "BODACC", category: "recherche", primary: false },
   pappers_search: { icon: IconBuilding, chip: "Pappers", category: "recherche", primary: false },
   pappers_get: { icon: IconBuilding, chip: "Pappers", category: "recherche", primary: false },
   search_conversation_history: { icon: IconHistory, chip: "historique", category: "recherche", primary: false },

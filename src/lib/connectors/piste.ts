@@ -109,6 +109,8 @@ export async function testPisteConnection(
   return "network_error";
 }
 
+const PISTE_BASE = "https://api.piste.gouv.fr";
+
 async function pisteRequest<T>(
   userId: string,
   path: string,
@@ -131,9 +133,77 @@ async function pisteRequest<T>(
       signal: controller.signal,
     });
     if (!res.ok) {
-      // Invalidate the cached token on 401 so the next call refreshes it.
       if (res.status === 401) tokenCache.delete(userId);
       return { ok: false, ...httpReason("Légifrance", res.status) };
+    }
+    return toolOk((await res.json()) as T);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Requête GET authentifiée vers PISTE. Utilisée par les sous-APIs qui
+ * exposent des endpoints REST GET (ex: Judilibre).
+ */
+export async function pisteGet<T>(
+  userId: string,
+  path: string,
+  serviceName = "PISTE"
+): Promise<ToolResult<T>> {
+  const tok = await getToken(userId);
+  if (!tok.ok) return tok;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${PISTE_BASE}${path}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${tok.data}`,
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      if (res.status === 401) tokenCache.delete(userId);
+      return { ok: false, ...httpReason(serviceName, res.status) };
+    }
+    return toolOk((await res.json()) as T);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Requête POST authentifiée vers PISTE avec basePath configurable.
+ * Généralise pisteRequest pour cibler d'autres sous-APIs (ex: BOFIP via fond CIRC).
+ */
+export async function pistePost<T>(
+  userId: string,
+  fullPath: string,
+  body: unknown,
+  serviceName = "PISTE"
+): Promise<ToolResult<T>> {
+  const tok = await getToken(userId);
+  if (!tok.ok) return tok;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${PISTE_BASE}${fullPath}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${tok.data}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      if (res.status === 401) tokenCache.delete(userId);
+      return { ok: false, ...httpReason(serviceName, res.status) };
     }
     return toolOk((await res.json()) as T);
   } finally {
