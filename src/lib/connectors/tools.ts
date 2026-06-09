@@ -2,6 +2,9 @@ import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { pappersSearch, pappersGet } from "./pappers";
 import { legifranceSearch } from "./piste";
+import { judilibreSearch, judilibreGetDecision } from "./judilibre";
+import { bodaccSearch } from "./bodacc";
+import { bofipSearch } from "./bofip";
 import { listActiveConnectorTypes } from "./runtime";
 import { ragSearch } from "@/lib/rag/search";
 import { searchProjectMessages } from "@/lib/rag/message-search";
@@ -207,7 +210,94 @@ export async function buildToolsForUser(
       execute: async ({ query, fond }) =>
         legifranceSearch(userId, query, fond ?? "ALL"),
     });
+
+    tools.judilibre_search = tool({
+      description:
+        "Recherche de décisions de justice (Cour de cassation, cours d'appel) via Judilibre / PISTE. Renvoie jusqu'à 5 décisions avec ECLI, chambre, solution, résumé et lien. Utilisez cet outil pour la jurisprudence judiciaire (arrêts, pourvois, QPC). Pour le droit administratif (Conseil d'État), utilisez Légifrance fond JURI.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .min(2)
+          .describe("Termes de recherche : mots-clés, n° de pourvoi, thème juridique…"),
+        jurisdiction: z
+          .enum(["cc", "ca", "tj"])
+          .optional()
+          .describe("Filtrer par juridiction : cc (Cour de cassation), ca (Cour d'appel), tj (Tribunal judiciaire)."),
+        chamber: z
+          .string()
+          .optional()
+          .describe("Filtrer par chambre (ex: 'commerciale', 'sociale', 'criminelle')."),
+        date_start: z
+          .string()
+          .optional()
+          .describe("Date début au format YYYY-MM-DD."),
+        date_end: z
+          .string()
+          .optional()
+          .describe("Date fin au format YYYY-MM-DD."),
+      }),
+      execute: async ({ query, jurisdiction, chamber, date_start, date_end }) =>
+        judilibreSearch(userId, query, { jurisdiction, chamber, date_start, date_end }),
+    });
+
+    tools.judilibre_decision = tool({
+      description:
+        "Récupère le texte intégral et les métadonnées d'une décision de justice par son identifiant Judilibre. Utilisez cet outil après judilibre_search pour obtenir le contenu complet d'un arrêt.",
+      inputSchema: z.object({
+        decision_id: z
+          .string()
+          .min(1)
+          .describe("Identifiant Judilibre de la décision (récupéré via judilibre_search)."),
+      }),
+      execute: async ({ decision_id }) =>
+        judilibreGetDecision(userId, decision_id),
+    });
+
+    tools.bofip_search = tool({
+      description:
+        "Recherche dans la doctrine fiscale (BOFIP — Bulletin Officiel des Finances Publiques) via PISTE. Renvoie instructions ministérielles, rescrits, commentaires de l'administration fiscale. Utilisez dès que la question porte sur le régime fiscal, la TVA, l'impôt sur les sociétés, la fiscalité des plus-values, etc.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .min(2)
+          .describe("Termes de recherche : thème fiscal, numéro d'instruction, référence BOI…"),
+      }),
+      execute: async ({ query }) => bofipSearch(userId, query),
+    });
   }
+
+  // ─── Sources open data (aucune authentification requise) ────────────────
+  // Ces outils sont TOUJOURS disponibles indépendamment des connecteurs
+  // configurés par l'utilisateur.
+
+  tools.bodacc_search = tool({
+    description:
+      "Recherche dans le BODACC (Bulletin Officiel des Annonces Civiles et Commerciales). Couvre créations d'entreprises, modifications, radiations, procédures collectives, ventes/cessions. Aucune configuration requise (données ouvertes). Utile pour la veille commerciale, la due diligence, et les procédures collectives.",
+    inputSchema: z.object({
+      query: z
+        .string()
+        .min(2)
+        .describe("Nom d'entreprise, numéro d'annonce, ou termes de recherche."),
+      departement: z
+        .string()
+        .optional()
+        .describe("Filtrer par département (2 chiffres, ex: '75' pour Paris)."),
+      famille: z
+        .string()
+        .optional()
+        .describe("Type d'avis : 'Création', 'Modification', 'Radiation', 'Procédure collective', 'Vente/Cession'."),
+      date_start: z
+        .string()
+        .optional()
+        .describe("Date début au format YYYY-MM-DD."),
+      date_end: z
+        .string()
+        .optional()
+        .describe("Date fin au format YYYY-MM-DD."),
+    }),
+    execute: async ({ query, departement, famille, date_start, date_end }) =>
+      bodaccSearch(query, { departement, famille, date_start, date_end }),
+  });
 
   // Génération de documents — toujours disponible, indépendant des
   // connecteurs externes. Pure-JS côté serveur Louis (docx + pdfkit), pas
