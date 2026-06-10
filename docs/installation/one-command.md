@@ -1,8 +1,8 @@
 # Installation en une commande
 
 La façon la plus simple d'installer Louis sur une machine (poste de cabinet,
-serveur, VPS). Une seule dépendance : [Docker](https://docs.docker.com/get-docker/)
-avec Compose v2.
+serveur, VPS). **Aucun prérequis à installer soi-même** : si Docker manque, le
+script l'installe.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.sh | bash
@@ -10,7 +10,10 @@ curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scr
 
 Le script :
 
-1. vérifie que Docker tourne ;
+1. **vérifie Docker** — l'installe s'il manque (Docker Desktop sur macOS,
+   Docker Engine sur Linux) et le démarre s'il est arrêté. Au premier
+   lancement de Docker Desktop sur Mac, une fenêtre demande d'accepter les
+   conditions : un clic, et le script reprend tout seul ;
 2. crée un dossier `./louis` contenant le `docker-compose.prod.yml` et un
    fichier `.env` avec des **secrets générés aléatoirement** (jamais écrasés
    s'ils existent — relancer le script est sans danger) ;
