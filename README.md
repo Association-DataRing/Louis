@@ -258,7 +258,8 @@ au démarrage — puis l'**assistant de premier lancement** (`/setup`) guide la
 création du compte admin et la première clé IA dans le navigateur. Détails et
 mise à jour : [docs/installation/one-command.md](./docs/installation/one-command.md).
 
-> Seul prérequis : [Docker](https://docs.docker.com/get-docker/) (Compose v2).
+> Aucun prérequis à installer soi-même : le script installe [Docker](https://docs.docker.com/get-docker/)
+> s'il manque (Docker Desktop sur macOS, Docker Engine sur Linux).
 > Node.js n'est nécessaire que pour l'installation depuis les sources ci-dessous.
 
 ### Installation depuis les sources (développement)
