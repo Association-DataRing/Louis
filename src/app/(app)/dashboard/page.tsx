@@ -216,7 +216,7 @@ export default async function DashboardPage() {
             </li>
           </ul>
         ) : (
-          <FirstSteps hasProvider={hasProvider} />
+          <FirstSteps />
         )}
       </section>
     </main>
@@ -327,23 +327,18 @@ function ReadinessChecklist({
   );
 }
 
-function FirstSteps({ hasProvider }: { hasProvider: boolean }) {
+/**
+ * Premiers pas côté contenu (documents, projets, conversation). La connexion
+ * du provider n'apparaît PAS ici : elle est déjà portée par le bandeau
+ * « Mise en route » et la carte « Prise en main » de la sidebar — trois
+ * rappels identiques sur un même écran seraient du bruit.
+ */
+function FirstSteps() {
   return (
     <ol className="space-y-5 text-sm">
-      {!hasProvider && (
-        <li className="flex gap-3">
-          <span className="font-heading text-muted-foreground tabular-nums shrink-0 w-6">
-            01
-          </span>
-          <Link href="/settings/providers" className="hover:text-primary">
-            Configurer un provider IA
-            <span className="ml-1 text-muted-foreground">→ /providers</span>
-          </Link>
-        </li>
-      )}
       <li className="flex gap-3">
         <span className="font-heading text-muted-foreground tabular-nums shrink-0 w-6">
-          {hasProvider ? "01" : "02"}
+          01
         </span>
         <Link href="/documents" className="hover:text-primary inline-flex items-center gap-1.5">
           <IconFolder className="size-3.5" />
@@ -352,7 +347,7 @@ function FirstSteps({ hasProvider }: { hasProvider: boolean }) {
       </li>
       <li className="flex gap-3">
         <span className="font-heading text-muted-foreground tabular-nums shrink-0 w-6">
-          {hasProvider ? "02" : "03"}
+          02
         </span>
         <Link href="/projects" className="hover:text-primary inline-flex items-center gap-1.5">
           <IconFolders className="size-3.5" />
@@ -361,7 +356,7 @@ function FirstSteps({ hasProvider }: { hasProvider: boolean }) {
       </li>
       <li className="flex gap-3">
         <span className="font-heading text-muted-foreground tabular-nums shrink-0 w-6">
-          {hasProvider ? "03" : "04"}
+          03
         </span>
         <Link href="/chat" className="hover:text-primary inline-flex items-center gap-1.5">
           <IconMessageCircle className="size-3.5" />

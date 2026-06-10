@@ -2,7 +2,7 @@ import { and, eq, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { cabinetSettings, conversations } from "@/db/schema";
 import { recordAudit } from "@/lib/audit";
-import { getRedis } from "@/lib/redis";
+import { getRedisReady } from "@/lib/redis";
 
 /**
  * Purge de rétention RGPD — déclenchée par un planificateur EXTERNE (conteneur
@@ -33,11 +33,11 @@ export async function POST(req: Request): Promise<Response> {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const redis = getRedis();
+  const redis = await getRedisReady();
   const lockKey = "cron:retention:lock";
   let acquired = true;
   try {
-    acquired = (await redis.set(lockKey, "1", "EX", 300, "NX")) === "OK";
+    acquired = !redis || (await redis.set(lockKey, "1", "EX", 300, "NX")) === "OK";
   } catch {
     // Redis indisponible : on continue (un seul planificateur appelle cette
     // route ; le verrou n'est qu'une protection anti-chevauchement).
@@ -89,7 +89,7 @@ export async function POST(req: Request): Promise<Response> {
     });
   } finally {
     try {
-      await redis.del(lockKey);
+      await redis?.del(lockKey);
     } catch {
       // verrou expirera de toute façon (EX 300)
     }

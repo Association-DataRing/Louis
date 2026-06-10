@@ -24,6 +24,10 @@ export function uiPartsFromSaved(
   for (const p of saved) {
     if (p.type === "text") {
       out.push({ type: "text", text: p.text } as never);
+    } else if (p.type === "reasoning") {
+      // Bloc de raisonnement persisté → ré-émis avec state "done" (le
+      // streaming est terminé au reload).
+      out.push({ type: "reasoning", text: p.text, state: "done" } as never);
     } else if (p.type === "tool-call") {
       const result = resultByCallId.get(p.toolCallId);
       out.push({

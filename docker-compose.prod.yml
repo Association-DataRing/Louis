@@ -1,0 +1,124 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Louis — stack de production autonome
+#
+# Consommé par l'installeur une commande (scripts/install.sh), utilisable
+# aussi directement :
+#
+#   1. créer un fichier .env à côté de ce fichier (secrets — voir ci-dessous)
+#   2. docker compose -f docker-compose.prod.yml up -d
+#   3. ouvrir http://localhost:3000 → l'assistant /setup prend le relais
+#
+# Variables .env attendues (générées automatiquement par install.sh) :
+#   POSTGRES_PASSWORD=…       mot de passe Postgres interne
+#   AUTH_SECRET=…             openssl rand -base64 32
+#   ENCRYPTION_KEY=…          openssl rand -base64 32 (chiffrement des clés)
+#   S3_SECRET_ACCESS_KEY=…    mot de passe MinIO interne
+# Optionnelles :
+#   LOUIS_VERSION=v0.1.0      tag d'image (défaut : latest)
+#   LOUIS_IMAGE=ghcr.io/…     registre alternatif (fork, miroir interne)
+#   LOUIS_PORT=3000           port d'écoute sur l'hôte
+#
+# Mise à jour :
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#   (le service `migrate` ré-applique le schéma avant le redémarrage de l'app)
+#
+# Seul le port de l'app est exposé sur l'hôte — Postgres, Redis, MinIO et
+# Gotenberg restent sur le réseau interne du compose. Mettre un reverse
+# proxy TLS (Caddy/Nginx/Traefik) devant pour un accès distant.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: louis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+      POSTGRES_DB: louis
+    volumes:
+      - louis-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U louis -d louis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - louis-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: louis
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?définir S3_SECRET_ACCESS_KEY dans .env}
+    volumes:
+      - louis-minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # LibreOffice headless pour le rendu fidèle DOCX → PDF du DocPanel.
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--api-port=3000"
+      - "--api-timeout=60s"
+
+  # One-shot : applique le schéma (pgvector + drizzle-kit push) puis sort.
+  # L'app ne démarre qu'après sa réussite (service_completed_successfully).
+  migrate:
+    image: ${LOUIS_IMAGE:-ghcr.io/association-dataring/louis}-migrate:${LOUIS_VERSION:-latest}
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://louis:${POSTGRES_PASSWORD}@postgres:5432/louis
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    image: ${LOUIS_IMAGE:-ghcr.io/association-dataring/louis}:${LOUIS_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "${LOUIS_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://louis:${POSTGRES_PASSWORD}@postgres:5432/louis
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: eu-west-3
+      S3_BUCKET: louis
+      S3_ACCESS_KEY_ID: louis
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      # MinIO exige le path-style (la détection automatique ne couvre que
+      # les endpoints localhost, pas le hostname interne `minio`).
+      S3_FORCE_PATH_STYLE: "true"
+      GOTENBERG_URL: http://gotenberg:3000
+      AUTH_SECRET: ${AUTH_SECRET:?définir AUTH_SECRET dans .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?définir ENCRYPTION_KEY dans .env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+volumes:
+  louis-postgres:
+  louis-redis:
+  louis-minio:

@@ -15,6 +15,10 @@ const MODE_HINT: Record<string, string> = {
     "Conseil : tous les agents délibèrent (N tours). Le dernier agent — le terminal — synthétise et rend la réponse.",
   parallel:
     "Parallèle : les agents travaillent en même temps sur la question. Le dernier agent — le terminal — agrège et rend la réponse.",
+  iterative:
+    "Itératif : le premier agent reprend ses notes à chaque tour pour creuser les lacunes. Le dernier agent — le terminal — synthétise et rend la réponse.",
+  maestro:
+    "Maestro : le dernier agent dirige l'équipe — il choisit qui consulter, avec quelle consigne, dans l'ordre qu'il juge utile, puis rend la réponse. L'ordre ci-dessous n'est qu'indicatif.",
 };
 
 /**
@@ -32,7 +36,7 @@ export function ExecutionOrderPanel({
 }: {
   pipelineId: string;
   agents: PipelineAgent[];
-  mode: "sequential" | "council" | "parallel" | "iterative";
+  mode: "sequential" | "council" | "parallel" | "iterative" | "maestro";
   editable: boolean;
 }) {
   const router = useRouter();

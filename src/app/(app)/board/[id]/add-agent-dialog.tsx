@@ -277,6 +277,14 @@ export function AddAgentDialog({
             </Select>
           </div>
 
+          {modelOptions.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              Choisissez une clé provider ci-dessus pour sélectionner un
+              modèle. Sans clé, l&apos;agent hérite du modèle du chat au moment
+              de l&apos;envoi.
+            </p>
+          )}
+
           {modelOptions.length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="agent-model">Modèle</Label>

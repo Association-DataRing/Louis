@@ -81,6 +81,113 @@ export async function createProviderKey(
   return { ok: true };
 }
 
+const testedCreateSchema = createSchema.extend({
+  force: z.literal("true").optional().or(z.literal("")),
+});
+
+export type TestedCreateResult =
+  | { ok: true; testStatus: "ok" | "skipped" }
+  | { ok: false; error: string; canForce?: boolean };
+
+/**
+ * Variante « tester avant d'enregistrer » de createProviderKey — utilisée par
+ * l'assistant /setup et le quick-add du chat. La clé n'est stockée que si le
+ * provider la reconnaît (ou si le test est impossible / forcé). Une clé
+ * refusée (401/403) n'est jamais enregistrée : c'est l'erreur la plus
+ * fréquente du premier lancement, autant la attraper au moment du collage.
+ */
+export async function createProviderKeyTested(
+  _prev: TestedCreateResult | null,
+  formData: FormData
+): Promise<TestedCreateResult> {
+  const userId = await requireUserId();
+
+  const parsed = testedCreateSchema.safeParse({
+    type: formData.get("type"),
+    label: formData.get("label"),
+    apiKey: formData.get("apiKey"),
+    baseUrl: formData.get("baseUrl") ?? "",
+    force: formData.get("force") ?? "",
+  });
+  if (!parsed.success) return { ok: false, error: "Champs invalides." };
+
+  const { type, label, apiKey, baseUrl } = parsed.data;
+  const force = parsed.data.force === "true";
+
+  if (baseUrl) {
+    try {
+      assertSafeUrl(baseUrl);
+    } catch (err) {
+      if (err instanceof SsrfError) return { ok: false, error: err.message };
+      throw err;
+    }
+  }
+
+  const status = await testProvider(
+    type as (typeof PROVIDER_TYPES)[number],
+    apiKey,
+    baseUrl || null
+  );
+
+  if (status === "auth_error") {
+    return {
+      ok: false,
+      error:
+        "Le provider a refusé cette clé. Vérifiez qu'elle est complète et toujours valide sur la console du provider.",
+    };
+  }
+  if (status === "network_error" && !force) {
+    return {
+      ok: false,
+      error:
+        "Impossible de joindre le provider pour vérifier la clé. Réessayez, ou enregistrez sans test.",
+      canForce: true,
+    };
+  }
+
+  const blob = encrypt(apiKey);
+
+  // Première clé de l'utilisateur → défaut d'office, pour que le chat soit
+  // utilisable immédiatement sans passage par les réglages.
+  const [existing] = await db
+    .select({ id: providerKeys.id })
+    .from(providerKeys)
+    .where(eq(providerKeys.userId, userId))
+    .limit(1);
+
+  try {
+    await db.insert(providerKeys).values({
+      userId,
+      type: type as (typeof PROVIDER_TYPES)[number],
+      label,
+      apiKeyCiphertext: blob.ciphertext,
+      apiKeyIv: blob.iv,
+      apiKeyTag: blob.tag,
+      baseUrl: baseUrl || null,
+      isDefault: !existing,
+      lastTestedAt: new Date(),
+      lastTestStatus: status,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erreur inconnue";
+    if (msg.includes("provider_keys_user_label_idx")) {
+      return { ok: false, error: "Ce libellé est déjà utilisé." };
+    }
+    return { ok: false, error: "Impossible de créer la clé." };
+  }
+
+  await recordAudit({
+    userId,
+    action: "provider.add",
+    target: `${type}:${label}`,
+  });
+
+  revalidatePath("/settings/providers");
+  revalidatePath("/chat");
+  revalidatePath("/dashboard");
+  return { ok: true, testStatus: status === "ok" ? "ok" : "skipped" };
+}
+
 export async function deleteProviderKey(id: string): Promise<void> {
   const userId = await requireUserId();
   const [target] = await db

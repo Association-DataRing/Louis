@@ -1,4 +1,4 @@
-import { getRedis } from "./redis";
+import { getRedisReady } from "./redis";
 import { log } from "./log";
 
 /**
@@ -97,7 +97,10 @@ export async function rateLimit(
   const key = `rl:${bucket}:${identifier}:${windowStart}`;
 
   try {
-    const redis = getRedis();
+    // Attend (brièvement) la connexion initiale — sinon le premier appel
+    // après le boot échouait en fail-open alors que Redis est up.
+    const redis = await getRedisReady();
+    if (!redis) throw new Error("Redis non prêt (connexion initiale)");
     const count = await redis.incr(key);
     if (count === 1) {
       // Premier hit dans cette fenêtre : pose l'expiration. Ajoute 5s de

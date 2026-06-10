@@ -16,9 +16,10 @@ type Props = {
     pinnedAt?: Date | null;
   }[];
   projects: { id: string; name: string }[];
+  onboarding?: import("./getting-started").OnboardingState;
 };
 
-export function MobileNav({ user, conversations, projects }: Props) {
+export function MobileNav({ user, conversations, projects, onboarding }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -36,6 +37,7 @@ export function MobileNav({ user, conversations, projects }: Props) {
             user={user}
             conversations={conversations}
             projects={projects}
+            onboarding={onboarding}
             onNavigate={() => setOpen(false)}
             forceOpen
           />

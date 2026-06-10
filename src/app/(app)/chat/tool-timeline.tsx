@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import hljs from "highlight.js/lib/core";
+import json from "highlight.js/lib/languages/json";
 import {
   IconSparkles,
   IconChevronDown,
@@ -11,6 +13,8 @@ import {
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { toolMeta, summarizeTools } from "./tool-meta";
+
+hljs.registerLanguage("json", json);
 
 export interface ToolTimelineRow {
   id: string;
@@ -46,7 +50,10 @@ export function ToolTimeline({
   isStreaming: boolean;
   renderDetail: (row: ToolTimelineRow) => ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Replié par défaut : les appels d'outils sont un détail de progression,
+  // pas le signal principal. Le résumé (« 3 outils · 2 recherches ») + la
+  // ligne d'aperçu de l'action en cours suffisent à suivre ; on déplie au clic.
+  const [collapsed, setCollapsed] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(rows.filter((r) => r.autoExpand).map((r) => r.id))
   );
@@ -54,6 +61,15 @@ export function ToolTimeline({
   if (rows.length === 0) return null;
 
   const summary = summarizeTools(rows.map((r) => r.name));
+  // Action en cours/dernière : la dernière ligne pending pendant le stream,
+  // sinon la dernière ligne tout court. Affichée en aperçu quand replié.
+  const pendingRow = isStreaming
+    ? [...rows].reverse().find((r) => r.pending)
+    : undefined;
+  const latestRow = pendingRow ?? rows[rows.length - 1];
+  const preview = latestRow
+    ? [latestRow.label, latestRow.summary].filter(Boolean).join(" · ")
+    : "";
 
   function toggleRow(id: string) {
     setExpanded((prev) => {
@@ -74,14 +90,28 @@ export function ToolTimeline({
         className="group/h w-full flex items-center gap-2.5 py-1.5 text-left"
       >
         <IconSparkles className="size-4 shrink-0 text-foreground/60" />
-        <span className="text-[15px] font-medium truncate">{summary}</span>
+        <span className="shrink-0 text-[15px] font-medium">{summary}</span>
+        {/* Aperçu de l'action en cours (façon vLLM Studio) — visible quand
+            replié, avec shimmer tant qu'un outil est en cours. */}
+        {collapsed && preview && (
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate text-xs text-muted-foreground/75",
+              pendingRow && "reasoning-shimmer"
+            )}
+            aria-hidden
+          >
+            {preview}
+          </span>
+        )}
         <IconChevronDown
           className={cn(
             "size-4 shrink-0 text-muted-foreground/60 group-hover/h:text-muted-foreground transition-transform",
-            collapsed && "-rotate-90"
+            collapsed && "-rotate-90",
+            collapsed && preview ? "" : "ml-auto"
           )}
         />
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
           {isStreaming ? (
             <IconLoader2 className="size-3.5 animate-spin" />
           ) : durationMs && durationMs > 0 ? (
@@ -168,6 +198,15 @@ export function JsonDetail({
     null,
     2
   );
+  // Coloration JSON (cohérente avec rehype-highlight côté markdown). On
+  // mémoïse le rendu HTML pour ne pas re-highlighter à chaque render.
+  const highlighted = useMemo(() => {
+    try {
+      return hljs.highlight(payload, { language: "json" }).value;
+    } catch {
+      return null;
+    }
+  }, [payload]);
 
   async function copy() {
     try {
@@ -198,9 +237,18 @@ export function JsonDetail({
           )}
         </button>
       </div>
-      <pre className="px-3 py-2 text-xs font-mono leading-relaxed overflow-x-auto max-h-72">
-        {payload}
-      </pre>
+      {highlighted ? (
+        <pre className="px-3 py-2 text-xs font-mono leading-relaxed overflow-x-auto max-h-72">
+          <code
+            className="hljs language-json"
+            dangerouslySetInnerHTML={{ __html: highlighted }}
+          />
+        </pre>
+      ) : (
+        <pre className="px-3 py-2 text-xs font-mono leading-relaxed overflow-x-auto max-h-72">
+          {payload}
+        </pre>
+      )}
     </div>
   );
 }

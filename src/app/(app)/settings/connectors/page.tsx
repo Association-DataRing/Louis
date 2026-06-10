@@ -1,6 +1,11 @@
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { IconShieldLock, IconClock } from "@tabler/icons-react";
+import {
+  IconShieldLock,
+  IconClock,
+  IconCheck,
+  IconReceipt,
+} from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { connectorKeys, type ConnectorKey } from "@/db/schema";
@@ -18,11 +23,6 @@ const COMING_SOON: Array<{
   description: string;
   category: "official" | "commercial";
 }> = [
-  {
-    label: "Judilibre",
-    category: "official",
-    description: "Cour de cassation — accès direct sans passer par PISTE.",
-  },
   {
     label: "Doctrine",
     category: "commercial",
@@ -108,6 +108,20 @@ export default async function ConnectorsPage() {
 
       <section className="mb-10">
         <h2 className="font-heading text-xl tracking-tight mb-4">
+          Open data — toujours actif
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <OpenDataCard
+            label="BODACC"
+            category="official"
+            description="Annonces civiles et commerciales : créations, modifications, radiations, ventes/cessions et procédures collectives. Source DILA en données ouvertes — aucune configuration requise."
+            href="https://www.bodacc.fr"
+          />
+        </div>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="font-heading text-xl tracking-tight mb-4">
           Bientôt
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -143,6 +157,56 @@ function ComingSoonCard({
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">
         {description}
+      </p>
+    </div>
+  );
+}
+
+// Sources en données ouvertes : aucune authentification, donc actives en
+// permanence et sans carte de configuration. Affichées pour que l'utilisateur
+// sache qu'elles existent et que Louis peut les interroger directement.
+function OpenDataCard({
+  label,
+  description,
+  category,
+  href,
+}: {
+  label: string;
+  description: string;
+  category: "official" | "commercial";
+  href?: string;
+}) {
+  return (
+    <div className="border border-border rounded-lg p-5 bg-card flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <IconReceipt className="size-4 text-muted-foreground shrink-0" />
+        <h3 className="font-heading text-base tracking-tight">{label}</h3>
+        <span className="text-[10px] text-muted-foreground rounded-full bg-muted px-2 py-0.5">
+          {category === "official" ? "Officiel" : "Commercial"}
+        </span>
+        <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-success rounded-full bg-success/10 px-2 py-0.5">
+          <IconCheck className="size-2.5" />
+          Toujours actif
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        {description}
+      </p>
+      <p className="text-[11px] text-muted-foreground">
+        Données ouvertes — aucune configuration requise.
+        {href && (
+          <>
+            {" "}
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              En savoir plus
+            </a>
+          </>
+        )}
       </p>
     </div>
   );

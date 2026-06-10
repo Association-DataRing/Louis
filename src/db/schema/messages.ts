@@ -36,6 +36,9 @@ export const messageRoleEnum = pgEnum("message_role", [
  */
 export type SavedPart =
   | { type: "text"; text: string }
+  // Raisonnement d'un modèle « thinking » (DeepSeek R1, Magistral, o-series…).
+  // Persisté pour ré-afficher le bloc repliable au reload.
+  | { type: "reasoning"; text: string }
   | {
       type: "tool-call";
       toolCallId: string;

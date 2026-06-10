@@ -25,6 +25,7 @@ import { ComposerMenu } from "./composer-menu";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 import { LouisLogo } from "@/components/louis-logo";
 import { ModuleHelp } from "@/components/module-help";
 import { Dropzone, uploadDocument } from "@/components/dropzone";
@@ -32,6 +33,8 @@ import { useSmoothText } from "@/lib/use-smooth-text";
 import { useStickToBottom } from "@/lib/use-stick-to-bottom";
 import { cn } from "@/lib/utils";
 import { ThinkingIndicator } from "./thinking-indicator";
+import { ReasoningBlock } from "./reasoning-block";
+import { ApprovalCard, type ApprovalRequestData } from "./approval-card";
 import { AgentStepsWrapper } from "./agent-steps-wrapper";
 import {
   ToolTimeline,
@@ -144,7 +147,7 @@ type PipelineOption = {
   isPreset: boolean;
   agentCount: number;
   /** Mode d'exécution — pilote l'estimation du nombre d'appels LLM. */
-  mode: "sequential" | "council" | "parallel";
+  mode: "sequential" | "council" | "parallel" | "iterative" | "maestro";
   /** Tours de débat (mode council). null/1 sinon. */
   rounds: number | null;
   agents: PipelineAgentOption[];
@@ -869,6 +872,11 @@ const AssistantMarkdownPart = memo(function AssistantMarkdownPart({
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
+      // rehype-highlight colore les blocs de code (contrats, JSON, sorties
+      // d'outils). `ignoreMissing` laisse les langages inconnus — dont notre
+      // bloc spécial `edit` — en texte brut, donc l'interception EditCard
+      // ci-dessous continue de fonctionner.
+      rehypePlugins={[[rehypeHighlight, { ignoreMissing: true, detect: true }]]}
       components={{
         code: ({ className, children, ...rest }) => {
           const lang = (className ?? "").match(/language-(\w+)/)?.[1];
@@ -2132,6 +2140,39 @@ export function ChatShell({
                       // Rendu déjà fait via dedupedAgentEvents au-dessus —
                       // on skippe ici pour éviter les doublons.
                       return null;
+                    }
+                    if (part.type === "data-approval-request") {
+                      // Garde-fou human-in-the-loop : un outil sensible
+                      // attend le feu vert. Actionnable uniquement pendant
+                      // le streaming (la part n'est pas persistée).
+                      const data = (part as { data?: ApprovalRequestData })
+                        .data;
+                      if (!data?.approvalId) return null;
+                      return (
+                        <ApprovalCard
+                          key={`approval-${data.approvalId}`}
+                          data={data}
+                          isLive={isLiveMessage}
+                        />
+                      );
+                    }
+                    if (part.type === "reasoning") {
+                      // Tokens de raisonnement d'un modèle « thinking »
+                      // (DeepSeek R1, Magistral, o-series, Claude extended
+                      // thinking…). Rendu dans un bloc repliable, jamais
+                      // injecté dans la réponse finale.
+                      const reasoningText = (part as { text?: string }).text;
+                      if (!reasoningText) return null;
+                      const reasoningStreaming =
+                        isLiveMessage &&
+                        (part as { state?: string }).state !== "done";
+                      return (
+                        <ReasoningBlock
+                          key={i}
+                          text={reasoningText}
+                          isStreaming={reasoningStreaming}
+                        />
+                      );
                     }
                     if (part.type === "text") {
                       if (isUser) {

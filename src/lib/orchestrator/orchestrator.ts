@@ -1,4 +1,6 @@
 import { nanoid } from "nanoid";
+import { tool, type ToolSet } from "ai";
+import { z } from "zod";
 import { DefaultAgent, resolveAgentConstructor } from "./agents";
 import { withRetry } from "./retry";
 import {
@@ -72,6 +74,7 @@ export class Orchestrator {
     if (mode === "council") return this.runCouncil(args);
     if (mode === "parallel") return this.runParallel(args);
     if (mode === "iterative") return this.runIterative(args);
+    if (mode === "maestro") return this.runMaestro(args);
     return this.runSequential(args);
   }
 
@@ -528,6 +531,198 @@ export class Orchestrator {
     return base ? `${base}\n\n${msg}` : msg;
   }
 
+  // ─── MAESTRO ───────────────────────────────────────────────────────────
+
+  /**
+   * Routage dynamique : le terminal (Maestro) reçoit chaque agent de
+   * l'équipe comme OUTIL appelable — c'est LUI qui décide qui consulter,
+   * dans quel ordre, avec quelle consigne, et il peut re-déléguer pour
+   * creuser ou vérifier. À la différence des autres modes, la topologie
+   * du run n'est pas figée à l'avance : elle émerge des décisions du
+   * Maestro pendant son streaming.
+   *
+   * Chaque délégation émet les mêmes événements que les agents
+   * intermédiaires classiques (agent_start/finish/error + data-agent-output)
+   * — le théâtre et l'audit trail fonctionnent sans changement. `round`
+   * numérote les appels successifs à un même agent.
+   */
+  private async runMaestro(args: OrchestratorRunArgs): Promise<void> {
+    const { ctx, writer } = args;
+    const factory = args.agentFactory ?? defaultAgentFactory;
+    const pipelineRunId = ctx.pipelineRunId ?? nanoid();
+    const agents = this.pipeline.agents;
+    const maestro = agents[agents.length - 1];
+    const team = agents.slice(0, -1);
+
+    // Sans équipe à diriger, on retombe sur du séquentiel (mono-agent).
+    if (team.length === 0) return this.runSequential(args);
+
+    const priorOutputs: AgentPriorOutput[] = [...(ctx.priorOutputs ?? [])];
+    const callCounts = new Map<string, number>();
+
+    const extraTools: ToolSet = {};
+    const toolNames: Array<{ name: string; def: AgentDefinition }> = [];
+    team.forEach((def, position) => {
+      const name = agentToolName(def.label, position);
+      toolNames.push({ name, def });
+      extraTools[name] = tool({
+        description: `Délègue une tâche à l'agent « ${def.label} » (rôle : ${def.role}). L'agent voit la conversation complète et les sorties déjà produites par l'équipe ; donne-lui une consigne précise et autonome.`,
+        inputSchema: z.object({
+          instruction: z
+            .string()
+            .min(1)
+            .describe(
+              "Consigne précise pour cet agent : quoi chercher/produire/vérifier, sous quel angle, avec quel livrable attendu."
+            ),
+        }),
+        execute: async ({ instruction }) => {
+          const round = (callCounts.get(def.id) ?? 0) + 1;
+          callCounts.set(def.id, round);
+          const startedAt = Date.now();
+          await this.emit(args, writer, {
+            type: "agent_start",
+            pipelineRunId,
+            agentId: def.id,
+            role: def.role,
+            label: def.label,
+            position,
+            round,
+          });
+          try {
+            const agent = factory(def);
+            const text = await withRetry(
+              async () =>
+                collectText(
+                  await agent.run({
+                    ...ctx,
+                    pipelineRunId,
+                    priorOutputs: [...priorOutputs],
+                    systemPromptExtras: this.maestroDelegationInstructions(
+                      ctx.systemPromptExtras,
+                      instruction
+                    ),
+                  })
+                ),
+              {
+                onRetry: async (attempt, delayMs) => {
+                  writer.write({
+                    type: "data-agent-retry",
+                    data: {
+                      pipelineRunId,
+                      agentId: def.id,
+                      role: def.role,
+                      label: def.label,
+                      attempt,
+                      delayMs,
+                      round,
+                    },
+                  });
+                },
+              }
+            );
+            priorOutputs.push({
+              agentId: def.id,
+              role: def.role,
+              label: def.label,
+              output: text.value,
+              round,
+            });
+            writer.write({
+              type: "data-agent-output",
+              data: {
+                pipelineRunId,
+                agentId: def.id,
+                role: def.role,
+                label: def.label,
+                output: text.value,
+                round,
+              },
+            });
+            await this.emit(args, writer, {
+              type: "agent_finish",
+              pipelineRunId,
+              agentId: def.id,
+              role: def.role,
+              label: def.label,
+              latencyMs: Date.now() - startedAt,
+              inputTokens: text.inputTokens,
+              outputTokens: text.outputTokens,
+              preview: preview(text.value),
+              round,
+              modelId: def.modelOverride ?? null,
+            });
+            return text.value;
+          } catch (err) {
+            // Un membre qui échoue ne tue pas le run : le Maestro reçoit
+            // l'échec comme résultat d'outil et peut adapter sa stratégie.
+            await this.emitError(args, writer, def, pipelineRunId, err, round);
+            const message = err instanceof Error ? err.message : String(err);
+            return `⚠️ L'agent « ${def.label} » a échoué (${message}). Poursuis sans lui, reformule ta consigne, ou signale la limite dans ta réponse.`;
+          }
+        },
+      });
+    });
+
+    const startedAt = Date.now();
+    await this.emit(args, writer, {
+      type: "agent_start",
+      pipelineRunId,
+      agentId: maestro.id,
+      role: maestro.role,
+      label: maestro.label,
+      position: agents.length - 1,
+    });
+
+    try {
+      const agent = factory(maestro);
+      const result = await agent.run({
+        ...ctx,
+        pipelineRunId,
+        priorOutputs,
+        extraTools,
+        // Routage = délégations + outils éventuels + réponse finale : le
+        // plafond du synthétiseur (5) brides le Maestro, on lui laisse de
+        // la marge sans pour autant autoriser des boucles infinies.
+        maxStepsOverride: 8,
+        systemPromptExtras: this.maestroRoutingInstructions(
+          ctx.systemPromptExtras,
+          toolNames
+        ),
+      });
+      await this.streamFinal({
+        args,
+        def: maestro,
+        pipelineRunId,
+        result,
+        startedAt,
+      });
+    } catch (err) {
+      await this.emitError(args, writer, maestro, pipelineRunId, err);
+      // Même filet de sécurité qu'en council/parallel : si des délégations
+      // ont abouti, on sert leurs sorties brutes plutôt qu'une erreur vide.
+      this.streamStaticText(writer, this.buildSynthesisFallback(priorOutputs));
+    }
+  }
+
+  private maestroRoutingInstructions(
+    base: string | undefined,
+    team: Array<{ name: string; def: AgentDefinition }>
+  ): string {
+    const roster = team
+      .map((t) => `- \`${t.name}\` — ${t.def.label} (rôle : ${t.def.role})`)
+      .join("\n");
+    const msg = `Tu es le MAESTRO ROUTEUR de cette équipe. Tu disposes d'agents spécialisés appelables comme outils :\n\n${roster}\n\nDiscipline de routage :\n1. Analyse la demande et décide quels agents consulter — tous ne sont pas toujours utiles.\n2. Délègue avec une consigne PRÉCISE et autonome (l'agent voit la conversation, pas tes intentions).\n3. Tu peux rappeler un agent pour creuser ou vérifier, et consulter plusieurs agents avant de conclure.\n4. Si la demande est simple, réponds directement sans déléguer — ne consomme pas l'équipe pour rien.\n5. Une fois ta matière réunie, produis TOI-MÊME la réponse finale à l'utilisateur en t'appuyant sur les sorties de l'équipe : synthétique, sourcée, fidèle à leur travail.`;
+    return base ? `${base}\n\n${msg}` : msg;
+  }
+
+  private maestroDelegationInstructions(
+    base: string | undefined,
+    instruction: string
+  ): string {
+    const msg = `Tu interviens comme membre d'une équipe dirigée par un agent Maestro. Sa consigne pour cette intervention :\n\n« ${instruction} »\n\nConcentre-toi sur cette consigne. La conversation complète et les sorties déjà produites par l'équipe te sont fournies comme matériau de référence.`;
+    return base ? `${base}\n\n${msg}` : msg;
+  }
+
   // ─── PARALLEL ──────────────────────────────────────────────────────────
 
   private async runParallel(args: OrchestratorRunArgs): Promise<void> {
@@ -812,6 +1007,22 @@ export class Orchestrator {
       await args.onEvent(event);
     }
   }
+}
+
+/**
+ * Nom d'outil AI SDK pour un agent d'équipe en mode maestro. Contrainte du
+ * SDK : `^[a-zA-Z0-9_-]+$` — on translittère le label (accents retirés) et
+ * on préfixe par la position pour garantir l'unicité même à labels égaux.
+ */
+export function agentToolName(label: string, position: number): string {
+  const slug = label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
+  return `agent_${position + 1}_${slug || "membre"}`;
 }
 
 /**

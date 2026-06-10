@@ -39,6 +39,28 @@ ENV ENCRYPTION_KEY=build_placeholder_key_32_chars_long_for_aes256_scrypt_test
 RUN npm run build
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Migrator — image one-shot qui applique le schéma sur la base AVANT le
+# démarrage de l'app (service `migrate` du docker-compose.prod.yml).
+#
+# Pourquoi une image séparée : le runner standalone ne contient ni drizzle-kit
+# ni les sources du schéma (c'est ce qui le maintient à ~250 MB). Le schéma
+# Louis s'applique par `drizzle-kit push` (déclaratif, idempotent) — `--force`
+# car le conteneur n'a pas de TTY pour confirmer interactivement.
+#
+# Build : docker build --target migrator -t louis-migrate .
+# Run   : docker run --rm -e DATABASE_URL=… louis-migrate
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:24-alpine AS migrator
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json tsconfig.json drizzle.config.ts ./
+COPY src/db ./src/db
+COPY scripts/setup-db.ts ./scripts/setup-db.ts
+
+ENV NODE_ENV=production
+CMD ["sh", "-c", "npx tsx scripts/setup-db.ts && npx drizzle-kit push --force"]
+
+# ─────────────────────────────────────────────────────────────────────────────
 FROM node:24-alpine AS runner
 WORKDIR /app
 

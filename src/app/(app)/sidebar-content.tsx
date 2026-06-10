@@ -17,6 +17,7 @@ import { LouisLogo } from "@/components/louis-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PRIMARY_NAV } from "@/lib/navigation";
 import { ConversationItem } from "./chat/conversation-item";
+import { GettingStarted, type OnboardingState } from "./getting-started";
 
 const settingsNav = {
   href: "/settings",
@@ -36,6 +37,7 @@ type Props = {
   user: { name: string; email: string; role: string };
   conversations: Conversation[];
   projects: ProjectOption[];
+  onboarding?: OnboardingState;
   onNavigate?: () => void;
   /** Forces open layout (used inside Sheet on mobile). */
   forceOpen?: boolean;
@@ -65,6 +67,7 @@ export function SidebarContent({
   user,
   conversations,
   projects,
+  onboarding,
   onNavigate,
   forceOpen,
 }: Props) {
@@ -252,6 +255,11 @@ export function SidebarContent({
           </section>
         )}
       </div>
+
+      {/* Prise en main — visible tant que le parcours n'est pas complété */}
+      {open && onboarding && (
+        <GettingStarted state={onboarding} onNavigate={onNavigate} />
+      )}
 
       {/* Profile + logout */}
       <div className="border-t border-sidebar-border p-2">

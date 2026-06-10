@@ -247,7 +247,21 @@ et [`docs/architecture/data-model.md`](./docs/architecture/data-model.md).
 > Pour les autres modèles (Anthropic, OpenAI, Scaleway, OVH, Albert),
 > les clés sont **optionnelles** et configurables une fois Louis lancé.
 
-### Installation
+### Installation en une commande (recommandée)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.sh | bash
+```
+
+Images pré-buildées (GHCR), secrets générés automatiquement, schéma appliqué
+au démarrage — puis l'**assistant de premier lancement** (`/setup`) guide la
+création du compte admin et la première clé IA dans le navigateur. Détails et
+mise à jour : [docs/installation/one-command.md](./docs/installation/one-command.md).
+
+> Seul prérequis : [Docker](https://docs.docker.com/get-docker/) (Compose v2).
+> Node.js n'est nécessaire que pour l'installation depuis les sources ci-dessous.
+
+### Installation depuis les sources (développement)
 
 **1. Cloner et préparer les secrets**
 

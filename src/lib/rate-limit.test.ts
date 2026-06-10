@@ -4,17 +4,19 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 // connexion au démarrage du test runner.
 vi.mock("./redis", () => {
   const counts = new Map<string, number>();
+  const fake = {
+    async incr(key: string): Promise<number> {
+      const next = (counts.get(key) ?? 0) + 1;
+      counts.set(key, next);
+      return next;
+    },
+    async expire(): Promise<number> {
+      return 1;
+    },
+  };
   return {
-    getRedis: () => ({
-      async incr(key: string): Promise<number> {
-        const next = (counts.get(key) ?? 0) + 1;
-        counts.set(key, next);
-        return next;
-      },
-      async expire(): Promise<number> {
-        return 1;
-      },
-    }),
+    getRedis: () => fake,
+    getRedisReady: async () => fake,
   };
 });
 

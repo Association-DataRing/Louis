@@ -1,5 +1,6 @@
-import type { streamText, UIMessage } from "ai";
+import type { streamText, ToolSet, UIMessage } from "ai";
 import type { AgentRagScope } from "@/db/schema/pipelines";
+import type { ToolCatalogueCache } from "./tool-catalogue";
 
 export type { AgentRagScope };
 
@@ -63,12 +64,17 @@ export interface AgentDefinition {
  * - `iterative`  : approfondissement — le 1er agent (chercheur) reprend ses
  *                  propres notes à chaque tour pour creuser les lacunes, puis
  *                  le terminal produit une note de recherche synthétique.
+ * - `maestro`    : routage dynamique — le terminal (Maestro) reçoit les autres
+ *                  agents comme OUTILS appelables et décide lui-même qui
+ *                  consulter, dans quel ordre, avec quelle consigne, y compris
+ *                  re-déléguer pour creuser. C'est lui qui répond à la fin.
  */
 export const PIPELINE_MODES = [
   "sequential",
   "council",
   "parallel",
   "iterative",
+  "maestro",
 ] as const;
 export type PipelineMode = (typeof PIPELINE_MODES)[number];
 
@@ -131,12 +137,37 @@ export interface AgentContext {
   /** Tag de corrélation pour le tracing. */
   pipelineRunId?: string;
   /**
+   * Cache de catalogue d'outils à durée de vie de la requête, partagé entre
+   * tous les agents d'un même run (council/parallel) pour éviter de
+   * reconstruire le catalogue (≈4 requêtes DB) à chaque `agent.run()`. Absent
+   * → chaque agent reconstruit (comportement historique). Cf. tool-catalogue.ts.
+   */
+  toolCatalogue?: ToolCatalogueCache;
+  /**
    * Signal d'annulation propagé depuis la requête HTTP (req.signal). Quand
    * l'utilisateur clique « Stop », le fetch est aborté → ce signal s'abort →
    * propagé jusqu'à streamText pour couper réellement l'appel LLM serveur
    * (et donc la facturation), pas seulement le rendu client.
    */
   abortSignal?: AbortSignal;
+  /**
+   * Outils supplémentaires injectés par l'orchestrateur, hors catalogue et
+   * hors allowlist (mode maestro : chaque agent de l'équipe devient un outil
+   * appelable par le terminal). Jamais exposés à la configuration utilisateur.
+   */
+  extraTools?: ToolSet;
+  /**
+   * Plafond de steps imposé par l'orchestrateur pour CE run, prioritaire sur
+   * le défaut du rôle (le Maestro routeur a besoin de plus de tours d'outils
+   * que le synthétiseur classique).
+   */
+  maxStepsOverride?: number;
+  /**
+   * Garde-fou human-in-the-loop : fourni par la route (qui détient le
+   * writer), appelé par les outils sensibles AVANT exécution. Résout true
+   * (approuvé) ou false (refusé/expiré). Cf. lib/ai/approval.ts.
+   */
+  requestToolApproval?: (toolName: string, input: unknown) => Promise<boolean>;
 }
 
 export interface AgentPriorOutput {
