@@ -43,14 +43,22 @@ LOUIS_PORT=8080 LOUIS_VERSION=v0.2.0 \
 
 ## Mise à jour
 
+Le plus simple — **relancez la commande d'installation** : elle récupère la
+dernière image et redémarre, en conservant vos données et vos secrets.
+
 ```bash
-cd louis
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.sh | bash
 ```
 
-Le service `migrate` ré-applique le schéma (idempotent) avant le redémarrage
-de l'app — pas d'étape manuelle.
+Ou, depuis le dossier d'installation, le script déposé à l'install :
+
+```bash
+cd louis && ./update.sh
+```
+
+Dans les deux cas, le service `migrate` ré-applique le schéma (idempotent)
+avant le redémarrage de l'app — pas d'étape manuelle. Vos données (base,
+documents) et vos secrets (`.env`) sont préservés.
 
 ## Sauvegarde
 
