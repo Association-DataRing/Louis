@@ -129,13 +129,26 @@ ensure_docker
 mkdir -p "$LOUIS_DIR"
 cd "$LOUIS_DIR"
 
-if [ ! -f "$COMPOSE_FILE" ]; then
-  curl -fsSL "$LOUIS_REPO_RAW/$COMPOSE_FILE" -o "$COMPOSE_FILE" \
-    || fail "Téléchargement de $COMPOSE_FILE impossible depuis $LOUIS_REPO_RAW"
-  ok "$COMPOSE_FILE téléchargé"
-else
-  ok "$COMPOSE_FILE déjà présent (conservé)"
-fi
+# On récupère TOUJOURS la dernière version du compose (aucun secret dedans) :
+# ré-exécuter ce script vaut donc mise à jour complète de la configuration.
+curl -fsSL "$LOUIS_REPO_RAW/$COMPOSE_FILE" -o "$COMPOSE_FILE" \
+  || fail "Téléchargement de $COMPOSE_FILE impossible depuis $LOUIS_REPO_RAW"
+ok "$COMPOSE_FILE à jour"
+
+# Script de mise à jour pratique déposé dans le dossier d'install :
+# l'utilisateur n'a qu'à le lancer (ou ré-exécuter la commande d'install).
+cat > update.sh <<'UPD'
+#!/usr/bin/env bash
+# Met Louis à jour : récupère la dernière image et redémarre. Vos données
+# (base, documents) et vos secrets (.env) sont conservés.
+set -euo pipefail
+cd "$(dirname "$0")"
+echo "Mise à jour de Louis…"
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+echo "Louis est à jour."
+UPD
+chmod +x update.sh
 
 # 3. Secrets ──────────────────────────────────────────────────────────────────
 # ENCRYPTION_KEY chiffre les clés API stockées : la perdre rend les clés
@@ -175,7 +188,7 @@ for _ in $(seq 1 60); do
     echo "  Ouvrez http://localhost:$LOUIS_PORT — l'assistant de premier"
     echo "  lancement vous guide : compte administrateur, clé IA, et c'est prêt."
     echo ""
-    echo "  Mise à jour :   cd $LOUIS_DIR && docker compose -f $COMPOSE_FILE pull && docker compose -f $COMPOSE_FILE up -d"
+    echo "  Mettre à jour : relancez cette commande, ou exécutez $LOUIS_DIR/update.sh"
     echo "  Arrêt :         cd $LOUIS_DIR && docker compose -f $COMPOSE_FILE down"
     # Ouvre le navigateur quand l'environnement le permet (best-effort).
     if command -v open >/dev/null 2>&1; then open "http://localhost:$LOUIS_PORT" || true
