@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Louis — installeur une commande
+# Louis — installeur une commande (macOS + Linux)
 #
 #   curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.sh | bash
 #
+# Windows : utilisez plutôt scripts/install.ps1 (PowerShell) :
+#   irm https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.ps1 | iex
+#
 # Ce script :
-#   1. vérifie que Docker (+ plugin compose) est installé et démarré ;
+#   1. installe Docker s'il manque (Docker Desktop sur macOS, Docker Engine
+#      sur Linux), le démarre s'il est arrêté ;
 #   2. crée un dossier ./louis avec le docker-compose de production ;
 #   3. génère les secrets (.env) — jamais écrasés s'ils existent déjà ;
 #   4. télécharge les images et démarre la stack (app, Postgres+pgvector,
@@ -26,6 +30,9 @@ LOUIS_DIR="${LOUIS_DIR:-louis}"
 LOUIS_PORT="${LOUIS_PORT:-3000}"
 LOUIS_REPO_RAW="${LOUIS_REPO_RAW:-https://raw.githubusercontent.com/Association-DataRing/Louis/main}"
 COMPOSE_FILE="docker-compose.prod.yml"
+# Préfixe des commandes docker : passe à « sudo docker » sur Linux quand le
+# groupe « docker » n'est pas encore actif dans la session (cf. docker_ready).
+DOCKER="docker"
 
 bold()  { printf '\033[1m%s\033[0m\n' "$*"; }
 log()   { printf '  %s\n' "$*"; }
@@ -41,12 +48,25 @@ rand_secret() {
   fi
 }
 
+# Vrai si le daemon Docker répond, en fixant $DOCKER (« docker » ou « sudo
+# docker »). Sur Linux, juste après l'install, l'utilisateur n'est pas encore
+# dans le groupe « docker » (effectif au prochain login) → on bascule sur sudo
+# pour cette session. Les identifiants sudo sont en général encore en cache
+# (l'install via get.docker.com vient de les demander).
+docker_ready() {
+  if docker info >/dev/null 2>&1; then DOCKER="docker"; return 0; fi
+  if command -v sudo >/dev/null 2>&1 && sudo -n docker info >/dev/null 2>&1; then
+    DOCKER="sudo docker"; return 0
+  fi
+  return 1
+}
+
 # Attend que le daemon Docker réponde (jusqu'à ~3 min), en le démarrant au
 # besoin. Docker Desktop (Mac) demande au premier lancement d'accepter les
 # conditions dans une fenêtre — d'où le message, puis on attend que le
 # daemon soit prêt et on poursuit automatiquement.
 wait_for_docker() {
-  if docker info >/dev/null 2>&1; then return 0; fi
+  if docker_ready; then return 0; fi
   case "$(uname -s)" in
     Darwin)
       open -a Docker >/dev/null 2>&1 || open -a "Docker Desktop" >/dev/null 2>&1 || true
@@ -54,11 +74,13 @@ wait_for_docker() {
     Linux)
       if command -v systemctl >/dev/null 2>&1; then
         sudo systemctl start docker >/dev/null 2>&1 || true
+      elif command -v service >/dev/null 2>&1; then
+        sudo service docker start >/dev/null 2>&1 || true
       fi ;;
   esac
   printf '  … attente du démarrage de Docker'
   for _ in $(seq 1 90); do
-    if docker info >/dev/null 2>&1; then printf '\n'; return 0; fi
+    if docker_ready; then printf '\n'; return 0; fi
     printf '.'; sleep 2
   done
   printf '\n'
@@ -110,14 +132,20 @@ ensure_docker() {
     case "$(uname -s)" in
       Darwin) install_docker_mac ;;
       Linux)  install_docker_linux ;;
+      MINGW*|MSYS*|CYGWIN*|Windows_NT)
+        fail "Vous êtes sous Windows. Utilisez la commande PowerShell à la place :
+    irm https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.ps1 | iex" ;;
       *) fail "OS non reconnu. Installez Docker manuellement : https://docs.docker.com/get-docker/" ;;
     esac
   fi
   wait_for_docker \
     || fail "Docker ne répond pas. Lancez Docker Desktop, attendez qu'il soit prêt (icône fixe), puis relancez ce script."
-  docker compose version >/dev/null 2>&1 \
+  $DOCKER compose version >/dev/null 2>&1 \
     || fail "Docker Compose v2 absent. Mettez Docker Desktop à jour (il l'inclut)."
   ok "Docker opérationnel"
+  if [ "$DOCKER" = "sudo docker" ]; then
+    warn "Docker tourne via sudo (groupe « docker » pas encore actif). Pour l'éviter ensuite : sudo usermod -aG docker \"\$USER\" puis reconnectez-vous."
+  fi
 }
 
 bold "Louis — installation"
@@ -143,9 +171,11 @@ cat > update.sh <<'UPD'
 # (base, documents) et vos secrets (.env) sont conservés.
 set -euo pipefail
 cd "$(dirname "$0")"
+DOCKER="docker"
+docker info >/dev/null 2>&1 || DOCKER="sudo docker"
 echo "Mise à jour de Louis…"
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+$DOCKER compose -f docker-compose.prod.yml pull
+$DOCKER compose -f docker-compose.prod.yml up -d
 echo "Louis est à jour."
 UPD
 chmod +x update.sh
@@ -173,8 +203,8 @@ fi
 
 # 4. Démarrage ────────────────────────────────────────────────────────────────
 bold "Téléchargement des images (premier lancement : quelques minutes)…"
-docker compose -f "$COMPOSE_FILE" pull --quiet
-docker compose -f "$COMPOSE_FILE" up -d
+$DOCKER compose -f "$COMPOSE_FILE" pull --quiet
+$DOCKER compose -f "$COMPOSE_FILE" up -d
 ok "Stack démarrée"
 
 # 5. Attente de l'app ─────────────────────────────────────────────────────────

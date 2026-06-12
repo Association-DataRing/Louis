@@ -249,8 +249,16 @@ et [`docs/architecture/data-model.md`](./docs/architecture/data-model.md).
 
 ### Installation en une commande (recommandée)
 
+**macOS / Linux :**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell) :**
+
+```powershell
+irm https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.ps1 | iex
 ```
 
 Images pré-buildées (GHCR), secrets générés automatiquement, schéma appliqué
@@ -259,7 +267,8 @@ création du compte admin et la première clé IA dans le navigateur. Détails e
 mise à jour : [docs/installation/one-command.md](./docs/installation/one-command.md).
 
 > Aucun prérequis à installer soi-même : le script installe [Docker](https://docs.docker.com/get-docker/)
-> s'il manque (Docker Desktop sur macOS, Docker Engine sur Linux).
+> s'il manque (Docker Desktop sur macOS/Windows, Docker Engine sur Linux).
+> Sur Windows neuf, WSL2 peut exiger un redémarrage — relancez alors la commande.
 > Node.js n'est nécessaire que pour l'installation depuis les sources ci-dessous.
 
 ### Installation depuis les sources (développement)

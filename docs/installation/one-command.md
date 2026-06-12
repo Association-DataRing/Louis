@@ -4,15 +4,30 @@ La façon la plus simple d'installer Louis sur une machine (poste de cabinet,
 serveur, VPS). **Aucun prérequis à installer soi-même** : si Docker manque, le
 script l'installe.
 
+### macOS / Linux
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.sh | bash
 ```
 
-Le script :
+### Windows (PowerShell)
 
-1. **vérifie Docker** — l'installe s'il manque (Docker Desktop sur macOS,
-   Docker Engine sur Linux) et le démarre s'il est arrêté. Au premier
-   lancement de Docker Desktop sur Mac, une fenêtre demande d'accepter les
+Ouvrez **PowerShell** et collez :
+
+```powershell
+irm https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.ps1 | iex
+```
+
+> Sur une machine Windows neuve, Docker Desktop s'appuie sur **WSL2** : le
+> script l'installe, mais Windows peut demander **un redémarrage** pour le
+> finaliser. Dans ce cas, redémarrez puis relancez la même commande — le
+> script reprend là où il en était.
+
+Le script (les trois plateformes) :
+
+1. **vérifie Docker** — l'installe s'il manque (Docker Desktop sur macOS et
+   Windows, Docker Engine sur Linux) et le démarre s'il est arrêté. Au premier
+   lancement de Docker Desktop, une fenêtre demande d'accepter les
    conditions : un clic, et le script reprend tout seul ;
 2. crée un dossier `./louis` contenant le `docker-compose.prod.yml` et un
    fichier `.env` avec des **secrets générés aléatoirement** (jamais écrasés
@@ -53,7 +68,10 @@ curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scr
 Ou, depuis le dossier d'installation, le script déposé à l'install :
 
 ```bash
-cd louis && ./update.sh
+cd louis && ./update.sh          # macOS / Linux
+```
+```powershell
+cd louis; .\update.ps1           # Windows
 ```
 
 Dans les deux cas, le service `migrate` ré-applique le schéma (idempotent)
