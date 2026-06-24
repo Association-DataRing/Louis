@@ -57,7 +57,7 @@ Louis ne vend pas d'IA juridique, n'est pas un produit mais un prototype de solu
 
 Le Lab IA de Data Ring est un  bac a sable,  un espace ouvert où l'on essaie, où l'on rate , où l'on recommence où l'on apprend ensemble à habiter techniquement la Technologie. La souveraineté en droit ne se décrète pas elle s'arbitre: Regagner pour créer, pour retrouver la maitrise de ses propres worflows, agents, sa propre forme d'exercice.
 
-C'est un objet de travail mis à l'épreuve : la numérotation v0.1 dit explicitement que le code est en exploration, que l'architecture peut évoluer, que les interfaces ne sont pas stabilisées:
+C'est un objet de travail mis à l'épreuve : la numérotation v0.x dit explicitement que le code est en exploration, que l'architecture peut évoluer, que les interfaces ne sont pas stabilisées:
 C'est une activité de recherche et de logiciel libre sans conterpartie commerciale ni engagement juridique ou opérationnel. 
 
 Vous orchestrez sous votre contrôle **vos propres** fournisseurs d'IA et **vos propres**
@@ -94,18 +94,23 @@ La hiérarchie est déclarée dans un fichier de configuration lisible,
 versionnable, auditable. Chaque réponse est accompagnée du journal des
 agents qui y ont contribué — un véritable « audit trail » opposable.
 
-> **État actuel (v0.1) :** un seul agent (`default-chat`) tourne
-> derrière l'orchestrateur. La couche d'abstraction est en place ;
-> les agents spécialisés arrivent en v0.2.
+> **État actuel (v0.2) :** l'orchestrateur fait coopérer de vrais
+> agents spécialisés via le **Board** — Maestro (chef d'orchestre),
+> Recherche, Légifrance, Rédacteur, Relecteur, Citateur. Quatre
+> presets prêts à l'emploi : *Chat simple*, *Recherche juridique
+> sourcée*, *Rédaction d'actes avec relecture*, *Revue contractuelle
+> contradictoire*. Vous composez vos propres Boards et assignez un
+> modèle à chaque rôle.
 
 ### Chat juridique avec accès aux textes
 
 Posez une question en français à n'importe lequel des grands modèles
 (Mistral, Anthropic, OpenAI, Albert/Etalab, Scaleway, OVH, ou un modèle
 auto-hébergé via Ollama / vLLM). Louis enchaîne automatiquement les
-appels aux outils dont le modèle a besoin : recherche dans Légifrance
-via PISTE, recherche de société dans Pappers, recherche sémantique
-dans vos propres documents (RAG pgvector).
+appels aux outils dont le modèle a besoin : Légifrance, jurisprudence
+judiciaire (Judilibre), doctrine fiscale (BOFIP) et annonces légales
+(BODACC) via PISTE, recherche de société dans Pappers, recherche
+sémantique dans vos propres documents (RAG pgvector).
 
 ```
 Vous : Que dit la jurisprudence sur la rupture brutale d'une
@@ -221,9 +226,9 @@ Au sens du droit et au sens de le technique
 │ Fournisseurs IA     │       │ Connecteurs juridiques  │
 │ (vos clés)          │       │ (vos accès)             │
 │                     │       │                         │
-│ Mistral · Albert    │       │ PISTE · Légifrance      │
-│ Scaleway · OVH      │       │ Pappers                 │
-│ Anthropic · OpenAI  │       │ + serveurs MCP custom   │
+│ Mistral · Albert    │       │ PISTE : Légifrance,     │
+│ Scaleway · OVH      │       │ Judilibre, BOFIP, BODACC│
+│ Anthropic · OpenAI  │       │ Pappers · MCP custom    │
 └─────────────────────┘       └─────────────────────────┘
 ```
 
@@ -242,10 +247,12 @@ et [`docs/architecture/data-model.md`](./docs/architecture/data-model.md).
 | Node.js | 24 LTS | `node -v` |
 | Docker | 24 + Compose v2 | `docker compose version` |
 | Disque libre | ~5 Go (images Docker + pgvector + dépendances) | `df -h .` |
-| Clé Mistral | requise pour le RAG (les embeddings sont fournis uniquement par Mistral en v0.1) | [console.mistral.ai](https://console.mistral.ai) |
+| Embeddings (RAG) | une clé **Mistral** _ou_ un endpoint d'embedding **auto-hébergé** (Ollama / vLLM / llama.cpp / TEI) | [console.mistral.ai](https://console.mistral.ai) · [config embeddings](#embeddings-souverains-rag) |
 
 > Pour les autres modèles (Anthropic, OpenAI, Scaleway, OVH, Albert),
 > les clés sont **optionnelles** et configurables une fois Louis lancé.
+> Pour un RAG 100 % souverain (aucun chunk confidentiel chez un tiers),
+> branchez un backend d'embedding local — voir [Embeddings souverains](#embeddings-souverains-rag).
 
 ### Installation en une commande (recommandée)
 
@@ -374,23 +381,52 @@ Sept types de providers sont supportés :
 
 | Provider | Souveraineté | Embeddings | Note |
 |---|---|---|---|
-| **Mistral** | 🇫🇷 FR | ✅ | Recommandé. Le seul à fournir aussi les embeddings du RAG en v0.1. |
+| **Mistral** | 🇫🇷 FR | ✅ | Recommandé. Fournit aussi les embeddings du RAG (`mistral-embed`, défaut). |
 | **Scaleway** | 🇫🇷 FR | — | OpenAI-compatible. |
 | **OVHcloud** | 🇫🇷 FR | — | Endpoints AI par modèle. |
 | **Albert** (Etalab) | 🇫🇷 FR | — | Modèles souverains de l'État français. |
 | **Anthropic** | 🇺🇸 US | — | Claude. SDK natif. |
 | **OpenAI** | 🇺🇸 US | — | GPT. SDK natif. |
-| **OpenAI-compatible** | varie | varie | Ollama, vLLM, llama.cpp, ou tout endpoint compatible. |
+| **OpenAI-compatible** | varie | ✅ | Ollama, vLLM, llama.cpp, TEI… génération **et** embeddings souverains. |
 
 Badge FR / UE / US affiché partout dans l'interface : sidebar, header,
 sélecteur de modèle.
+
+### Embeddings souverains (RAG)
+
+Par défaut, le RAG calcule ses vecteurs via `mistral-embed` (votre clé
+Mistral). Pour que **les chunks de documents confidentiels ne quittent
+jamais votre infrastructure**, branchez un endpoint d'embedding
+OpenAI-compatible auto-hébergé (Ollama, vLLM, llama.cpp, HF TEI). Trois
+variables d'environnement, prioritaires sur Mistral dès qu'elles sont
+définies :
+
+```env
+# Endpoint OpenAI-compatible auto-hébergé. Vide → repli sur mistral-embed.
+LOUIS_EMBEDDING_BASE_URL=http://host.docker.internal:8080/v1
+LOUIS_EMBEDDING_MODEL=Qwen/Qwen3-Embedding-0.6B
+LOUIS_EMBEDDING_API_KEY=        # laissez vide si le serveur n'en exige pas
+```
+
+> ⚠️ **Deux points à respecter :**
+> - **Dimension fixe :** le modèle doit produire des vecteurs de
+>   **1024 dimensions** (`EMBEDDING_DIM`). `Qwen3-Embedding-0.6B` sort
+>   en 1024 ✅. Une autre dimension impose d'ajuster le schéma et de
+>   ré-indexer (pas de mélange à chaud).
+> - **Réseau Docker :** depuis le conteneur, `localhost` désigne le
+>   conteneur lui-même. Pour un serveur d'embedding tournant sur l'hôte,
+>   utilisez `host.docker.internal` (macOS/Windows) ou l'IP LAN de
+>   l'hôte (Linux), pas `localhost`.
 
 ### Connecteurs juridiques
 
 **Settings → Connecteurs** permet de brancher PISTE (api.gouv.fr) et
 Pappers. Vous configurez vos propres `client_id` / `client_secret`
 PISTE et votre clé Pappers ; Louis se charge de la rotation des tokens
-OAuth et de l'invalidation au 401.
+OAuth et de l'invalidation au 401. Une seule configuration PISTE
+débloque quatre sources : **Légifrance** (codes, lois, décrets),
+**Judilibre** (jurisprudence judiciaire), **BOFIP** (doctrine fiscale)
+et **BODACC** (annonces légales).
 
 ### MCP custom
 
@@ -415,8 +451,13 @@ pour la référence complète.
 ### 🟢 Disponible — fonctionnel et testé
 
 - Chat streaming multi-tour, multi-provider, persistance Postgres
-- Tool calling : **Légifrance** (via PISTE), **Pappers**, recherche
-  RAG dans vos documents (pgvector)
+- **Orchestrateur multi-agents (Board)** — agents spécialisés (Maestro,
+  Recherche, Légifrance, Rédacteur, Relecteur, Citateur), 4 presets,
+  un modèle assignable par rôle
+- Tool calling : **Légifrance**, **Judilibre**, **BOFIP**, **BODACC**
+  (via PISTE), **Pappers**, recherche RAG dans vos documents (pgvector)
+- **RAG souverain** — embeddings auto-hébergeables (Ollama / vLLM /
+  llama.cpp / TEI), repli Mistral par défaut
 - **DocPanel side-by-side** — PDF natif sans toolbar parasite, DOCX
   rendu fidèle via Gotenberg
 - **Cmd+K** — palette de commandes globale (conversations, projets,
@@ -436,7 +477,8 @@ pour la référence complète.
   Gotenberg) avec schéma typé, `edit_document` avec tracked edits
   accept/reject
 - **BYOK chiffré** — clés AES-256-GCM, badges souveraineté FR/UE/US
-- **Connecteurs juridiques** — PISTE OAuth (Légifrance), Pappers
+- **Connecteurs juridiques** — PISTE OAuth (Légifrance, Judilibre,
+  BOFIP, BODACC), Pappers
 - **MCP-native** — serveurs MCP custom par utilisateur
 - **Multi-utilisateur** — NextAuth v5 Credentials + RBAC admin/member
 - **Journal d'audit** append-only sur les opérations sensibles
@@ -444,18 +486,17 @@ pour la référence complète.
 - **Docker Compose** une commande
 - **Sécurité** — rate-limit Redis, headers HTTP OWASP, audit log,
   SSL Postgres strict, sanitization filenames
-- **Smoke tests** Playwright (11 routes principales) + unit tests
-  Vitest (15 tests sur crypto et rate-limit)
+- **Tests** — 237 tests unitaires Vitest (28 fichiers : crypto,
+  rate-limit, connecteurs, orchestrateur, RAG…) + smoke tests Playwright
 
 ### 🟡 Partiel — utilisable mais à affiner
 
 - Citations cliquables avec surlignage de la cible (propagation
   `targetText` ok, UX du highlight à valider par type de PDF)
 
-### ⚪ Planifié pour v0.2
+### ⚪ Planifié
 
-- Sub-APIs PISTE étendues : Judilibre (Cour de cassation), JADE
-  (Conseil d'État), INPI, BODACC
+- Sub-APIs PISTE supplémentaires : JADE (Conseil d'État), INPI
 - Project sharing par email entre membres du cabinet
 - Internationalisation anglaise
 - Veille juridique automatisée — surveillance Légifrance / JADE / BODACC
@@ -485,10 +526,10 @@ pour la référence complète.
 
 | Milestone | Date cible | Statut |
 |---|---|---|
-| v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | 🟡 En cours |
-| v0.1.x — Sub-APIs PISTE étendues + sécurité durcie | 2026-Q3 | ⚪ À venir |
-| v0.2 — Orchestrateur multi-agents (recherche, rédaction, relecteur, citateur) + pipelines métier | 2026-Q4 | ⚪ À venir |
-| v0.3 — i18n, project sharing, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
+| v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | ✅ Livré |
+| v0.2 — Orchestrateur multi-agents (Board) + connecteurs PISTE étendus (Judilibre, BOFIP, BODACC) + RAG souverain + installeur une commande (macOS/Linux/Windows) | 2026-Q2 | ✅ Livré (v0.2.1) |
+| v0.2.x — JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
+| v0.3 — i18n anglaise, project sharing, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
 | v1.0 — Production-ready, documentation complète | 2027 | ⚪ À venir |
 
 ---
