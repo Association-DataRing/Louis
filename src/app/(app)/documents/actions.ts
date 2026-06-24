@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
@@ -10,6 +10,7 @@ import { deleteObject } from "@/lib/storage";
 import { recordAudit } from "@/lib/audit";
 import { reindexDocument, type ReindexResult } from "@/lib/rag/index-document";
 import { diffLines, collapseDiff, type DisplayOp } from "@/lib/diff/line-diff";
+import { decryptDocumentText } from "@/lib/document-crypto";
 
 export async function deleteDocument(id: string): Promise<void> {
   const userId = await requireUserId();
@@ -63,7 +64,13 @@ export async function reindexAllDocumentsAction(): Promise<{
     .select({ id: documents.id })
     .from(documents)
     .where(
-      and(eq(documents.userId, userId), isNotNull(documents.extractedText))
+      and(
+        eq(documents.userId, userId),
+        or(
+          isNotNull(documents.extractedText),
+          isNotNull(documents.encExtractedText)
+        )
+      )
     );
   let indexed = 0;
   let failed = 0;
@@ -206,6 +213,9 @@ export async function getDocumentVersionDiff(
       filename: documents.filename,
       parentDocumentId: documents.parentDocumentId,
       extractedText: documents.extractedText,
+      encDek: documents.encDek,
+      encExtractedText: documents.encExtractedText,
+      extractedTextNonce: documents.extractedTextNonce,
     })
     .from(documents)
     .where(and(inArray(documents.id, [aId, bId]), eq(documents.userId, userId)));
@@ -223,7 +233,11 @@ export async function getDocumentVersionDiff(
     };
   }
 
-  if (a.extractedText == null || b.extractedText == null) {
+  const [aText, bText] = await Promise.all([
+    decryptDocumentText(a),
+    decryptDocumentText(b),
+  ]);
+  if (aText == null || bText == null) {
     return {
       ok: false,
       error:
@@ -233,8 +247,8 @@ export async function getDocumentVersionDiff(
 
   // Toujours différ l'ancienne version vers la plus récente.
   const [older, newer] = a.version <= b.version ? [a, b] : [b, a];
-  const oldText = older.extractedText ?? "";
-  const newText = newer.extractedText ?? "";
+  const oldText = a.version <= b.version ? aText : bText;
+  const newText = a.version <= b.version ? bText : aText;
 
   const { ops, truncated: dpTruncated } = diffLines(oldText, newText);
   const collapsed = collapseDiff(ops);

@@ -45,6 +45,7 @@ import {
   type UntrustedBlock,
 } from "@/lib/orchestrator";
 import { loadPipelineForUser } from "@/lib/orchestrator/repository";
+import { decryptDocumentText } from "@/lib/document-crypto";
 
 type Body = {
   messages: UIMessage[];
@@ -265,6 +266,9 @@ export async function POST(req: Request) {
       .select({
         filename: documents.filename,
         extractedText: documents.extractedText,
+        encDek: documents.encDek,
+        encExtractedText: documents.encExtractedText,
+        extractedTextNonce: documents.extractedTextNonce,
         extractionStatus: documents.extractionStatus,
       })
       .from(documents)
@@ -273,7 +277,8 @@ export async function POST(req: Request) {
       );
 
     for (const d of docs) {
-      if (d.extractedText) {
+      const extractedText = await decryptDocumentText(d);
+      if (extractedText) {
         // Quand le texte a été tronqué à l'extraction (gros document), on le
         // signale DANS le bloc : sans ça le modèle répond avec assurance sur un
         // contrat à moitié lu. Il sait alors qu'il doit déférer à search_documents
@@ -285,7 +290,7 @@ export async function POST(req: Request) {
         untrustedBlocks.push({
           kind: "document",
           label: d.filename,
-          text: `${d.extractedText}${notice}`,
+          text: `${extractedText}${notice}`,
         });
       }
     }

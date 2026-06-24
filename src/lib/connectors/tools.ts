@@ -18,7 +18,10 @@ import {
   applyTrackedEdits,
   extractDocxBodyText,
 } from "@/lib/docgen/docx-tracked";
-import { getObjectBytes } from "@/lib/storage";
+import {
+  decryptDocumentText,
+  fetchDocumentBytes,
+} from "@/lib/document-crypto";
 
 /**
  * Périmètre projet (modèle dossier = projet). Quand fourni, les outils
@@ -519,6 +522,10 @@ export async function buildToolsForUser(
             contentType: documents.contentType,
             storageKey: documents.storageKey,
             extractedText: documents.extractedText,
+            encDek: documents.encDek,
+            encExtractedText: documents.encExtractedText,
+            extractedTextNonce: documents.extractedTextNonce,
+            dekNonce: documents.dekNonce,
           })
           .from(documents)
           .where(
@@ -532,14 +539,14 @@ export async function buildToolsForUser(
           return toolError("validation", "Document introuvable.");
         }
         // Préfère un re-extract direct du DOCX si dispo (paragraphes
-        // proprement séparés). Sinon retombe sur extracted_text.
-        let text = doc.extractedText ?? "";
+        // proprement séparés). Sinon retombe sur extracted_text déchiffré.
+        let text = (await decryptDocumentText(doc)) ?? "";
         if (
           doc.contentType ===
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ) {
           try {
-            const bytes = Buffer.from(await getObjectBytes(doc.storageKey));
+            const bytes = await fetchDocumentBytes(doc);
             const fresh = await extractDocxBodyText(bytes);
             if (fresh.length > 0) text = fresh;
           } catch {
@@ -581,8 +588,12 @@ export async function buildToolsForUser(
         const [doc] = await db
           .select({
             extractedText: documents.extractedText,
+            encDek: documents.encDek,
+            encExtractedText: documents.encExtractedText,
+            extractedTextNonce: documents.extractedTextNonce,
             contentType: documents.contentType,
             storageKey: documents.storageKey,
+            dekNonce: documents.dekNonce,
             filename: documents.filename,
           })
           .from(documents)
@@ -591,13 +602,13 @@ export async function buildToolsForUser(
           )
           .limit(1);
         if (!doc) return toolError("validation", "Document introuvable.");
-        let text = doc.extractedText ?? "";
+        let text = (await decryptDocumentText(doc)) ?? "";
         if (
           doc.contentType ===
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ) {
           try {
-            const bytes = Buffer.from(await getObjectBytes(doc.storageKey));
+            const bytes = await fetchDocumentBytes(doc);
             const fresh = await extractDocxBodyText(bytes);
             if (fresh.length > 0) text = fresh;
           } catch {}
@@ -685,6 +696,8 @@ export async function buildToolsForUser(
             filename: documents.filename,
             contentType: documents.contentType,
             storageKey: documents.storageKey,
+            encDek: documents.encDek,
+            dekNonce: documents.dekNonce,
           })
           .from(documents)
           .where(
@@ -702,7 +715,7 @@ export async function buildToolsForUser(
           );
         }
 
-        const bytes = Buffer.from(await getObjectBytes(doc.storageKey));
+        const bytes = await fetchDocumentBytes(doc);
         const result = await applyTrackedEdits(bytes, edits, {
           author: "Louis",
         });

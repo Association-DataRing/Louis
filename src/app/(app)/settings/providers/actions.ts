@@ -7,7 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
-import { providerKeys } from "@/db/schema";
+import { providerKeys, pipelineAgents } from "@/db/schema";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { assertSafeUrl, SsrfError } from "@/lib/net-guard";
 import { PROVIDER_TYPES } from "@/lib/providers/catalog";
@@ -115,11 +115,23 @@ export async function toggleProviderKeyActive(
     .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)))
     .limit(1);
   if (!current) return { ok: false, error: "Clé introuvable." };
+  const becomingInactive = current.isActive;
   try {
-    await db
-      .update(providerKeys)
-      .set({ isActive: !current.isActive })
-      .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(providerKeys)
+        .set({ isActive: !current.isActive })
+        .where(and(eq(providerKeys.id, id), eq(providerKeys.userId, userId)));
+      // Quand une clé devient inactive, les agents de pipeline qui la
+      // référencent explicitement tomberaient en erreur au prochain appel.
+      // On les remet à NULL pour qu'ils utilisent le fallback (clé du chat).
+      if (becomingInactive) {
+        await tx
+          .update(pipelineAgents)
+          .set({ providerKeyId: null })
+          .where(eq(pipelineAgents.providerKeyId, id));
+      }
+    });
   } catch {
     return { ok: false, error: "Impossible de modifier l'état de la clé." };
   }
