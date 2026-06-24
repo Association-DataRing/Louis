@@ -35,9 +35,19 @@ export const DOCX_MEDIA_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 export const TEXT_MEDIA_TYPE = "text/plain";
 
+/** Représentation du texte : Markdown structuré (PDF) ou texte brut. */
+export type TextFormat = "markdown" | "text";
+
 export type ExtractResult = {
   text: string;
   truncated: boolean;
+  /**
+   * Format du `text` produit. Les PDF ressortent désormais en Markdown
+   * structuré (titres, paragraphes, listes) ; DOCX et texte brut restent en
+   * `text`. Persisté dans `documents.text_format` et lu par le DocPanel pour
+   * décider du rendu (Markdown vs brut).
+   */
+  format: TextFormat;
 };
 
 export async function extractText(
@@ -45,12 +55,17 @@ export async function extractText(
   contentType: string
 ): Promise<ExtractResult> {
   let raw: string;
+  let format: TextFormat = "text";
 
   if (contentType === PDF_MEDIA_TYPE) {
+    // Conversion locale en Markdown structuré (souveraine, gratuite, hors-ligne).
     raw = await extractPdf(buffer);
+    format = "markdown";
     // H17 : un PDF scanné ressort quasi vide → on le signale explicitement
     // plutôt que de l'enregistrer « ok » avec un texte vide (invisible RAG,
     // inutilisable en analyse tabulaire, sans aucun message à l'utilisateur).
+    // L'appelant bascule alors vers l'OCR (cf. lib/ocr), qui renvoie lui aussi
+    // du Markdown.
     if (raw.trim().length < SCANNED_PDF_MIN_CHARS) {
       throw new ScannedPdfError();
     }
@@ -66,21 +81,17 @@ export async function extractText(
   return {
     text: truncated ? raw.slice(0, MAX_TEXT_LENGTH) : raw,
     truncated,
+    format,
   };
 }
 
 async function extractPdf(buffer: Buffer): Promise<string> {
-  // pdf-parse v1.1.1 — embarque sa propre copie bundlée de pdfjs sans
-  // worker, ce qui évite tout le tintouin Turbopack / fake worker. Import
-  // du sub-path pour contourner le bug d'auto-test au require de v1.
-  type PdfParseFn = (data: Buffer) => Promise<{ text: string }>;
-  const mod = (await import(
-    "pdf-parse/lib/pdf-parse.js"
-  )) as unknown as { default?: PdfParseFn } | PdfParseFn;
-  const pdfParse: PdfParseFn =
-    typeof mod === "function" ? mod : (mod.default as PdfParseFn);
-  const result = await pdfParse(buffer);
-  return result.text ?? "";
+  // Conversion structurée locale via pdfjs (cf. lib/pdf/to-markdown). Remplace
+  // l'extraction texte-brut de pdf-parse : le Markdown produit devient la
+  // représentation canonique du document partout (RAG, prompt, analyses,
+  // affichage), unifiant le rendu avec celui de l'OCR.
+  const { pdfToMarkdown } = await import("@/lib/pdf/to-markdown");
+  return pdfToMarkdown(buffer);
 }
 
 async function extractDocx(buffer: Buffer): Promise<string> {

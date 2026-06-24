@@ -11,11 +11,11 @@ import {
 import { documents } from "./documents";
 
 /**
- * 1024 dimensions matches Mistral's `mistral-embed` output size — the
- * default embedding model for Louis. Other providers / dimensions are
- * not supported in v0.1.
+ * 1536 dimensions matches OpenAI text-embedding-3-small output size (default
+ * via OpenRouter). Mistral mistral-embed (1024) is no longer the default.
+ * All existing chunks must be cleared before changing this value.
  */
-export const EMBEDDING_DIM = 1024;
+export const EMBEDDING_DIM = 1536;
 
 export const documentChunks = pgTable(
   "document_chunks",
