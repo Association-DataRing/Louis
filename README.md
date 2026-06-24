@@ -106,9 +106,25 @@ recalcul complet (utile après un changement de modèle d'embedding).
 Le bouton de réindexation dans l'UI est devenu un dropdown à deux options :
 _Indexer les nouveaux documents_ / _Tout réindexer (forcer)_.
 
+### Citations cliquables avec surlignage précis
+
+Les citations insérées par Louis dans ses réponses (liens `louis-doc:`) ouvrent
+le DocPanel directement sur la source citée, avec le passage surligné et centré.
+
+- **Normalisation Unicode** — `src/lib/text-highlight.ts` : `findNormalized()`
+  réconcilie NFD/NFC pour éviter les faux-négatifs entre le texte extrait par
+  pdfjs (souvent NFD) et la citation produite par le LLM (souvent NFC).
+- **Aiguille adaptative** — `findNormalizedAdaptive()` tente 120 → 60 → 30 chars
+  pour les citations trop longues pour correspondre mot pour mot.
+- **Highlight inline** — `<mark class="louis-highlight">` inséré via `splitText`
+  (DOM Range) dans le DocPanel Markdown/DOCX, et via le `textRenderer` react-pdf
+  dans le DocPanel PDF.
+- **Animation pulse** — `@keyframes louis-highlight-pulse` (anneau box-shadow,
+  `prefers-reduced-motion` respecté).
+
 ### Tests
 
-244 tests Vitest passent (`npx vitest run`), contre 15 dans l'upstream. Ajouts :
+264 tests Vitest passent (`npx vitest run`), contre 15 dans l'upstream. Ajouts :
 
 | Fichier | Cas couverts |
 |---|---|
@@ -116,6 +132,7 @@ _Indexer les nouveaux documents_ / _Tout réindexer (forcer)_.
 | `src/lib/extract.test.ts` | format Markdown, `ScannedPdfError`, troncature, type inconnu |
 | `src/lib/document-crypto.test.ts` | rétrocompat null-DEK, round-trip Markdown, MAC invalide |
 | `src/lib/rag/chunk.test.ts` | frontière titre Markdown, titre + contenu groupés, N titres = N chunks |
+| `src/lib/text-highlight.test.ts` | normalisation accents, fallback adaptatif 120→60→30, edge cases |
 
 ---
 
@@ -519,12 +536,9 @@ pour la référence complète.
 - **Téléchargement de documents** depuis la page `/documents`
 - **Réindexation intelligente** — indexation des nouveaux seulement par défaut,
   dropdown « forcer » pour changer de modèle d'embedding
-- **Tests étendus** — 244 tests Vitest (vs 15 upstream)
-
-### 🟡 Partiel — utilisable mais à affiner
-
-- Citations cliquables avec surlignage de la cible (propagation
-  `targetText` ok, UX du highlight à valider par type de PDF)
+- **Citations avec surlignage précis** — normalisation Unicode, highlight inline
+  `<mark>` via `splitText`, aiguille adaptative 120→60→30 chars, animation pulse
+- **Tests étendus** — 264 tests Vitest (vs 15 upstream)
 
 ### ⚪ Planifié pour v0.2
 
