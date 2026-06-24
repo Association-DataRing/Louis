@@ -181,7 +181,7 @@ export function DocumentRow({
                 variant="outline"
                 className="shrink-0 text-[10px] text-warning border-warning/40"
               >
-                clé Mistral manquante
+                embedding non configuré
               </Badge>
             ) : (
               <Badge

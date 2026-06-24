@@ -129,6 +129,25 @@
   --warning-foreground: oklch(0.18 0.03 75);
 }
 
+@keyframes louis-highlight-pulse {
+  0%   { box-shadow: 0 0 0 0   color-mix(in oklch, var(--highlight) 70%, transparent); }
+  60%  { box-shadow: 0 0 0 4px color-mix(in oklch, var(--highlight) 40%, transparent); }
+  100% { box-shadow: 0 0 0 4px transparent; }
+}
+
+.louis-highlight {
+  background-color: var(--highlight);
+  color: var(--highlight-foreground);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .louis-highlight {
+    animation: louis-highlight-pulse 0.75s ease-out 0.5s 1 both;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
