@@ -5,7 +5,7 @@ import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
-import { documents, documentFolders } from "@/db/schema";
+import { documents, documentFolders, documentChunks } from "@/db/schema";
 import { deleteObject } from "@/lib/storage";
 import { recordAudit } from "@/lib/audit";
 import { reindexDocument, type ReindexResult } from "@/lib/rag/index-document";
@@ -52,15 +52,18 @@ export async function reindexDocumentAction(
   return result;
 }
 
-/** R6 : réindexe tous les documents de l'utilisateur (utile après avoir
- * ajouté sa clé Mistral suite à des imports non indexés). */
-export async function reindexAllDocumentsAction(): Promise<{
-  indexed: number;
-  failed: number;
-  noKey: boolean;
-}> {
+/** R6 : réindexe les documents de l'utilisateur.
+ * Par défaut (`onlyUnindexed: true`), ignore les documents déjà indexés
+ * (qui ont au moins un chunk) — utile après ajout de clé Mistral.
+ * `onlyUnindexed: false` force la ré-indexation complète (après changement
+ * de modèle d'embedding). */
+export async function reindexAllDocumentsAction(
+  opts: { onlyUnindexed?: boolean } = {}
+): Promise<{ indexed: number; failed: number; noKey: boolean; skipped: number }> {
+  const { onlyUnindexed = true } = opts;
   const userId = await requireUserId();
-  const docs = await db
+
+  const allDocs = await db
     .select({ id: documents.id })
     .from(documents)
     .where(
@@ -72,10 +75,26 @@ export async function reindexAllDocumentsAction(): Promise<{
         )
       )
     );
+
+  let docsToProcess = allDocs;
+  let skipped = 0;
+
+  if (onlyUnindexed && allDocs.length > 0) {
+    const indexedRows = await db
+      .selectDistinct({ id: documentChunks.documentId })
+      .from(documentChunks)
+      .innerJoin(documents, eq(documentChunks.documentId, documents.id))
+      .where(eq(documents.userId, userId));
+    const indexedSet = new Set(indexedRows.map((r) => r.id));
+    const unindexed = allDocs.filter((d) => !indexedSet.has(d.id));
+    skipped = allDocs.length - unindexed.length;
+    docsToProcess = unindexed;
+  }
+
   let indexed = 0;
   let failed = 0;
   let noKey = false;
-  for (const d of docs) {
+  for (const d of docsToProcess) {
     const r = await reindexDocument(userId, d.id);
     if (r.ok) indexed += 1;
     else {
@@ -84,7 +103,7 @@ export async function reindexAllDocumentsAction(): Promise<{
     }
   }
   revalidatePath("/documents");
-  return { indexed, failed, noKey };
+  return { indexed, failed, noKey, skipped };
 }
 
 const folderNameSchema = z.string().trim().min(1).max(80);
