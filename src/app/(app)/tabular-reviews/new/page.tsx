@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, or } from "drizzle-orm";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -34,7 +34,13 @@ export default async function NewReviewPage() {
       })
       .from(documents)
       .where(
-        and(eq(documents.userId, userId), isNotNull(documents.extractedText))
+        and(
+          eq(documents.userId, userId),
+          or(
+            isNotNull(documents.extractedText),
+            isNotNull(documents.encExtractedText)
+          )
+        )
       )
       .orderBy(desc(documents.createdAt)),
   ]);

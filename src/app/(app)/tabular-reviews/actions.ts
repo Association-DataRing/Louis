@@ -5,7 +5,7 @@ import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { and, eq, inArray, isNotNull, lt } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { z } from "zod";
 import { generateText, Output, type LanguageModel } from "ai";
 import { requireUserId } from "@/lib/auth/permissions";
@@ -290,7 +290,10 @@ export async function addReviewDocuments(
       and(
         eq(documents.userId, userId),
         inArray(documents.id, parsed.data.documentIds),
-        isNotNull(documents.extractedText)
+        or(
+          isNotNull(documents.extractedText),
+          isNotNull(documents.encExtractedText)
+        )
       )
     );
   if (validDocs.length === 0) {
