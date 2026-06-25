@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
-import { getObjectBytes } from "@/lib/storage";
+import { fetchDocumentBytes } from "@/lib/document-crypto";
 
 type Params = { id: string };
 
@@ -38,6 +38,8 @@ export async function GET(
       filename: documents.filename,
       contentType: documents.contentType,
       storageKey: documents.storageKey,
+      encDek: documents.encDek,
+      dekNonce: documents.dekNonce,
     })
     .from(documents)
     .where(and(eq(documents.id, id), eq(documents.userId, userId)))
@@ -52,7 +54,7 @@ export async function GET(
 
   let html: string;
   try {
-    const bytes = Buffer.from(await getObjectBytes(doc.storageKey));
+    const bytes = await fetchDocumentBytes(doc);
     const result = await mammoth.convertToHtml({ buffer: bytes });
     html = result.value;
   } catch {

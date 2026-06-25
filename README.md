@@ -21,18 +21,111 @@ du Droit. Conçue par l'**Association DataRing**
 
 ## Sommaire
 
-1. [Le problème](#le-problème)
-2. [Ce que Louis fait](#ce-que-louis-fait)
-3. [Le manifeste](#le-manifeste)
-4. [Architecture](#architecture)
-5. [Démarrage](#démarrage)
-6. [Configuration](#configuration)
-7. [État réel des fonctionnalités](#état-réel-des-fonctionnalités)
-8. [Stack technique](#stack-technique)
-9. [Roadmap](#roadmap)
-10. [Sécurité](#sécurité)
-11. [Contribuer](#contribuer)
-12. [Licence](#licence)
+1. [Nouveautés récentes](#nouveautés-récentes)
+2. [Le problème](#le-problème)
+3. [Ce que Louis fait](#ce-que-louis-fait)
+4. [Le manifeste](#le-manifeste)
+5. [Architecture](#architecture)
+6. [Démarrage](#démarrage)
+7. [Configuration](#configuration)
+8. [État réel des fonctionnalités](#état-réel-des-fonctionnalités)
+9. [Stack technique](#stack-technique)
+10. [Roadmap](#roadmap)
+11. [Sécurité](#sécurité)
+12. [Contribuer](#contribuer)
+13. [Licence](#licence)
+
+---
+
+## Nouveautés récentes
+
+Fonctionnalités récemment ajoutées au projet : chiffrement des documents à
+enveloppe, OCR souverain pluggable, conversion PDF → Markdown canonique et
+citations cliquables avec surlignage précis.
+
+### PDF → Markdown canonique
+
+`src/lib/pdf/to-markdown.ts` — conversion locale pdfjs → Markdown structuré.
+Les titres sont inférés à partir des tailles de police, les listes et paragraphes
+sont préservés. Zéro dépendance externe, souverain, fonctionne hors-ligne.
+Remplace `pdf-parse`.
+
+Le chunking RAG (`src/lib/rag/chunk.ts`) est désormais markdown-aware : un titre
+Markdown ouvre un nouveau chunk, ce qui améliore la pertinence des résultats RAG
+sur les documents structurés.
+
+Le DocPanel propose une bascule « Aperçu PDF / Markdown » (`markdown-doc-view.tsx`).
+
+### OCR pluggable
+
+`src/lib/ocr/` — module OCR avec chaîne de fallback configurable :
+Mistral OCR dédié → modèle vision (OpenRouter / Anthropic / OpenAI) → Tesseract
+local (`fra`). Jamais bloquant. La page **Settings → OCR** permet de forcer un
+moteur ou d'observer l'état du fallback.
+
+### Chiffrement enveloppe DEK complet (ADR 0005 Phase 1 + 2)
+
+Les blobs S3 **et** le texte extrait sont chiffrés à l'upload avec un DEK dédié
+par document (XChaCha20), lui-même enveloppé par la master key AES-256-GCM.
+
+- `src/lib/sodium.ts` — wrapper libsodium-sumo
+- `src/lib/crypto-envelope.ts` — génération DEK, encrypt/decrypt, wrap/unwrap
+- `src/lib/document-crypto.ts` — `decryptDocumentText()`, `fetchDocumentBytes()`,
+  `fetchDocumentDecrypted()` (rétrocompatibilité null-DEK)
+- Architecture documentée dans `docs/architecture/decisions/0005-client-data-encryption.md`
+
+> Les chunks RAG (`document_chunks`) restent en clair — compromis délibéré
+> souveraineté/performance, cf. ADR 0005 §9 option A.
+
+### Embedding configurable
+
+Les embeddings ne sont plus liés à Mistral uniquement. Trois variables `.env`
+suffisent pour pointer vers n'importe quel endpoint compatible
+(`LOUIS_EMBEDDING_BASE_URL`, `LOUIS_EMBEDDING_MODEL`, `LOUIS_EMBEDDING_API_KEY`).
+
+### Téléchargement de documents
+
+Le bouton « Télécharger » est désormais accessible depuis la page `/documents`
+(menu contextuel de chaque ligne), en plus du DocPanel du chat. Le déchiffrement
+S3 est transparent — l'utilisateur reçoit le fichier original en clair.
+
+### Réindexation intelligente
+
+`reindexAllDocumentsAction` accepte un paramètre `{ onlyUnindexed: boolean }`
+(défaut `true`). Par défaut, seuls les documents sans chunk existant sont traités —
+pas de refacturation d'embeddings déjà calculés. L'option `false` force le
+recalcul complet (utile après un changement de modèle d'embedding).
+
+Le bouton de réindexation dans l'UI est devenu un dropdown à deux options :
+_Indexer les nouveaux documents_ / _Tout réindexer (forcer)_.
+
+### Citations cliquables avec surlignage précis
+
+Les citations insérées par Louis dans ses réponses (liens `louis-doc:`) ouvrent
+le DocPanel directement sur la source citée, avec le passage surligné et centré.
+
+- **Normalisation Unicode** — `src/lib/text-highlight.ts` : `findNormalized()`
+  réconcilie NFD/NFC pour éviter les faux-négatifs entre le texte extrait par
+  pdfjs (souvent NFD) et la citation produite par le LLM (souvent NFC).
+- **Aiguille adaptative** — `findNormalizedAdaptive()` tente 120 → 60 → 30 chars
+  pour les citations trop longues pour correspondre mot pour mot.
+- **Highlight inline** — `<mark class="louis-highlight">` inséré via `splitText`
+  (DOM Range) dans le DocPanel Markdown/DOCX, et via le `textRenderer` react-pdf
+  dans le DocPanel PDF.
+- **Animation pulse** — `@keyframes louis-highlight-pulse` (anneau box-shadow,
+  `prefers-reduced-motion` respecté).
+
+### Tests
+
+281 tests Vitest passent (`npx vitest run`). Ajouts :
+
+| Fichier | Cas couverts |
+|---|---|
+| `src/lib/pdf/to-markdown.test.ts` | H1, H3, liste, paragraphe, document vide |
+| `src/lib/extract.test.ts` | format Markdown, `ScannedPdfError`, troncature, type inconnu |
+| `src/lib/document-crypto.test.ts` | rétrocompat null-DEK, round-trip Markdown, MAC invalide |
+| `src/lib/rag/chunk.test.ts` | frontière titre Markdown, titre + contenu groupés, N titres = N chunks |
+| `src/lib/text-highlight.test.ts` | normalisation accents, fallback adaptatif 120→60→30, edge cases |
 
 ---
 
@@ -94,9 +187,10 @@ La hiérarchie est déclarée dans un fichier de configuration lisible,
 versionnable, auditable. Chaque réponse est accompagnée du journal des
 agents qui y ont contribué — un véritable « audit trail » opposable.
 
-> **État actuel (v0.1) :** un seul agent (`default-chat`) tourne
-> derrière l'orchestrateur. La couche d'abstraction est en place ;
-> les agents spécialisés arrivent en v0.2.
+> **État actuel (v0.2) :** l'orchestrateur fait coopérer de vrais
+> agents spécialisés via le **Board** — Maestro (chef d'orchestre),
+> Recherche, Légifrance, Rédacteur, Relecteur, Citateur. Quatre presets
+> prêts à l'emploi ; un modèle assignable par rôle.
 
 ### Chat juridique avec accès aux textes
 
@@ -242,7 +336,7 @@ et [`docs/architecture/data-model.md`](./docs/architecture/data-model.md).
 | Node.js | 24 LTS | `node -v` |
 | Docker | 24 + Compose v2 | `docker compose version` |
 | Disque libre | ~5 Go (images Docker + pgvector + dépendances) | `df -h .` |
-| Clé Mistral | requise pour le RAG (les embeddings sont fournis uniquement par Mistral en v0.1) | [console.mistral.ai](https://console.mistral.ai) |
+| Embeddings (RAG) | une clé **Mistral** _ou_ un endpoint d'embedding **auto-hébergé** (Ollama / vLLM / llama.cpp / TEI) | [console.mistral.ai](https://console.mistral.ai) |
 
 > Pour les autres modèles (Anthropic, OpenAI, Scaleway, OVH, Albert),
 > les clés sont **optionnelles** et configurables une fois Louis lancé.
@@ -415,8 +509,11 @@ pour la référence complète.
 ### 🟢 Disponible — fonctionnel et testé
 
 - Chat streaming multi-tour, multi-provider, persistance Postgres
-- Tool calling : **Légifrance** (via PISTE), **Pappers**, recherche
-  RAG dans vos documents (pgvector)
+- **Orchestrateur multi-agents (Board)** — agents spécialisés (Maestro,
+  Recherche, Légifrance, Rédacteur, Relecteur, Citateur), presets, un
+  modèle assignable par rôle
+- Tool calling : **Légifrance**, **Judilibre**, **BOFIP**, **BODACC**
+  (via PISTE), **Pappers**, recherche RAG dans vos documents (pgvector)
 - **DocPanel side-by-side** — PDF natif sans toolbar parasite, DOCX
   rendu fidèle via Gotenberg
 - **Cmd+K** — palette de commandes globale (conversations, projets,
@@ -436,7 +533,8 @@ pour la référence complète.
   Gotenberg) avec schéma typé, `edit_document` avec tracked edits
   accept/reject
 - **BYOK chiffré** — clés AES-256-GCM, badges souveraineté FR/UE/US
-- **Connecteurs juridiques** — PISTE OAuth (Légifrance), Pappers
+- **Connecteurs juridiques** — PISTE OAuth (Légifrance, Judilibre,
+  BOFIP, BODACC), Pappers
 - **MCP-native** — serveurs MCP custom par utilisateur
 - **Multi-utilisateur** — NextAuth v5 Credentials + RBAC admin/member
 - **Journal d'audit** append-only sur les opérations sensibles
@@ -444,18 +542,29 @@ pour la référence complète.
 - **Docker Compose** une commande
 - **Sécurité** — rate-limit Redis, headers HTTP OWASP, audit log,
   SSL Postgres strict, sanitization filenames
-- **Smoke tests** Playwright (11 routes principales) + unit tests
-  Vitest (15 tests sur crypto et rate-limit)
+- **Tests** — 281 tests unitaires Vitest (crypto, chiffrement DEK,
+  connecteurs, orchestrateur, RAG, OCR, highlight…) + smoke tests Playwright
 
-### 🟡 Partiel — utilisable mais à affiner
+#### Ajouts récents
 
-- Citations cliquables avec surlignage de la cible (propagation
-  `targetText` ok, UX du highlight à valider par type de PDF)
+- **PDF → Markdown** — conversion locale pdfjs, souverain, hors-ligne
+- **OCR pluggable** — Mistral OCR → vision → Tesseract local `fra`, page
+  paramètres dédiée
+- **Vue Markdown dans le DocPanel** — bascule PDF / Markdown
+- **Chunking RAG markdown-aware** — titre Markdown = nouveau chunk
+- **Chiffrement DEK complet (ADR 0005)** — blobs S3 et texte extrait
+  chiffrés, XChaCha20 + AES-256-GCM, rétrocompat null-DEK
+- **Embedding configurable** — plus limité à Mistral, endpoint libre via `.env`
+- **Téléchargement de documents** depuis la page `/documents`
+- **Réindexation intelligente** — indexation des nouveaux seulement par défaut,
+  dropdown « forcer » pour changer de modèle d'embedding
+- **Citations avec surlignage précis** — normalisation Unicode, highlight inline
+  `<mark>` via `splitText`, aiguille adaptative 120→60→30 chars, animation pulse
+- **Tests étendus** — 281 tests Vitest
 
-### ⚪ Planifié pour v0.2
+### ⚪ Planifié
 
-- Sub-APIs PISTE étendues : Judilibre (Cour de cassation), JADE
-  (Conseil d'État), INPI, BODACC
+- Sub-APIs PISTE supplémentaires : JADE (Conseil d'État), INPI
 - Project sharing par email entre membres du cabinet
 - Internationalisation anglaise
 - Veille juridique automatisée — surveillance Légifrance / JADE / BODACC
@@ -485,9 +594,9 @@ pour la référence complète.
 
 | Milestone | Date cible | Statut |
 |---|---|---|
-| v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | 🟡 En cours |
-| v0.1.x — Sub-APIs PISTE étendues + sécurité durcie | 2026-Q3 | ⚪ À venir |
-| v0.2 — Orchestrateur multi-agents (recherche, rédaction, relecteur, citateur) + pipelines métier | 2026-Q4 | ⚪ À venir |
+| v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | ✅ Livré |
+| v0.2 — Board multi-agents + connecteurs PISTE étendus (Judilibre, BOFIP, BODACC) + chiffrement DEK des documents + OCR souverain + RAG souverain | 2026-Q2 | ✅ Livré |
+| v0.2.x — JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
 | v0.3 — i18n, project sharing, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
 | v1.0 — Production-ready, documentation complète | 2027 | ⚪ À venir |
 

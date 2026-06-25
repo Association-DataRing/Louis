@@ -97,13 +97,14 @@ export default async function DocumentsPage({
       .limit(1),
   ]);
 
-  // Transparence RAG : chunks par doc + présence d'une clé Mistral active
-  // (requise pour embedder). Permet d'afficher « indexé (N) / non indexé /
-  // clé Mistral manquante » par document.
+  // Transparence RAG : chunks par doc + disponibilité d'un backend d'embedding.
+  // L'embedding fonctionne si : clé Mistral BYOK active OU LOUIS_EMBEDDING_BASE_URL
+  // configuré (endpoint OpenAI-compatible auto-hébergé ou OpenRouter via .env).
   const chunkCountByDoc = new Map<string, number>(
     chunkCountRows.map((r) => [r.documentId, r.n])
   );
-  const hasMistralKey = mistralKeys.length > 0;
+  const hasMistralKey =
+    mistralKeys.length > 0 || !!process.env.LOUIS_EMBEDDING_BASE_URL?.trim();
 
   // Construit la breadcrumb en remontant via parentFolderId.
   const folderById = new Map<string, DocumentFolder>(

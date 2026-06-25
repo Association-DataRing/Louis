@@ -6,6 +6,11 @@ import { db } from "@/db";
 import { documents } from "@/db/schema";
 import { uploadObject } from "@/lib/storage";
 import { extractText } from "@/lib/extract";
+import {
+  generateDek,
+  encryptWithDek,
+  wrapDek,
+} from "@/lib/crypto-envelope";
 import { log } from "@/lib/log";
 import type { DocumentSpec } from "./types";
 
@@ -88,21 +93,47 @@ export async function storeBuffer({
   version?: number;
 }): Promise<{ documentId: string; filename: string; format: DocFormat }> {
   const baseKey = `${userId}/louis-generated/${nanoid()}-${filename}`;
-  await uploadObject(baseKey, buffer, contentType);
 
-  // Extraction texte best-effort — permet au document généré d'être
-  // attachable / cherchable comme n'importe quel upload utilisateur.
-  let extractedText: string | null = null;
+  // Extraction texte best-effort sur le buffer en clair
+  let plainExtractedText: string | null = null;
+  let textFormat: "text" | "markdown" = "text";
   let extractionStatus = "ok";
   let extractionError: string | null = null;
   try {
     const result = await extractText(buffer, contentType);
-    extractedText = result.text;
+    plainExtractedText = result.text;
+    textFormat = result.format;
     if (result.truncated) extractionStatus = "truncated";
   } catch (err) {
     extractionStatus = "failed";
     extractionError = err instanceof Error ? err.message : "Extraction failed";
   }
+
+  // Chiffrement à enveloppe (ADR 0005 Phase 1)
+  const dek = await generateDek();
+  let encryptedBuffer: Buffer;
+  let dekNonce: string;
+  let encExtractedText: string | null = null;
+  let extractedTextNonce: string | null = null;
+  let encDek: string;
+  try {
+    const encBlob = await encryptWithDek(buffer, dek);
+    encryptedBuffer = encBlob.ciphertext;
+    dekNonce = encBlob.nonce;
+    if (plainExtractedText) {
+      const encText = await encryptWithDek(
+        Buffer.from(plainExtractedText, "utf8"),
+        dek
+      );
+      encExtractedText = encText.ciphertext.toString("base64");
+      extractedTextNonce = encText.nonce;
+    }
+    encDek = wrapDek(dek);
+  } finally {
+    dek.fill(0);
+  }
+
+  await uploadObject(baseKey, encryptedBuffer, contentType);
 
   // Pour les DOCX, on tente une conversion LibreOffice → PDF pour avoir
   // un preview visuellement identique à ce que l'utilisateur verra dans
@@ -136,7 +167,11 @@ export async function storeBuffer({
       sizeBytes: buffer.length,
       storageKey: baseKey,
       previewStorageKey,
-      extractedText,
+      encDek,
+      dekNonce,
+      encExtractedText,
+      extractedTextNonce,
+      textFormat,
       extractionStatus,
       extractionError,
     })

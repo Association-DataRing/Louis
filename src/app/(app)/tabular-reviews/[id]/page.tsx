@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, or } from "drizzle-orm";
 import {
   IconArrowLeft,
   IconTable,
@@ -75,7 +75,13 @@ export default async function TabularReviewDetailPage({
     .select({ id: documents.id, filename: documents.filename })
     .from(documents)
     .where(
-      and(eq(documents.userId, userId), isNotNull(documents.extractedText))
+      and(
+        eq(documents.userId, userId),
+        or(
+          isNotNull(documents.extractedText),
+          isNotNull(documents.encExtractedText)
+        )
+      )
     );
   const availableDocuments = allUserDocs.filter(
     (d) => !existingDocIds.has(d.id)

@@ -5,7 +5,7 @@ import type { ActionResult as BaseActionResult } from "@/lib/actions/result";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { and, eq, inArray, isNotNull, lt } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { z } from "zod";
 import { generateText, Output, type LanguageModel } from "ai";
 import { requireUserId } from "@/lib/auth/permissions";
@@ -18,6 +18,7 @@ import {
 } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { log } from "@/lib/log";
+import { decryptDocumentText } from "@/lib/document-crypto";
 import { nanoid } from "nanoid";
 
 const EXTRACTION_CONCURRENCY = 3;
@@ -289,7 +290,10 @@ export async function addReviewDocuments(
       and(
         eq(documents.userId, userId),
         inArray(documents.id, parsed.data.documentIds),
-        isNotNull(documents.extractedText)
+        or(
+          isNotNull(documents.extractedText),
+          isNotNull(documents.encExtractedText)
+        )
       )
     );
   if (validDocs.length === 0) {
@@ -454,12 +458,16 @@ async function extractRow({
     .select({
       filename: documents.filename,
       extractedText: documents.extractedText,
+      encDek: documents.encDek,
+      encExtractedText: documents.encExtractedText,
+      extractedTextNonce: documents.extractedTextNonce,
     })
     .from(documents)
     .where(and(eq(documents.id, row.documentId), eq(documents.userId, userId)))
     .limit(1);
 
-  if (!doc || !doc.extractedText) {
+  const plainText = doc ? await decryptDocumentText(doc) : null;
+  if (!doc || !plainText) {
     await db
       .update(tabularReviewRows)
       .set({
@@ -471,7 +479,7 @@ async function extractRow({
     return;
   }
 
-  const promptDoc = doc.extractedText.slice(0, 80_000); // garde-fou contexte
+  const promptDoc = plainText.slice(0, 80_000); // garde-fou contexte
 
   try {
     const result = await generateText({

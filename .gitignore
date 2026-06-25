@@ -58,6 +58,10 @@ next-env.d.ts
 # Docker volumes (si bind mount local)
 /data
 
+# Données de langue Tesseract téléchargées à la volée par tesseract.js
+# (OCR local) — déposées dans le cwd, ne pas versionner.
+*.traineddata
+
 # Outils IA locaux (sortie générée, état de session, caches)
 .aidesigner/
 .claude/

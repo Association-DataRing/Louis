@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   IconDots,
+  IconDownload,
   IconFile,
   IconFileTypePdf,
   IconFileTypeDocx,
@@ -180,7 +181,7 @@ export function DocumentRow({
                 variant="outline"
                 className="shrink-0 text-[10px] text-warning border-warning/40"
               >
-                clé Mistral manquante
+                embedding non configuré
               </Badge>
             ) : (
               <Badge
@@ -222,6 +223,18 @@ export function DocumentRow({
           <IconDots className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() => {
+              const a = document.createElement("a");
+              a.href = `/api/documents/${entry.id}/file?download=1`;
+              a.download = entry.filename;
+              a.click();
+            }}
+          >
+            <IconDownload className="size-4" />
+            Télécharger
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             disabled={pending}
             onSelect={() => replaceRef.current?.click()}

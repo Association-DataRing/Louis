@@ -8,6 +8,13 @@
       "when": 1779392808160,
       "tag": "0000_far_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781643776665,
+      "tag": "0001_steep_giant_man",
+      "breakpoints": true
     }
   ]
 }

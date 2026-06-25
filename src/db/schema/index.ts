@@ -17,4 +17,5 @@ export * from "./pipelines";
 export * from "./model-settings";
 export * from "./skills";
 export * from "./project-memories";
+export * from "./ocr-settings";
 export * from "./observability";

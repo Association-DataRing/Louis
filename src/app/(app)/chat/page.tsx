@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -143,7 +143,12 @@ export default async function ChatPage({
       folderId: documents.folderId,
     })
     .from(documents)
-    .where(and(eq(documents.userId, userId), isNotNull(documents.extractedText)))
+    .where(
+      and(
+        eq(documents.userId, userId),
+        or(isNotNull(documents.extractedText), isNotNull(documents.encExtractedText))
+      )
+    )
     .orderBy(desc(documents.createdAt))
     .limit(50);
 
