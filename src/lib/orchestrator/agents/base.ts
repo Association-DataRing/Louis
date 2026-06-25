@@ -6,8 +6,9 @@ import {
   type ToolSet,
 } from "ai";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
-import { buildToolsForUser } from "@/lib/connectors/tools";
-import { buildMcpToolsForUser } from "@/lib/mcp/tools";
+import { instrumentTools } from "@/lib/observability/tools";
+import { withApprovalGates } from "@/lib/ai/approval";
+import { loadAgentCatalogue } from "../tool-catalogue";
 import { composeSystem, filterTools } from "./default";
 import { injectUntrustedContext } from "../untrusted";
 import { applyContextBudget } from "../context-budget";
@@ -70,16 +71,29 @@ export async function runAgentStream(
       ctx,
       def.ragScope
     );
-    const [connectorTools, mcpTools] = await Promise.all([
-      buildToolsForUser(ctx.userId, scope),
-      buildMcpToolsForUser(ctx.userId),
-    ]);
+    const { connectorTools, mcpTools } = await loadAgentCatalogue(
+      ctx.userId,
+      scope,
+      ctx.toolCatalogue
+    );
     let merged: ToolSet = { ...connectorTools, ...mcpTools };
     if (hideDocumentaryRag) merged = omitDocumentaryRagTools(merged);
-    tools = filterTools(merged, allowlist);
+    tools = withApprovalGates(
+      instrumentTools(filterTools(merged, allowlist), ctx.userId),
+      ctx.requestToolApproval
+    );
   }
 
-  const stopWhen: StopCondition<ToolSet> = stepCountIs(defaults.maxSteps ?? 3);
+  // Outils injectés par l'orchestrateur (mode maestro : les agents de
+  // l'équipe). Hors allowlist et hors instrumentation : leur execute émet
+  // déjà les événements agent_start/finish vers l'UI et l'audit.
+  if (ctx.extraTools) {
+    tools = { ...tools, ...ctx.extraTools };
+  }
+
+  const stopWhen: StopCondition<ToolSet> = stepCountIs(
+    ctx.maxStepsOverride ?? defaults.maxSteps ?? 3
+  );
 
   const cached = applyCachedSystem({
     keyType: key.type,

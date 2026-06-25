@@ -32,7 +32,12 @@ import { messages } from "./messages";
  * - `parallel`   : fan-out — le synthétiseur dispatche en parallèle, agrège
  * - `iterative`  : approfondissement multi-tours d'un chercheur, puis synthèse
  */
-export type PipelineMode = "sequential" | "council" | "parallel" | "iterative";
+export type PipelineMode =
+  | "sequential"
+  | "council"
+  | "parallel"
+  | "iterative"
+  | "maestro";
 
 /**
  * Portée documentaire RAG d'un agent (Board). `null` en base = `inherit` =

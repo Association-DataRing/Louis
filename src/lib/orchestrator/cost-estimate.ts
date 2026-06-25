@@ -44,6 +44,11 @@ export function estimateCalls(opts: {
       return clampRounds(opts.rounds ?? 1, MAX_COUNCIL_ROUNDS) * (agents - 1) + 1;
     case "parallel":
       return agents - 1 + 1;
+    case "maestro":
+      // Routage dynamique : le nombre réel d'appels dépend des délégations
+      // décidées par le Maestro. Heuristique : chaque membre consulté une
+      // fois + le Maestro — l'UI suffixe déjà « estimé ».
+      return agents;
     case "sequential":
     default:
       return agents;

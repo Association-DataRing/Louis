@@ -3,6 +3,7 @@ import {
   IconUsersGroup,
   IconLayoutGrid,
   IconRefresh,
+  IconWand,
   type Icon,
 } from "@tabler/icons-react";
 
@@ -10,7 +11,8 @@ export type PipelineModeKey =
   | "sequential"
   | "council"
   | "parallel"
-  | "iterative";
+  | "iterative"
+  | "maestro";
 
 /**
  * Métadonnées d'affichage centralisées pour les 3 modes d'orchestration.
@@ -58,6 +60,14 @@ export const MODE_META: Record<
     pitch:
       "Le chercheur reprend ses notes à chaque tour pour creuser les lacunes, puis le dernier synthétise.",
     accent: "text-foreground/70 border-border",
+  },
+  maestro: {
+    icon: IconWand,
+    label: "Maestro",
+    short: "Routeur",
+    pitch:
+      "Le dernier agent dirige : il choisit qui consulter, avec quelle consigne, et peut re-déléguer avant de répondre.",
+    accent: "text-foreground/70 border-primary/40",
   },
 };
 

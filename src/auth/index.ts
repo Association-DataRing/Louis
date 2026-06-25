@@ -79,19 +79,27 @@ export async function verifyPasswordStep(
   return { status: "ok", needsTotp: user.totpEnabled };
 }
 
-// En dev on tourne sur http://localhost — donc PAS de cookie Secure
-// (sinon le navigateur ne le renvoie pas et l'utilisateur est
-// déconnecté à chaque retour de tab). En prod, Auth.js bascule via la
-// détection auto (X-Forwarded-Proto: https).
-const isProd = process.env.NODE_ENV === "production";
+// Cookies Secure : activés UNIQUEMENT quand l'instance est servie en HTTPS.
+// On ne peut PAS se baser sur NODE_ENV : l'image de production tourne aussi
+// en http://localhost (install auto-hébergée) ou en HTTP sur un réseau local,
+// où un cookie Secure n'est jamais renvoyé par le navigateur (Safari en tête)
+// → la session « saute » à chaque navigation et l'utilisateur est renvoyé au
+// login. On déduit donc le schéma de l'URL publique déclarée ; défaut =
+// non-secure (HTTP). Derrière un reverse proxy TLS, déclarez
+// AUTH_URL=https://votre-domaine pour réactiver les cookies Secure.
+const publicUrl =
+  process.env.AUTH_URL ??
+  process.env.NEXTAUTH_URL ??
+  process.env.NEXT_PUBLIC_APP_URL ??
+  "";
+const useSecureCookies = publicUrl.startsWith("https://");
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Indispensable en dev et en self-hosting derrière reverse proxy :
   // sans ça, Auth.js peut rejeter silencieusement des requêtes et
   // retourner une session null intermittente.
   trustHost: true,
-  // Force le cookie non-Secure en dev pour qu'il fonctionne en HTTP.
-  useSecureCookies: isProd,
+  useSecureCookies,
   // Silence les JWTSessionError : c'est l'erreur "no matching decryption
   // secret" qui survient quand un cookie a été chiffré avec une valeur
   // précédente d'AUTH_SECRET. Auth.js gère déjà l'erreur (retourne null

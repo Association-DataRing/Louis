@@ -21,7 +21,7 @@ export type ActionResultWith<T> = BaseActionResult<T>;
 const pipelineMetaSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).nullable().optional(),
-  mode: z.enum(["sequential", "council", "parallel", "iterative"]).optional(),
+  mode: z.enum(["sequential", "council", "parallel", "iterative", "maestro"]).optional(),
   rounds: z.number().int().min(1).max(6).optional(),
 });
 
@@ -216,7 +216,7 @@ export async function updatePipelineMeta(
   data: {
     name: string;
     description?: string | null;
-    mode?: "sequential" | "council" | "parallel" | "iterative";
+    mode?: "sequential" | "council" | "parallel" | "iterative" | "maestro";
     rounds?: number;
   }
 ): Promise<ActionResult> {

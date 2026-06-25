@@ -208,6 +208,40 @@ export const PIPELINE_PRESETS: PresetTemplate[] = [
       },
     ],
   },
+  {
+    slug: "le-bureau",
+    name: "Le Bureau (Maestro)",
+    description:
+      "Le Maestro dirige l'équipe en direct : il analyse votre demande, choisit qui consulter (Recherche, Citateur, Rédacteur), peut re-déléguer pour creuser, puis répond lui-même. La pipeline qui s'adapte à la question au lieu de l'inverse.",
+    mode: "maestro",
+    agents: [
+      {
+        role: "research",
+        label: "Recherche",
+        toolAllowlist: [
+          "legifrance_search",
+          "pappers_search",
+          "pappers_get",
+          "search_documents",
+        ],
+      },
+      {
+        role: "citator",
+        label: "Citateur",
+        toolAllowlist: ["legifrance_search"],
+      },
+      {
+        role: "drafting",
+        label: "Rédacteur",
+        toolAllowlist: ["legifrance_search", "search_documents"],
+      },
+      {
+        role: "orchestrator",
+        label: "Maestro",
+        toolAllowlist: null,
+      },
+    ],
+  },
 ];
 
 export function findPreset(slug: string): PresetTemplate | undefined {

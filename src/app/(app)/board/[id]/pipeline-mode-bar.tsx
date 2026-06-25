@@ -44,6 +44,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
     "council",
     "parallel",
     "iterative",
+    "maestro",
   ];
   const radioRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -97,7 +98,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
       <div
         role="radiogroup"
         aria-label="Mode d'orchestration"
-        className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2"
+        className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2"
       >
         {modes.map((m, i) => {
           const meta = MODE_META[m];
@@ -153,24 +154,32 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
         })}
       </div>
 
-      {mode === "council" && (
-        <p className="mt-3 flex items-start gap-1 text-[11px] text-muted-foreground border-t border-border/40 pt-2">
-          {(() => {
-            const debaters = Math.max(0, agentCount - 1);
-            const calls = estimateCalls({ mode: "council", agents: agentCount, rounds });
-            return (
-              <>
-                <IconAlertTriangle className="size-3.5 shrink-0 mt-px text-warning" />
-                <span>
-                  Coût estimé : {calls} appel{calls > 1 ? "s" : ""} LLM par
-                  question — {debaters} débatteur{debaters > 1 ? "s" : ""} sur{" "}
-                  {rounds} tour{rounds > 1 ? "s" : ""}, plus 1 synthèse finale.
-                </span>
-              </>
-            );
-          })()}
-        </p>
-      )}
+      {(() => {
+        const calls = estimateCalls({ mode, agents: agentCount, rounds });
+        // On n'affiche l'avertissement de coût que pour les runs multi-appels
+        // (séquentiel mono-agent = 1 appel, rien à signaler).
+        if (calls <= 1) return null;
+        const debaters = Math.max(0, agentCount - 1);
+        const breakdown: string =
+          mode === "council"
+            ? `${debaters} débatteur${debaters > 1 ? "s" : ""} sur ${rounds} tour${rounds > 1 ? "s" : ""}, plus 1 synthèse finale.`
+            : mode === "iterative"
+              ? `${rounds} tour${rounds > 1 ? "s" : ""} d'approfondissement${agentCount > 1 ? ", plus 1 synthèse finale." : "."}`
+              : mode === "parallel"
+                ? `${debaters} agent${debaters > 1 ? "s" : ""} en parallèle, plus 1 synthèse finale.`
+                : mode === "maestro"
+                  ? `estimation — le Maestro décide en direct qui consulter (${debaters} agent${debaters > 1 ? "s" : ""} disponibles, rappels possibles).`
+                  : `1 appel par agent (${agentCount} en chaîne).`;
+        return (
+          <p className="mt-3 flex items-start gap-1 text-[11px] text-muted-foreground border-t border-border/40 pt-2">
+            <IconAlertTriangle className="size-3.5 shrink-0 mt-px text-warning" />
+            <span>
+              Coût estimé : {calls} appel{calls > 1 ? "s" : ""} LLM par
+              question — {breakdown}
+            </span>
+          </p>
+        );
+      })()}
 
       {isPreset && (
         <p className="mt-3 text-[11px] text-muted-foreground border-t border-border/40 pt-2">

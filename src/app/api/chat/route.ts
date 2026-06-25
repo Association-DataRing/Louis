@@ -24,6 +24,7 @@ import {
   documentArtifactFromToolResult,
   type DocumentArtifactMeta,
 } from "@/lib/ai/tool-result";
+import { newApprovalId, registerApproval } from "@/lib/ai/approval";
 import { recordAudit } from "@/lib/audit";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { getProjectScope } from "@/lib/projects/scope";
@@ -46,6 +47,7 @@ import {
 } from "@/lib/orchestrator";
 import { loadPipelineForUser } from "@/lib/orchestrator/repository";
 import { decryptDocumentText } from "@/lib/document-crypto";
+import { createToolCatalogueCache } from "@/lib/orchestrator/tool-catalogue";
 
 type Body = {
   messages: UIMessage[];
@@ -420,11 +422,30 @@ export async function POST(req: Request) {
           projectId: effectiveProjectId,
           projectDocumentIds: projectScope?.documentIds,
           projectFolderId: projectScope?.folderId ?? null,
+          // Cache de catalogue d'outils partagé par tous les agents du run
+          // (council/parallel) — évite ≈4 requêtes DB par agent. Cf.
+          // tool-catalogue.ts.
+          toolCatalogue: createToolCatalogueCache(),
           // R2 : annulation réelle côté serveur. Quand l'utilisateur clique
           // « Stop », DefaultChatTransport abort le fetch → req.signal s'abort
           // → propagé jusqu'à streamText, qui coupe l'appel LLM (et la
           // facturation), pas seulement le rendu client.
           abortSignal: req.signal,
+          // Garde-fou human-in-the-loop : les outils sensibles suspendent
+          // leur exécution le temps que l'utilisateur approuve via la carte
+          // émise dans le stream (réponse par POST /api/chat/approval).
+          requestToolApproval: (toolName, input) => {
+            const approvalId = newApprovalId();
+            writer.write({
+              type: "data-approval-request",
+              data: { approvalId, toolName, input },
+            });
+            return registerApproval({
+              approvalId,
+              userId,
+              abortSignal: req.signal,
+            });
+          },
         },
         writer: {
           write: (part) => writer.write(part as never),
@@ -536,6 +557,14 @@ export async function POST(req: Request) {
           if (part.type === "text" && part.text) {
             savedParts.push({ type: "text", text: part.text });
             finalText += part.text;
+          } else if (part.type === "reasoning") {
+            // Raisonnement d'un modèle « thinking » : persisté à part pour
+            // ré-afficher le bloc repliable au reload, mais JAMAIS concaténé
+            // à finalText (content) — ce n'est pas la réponse servie.
+            const reasoningText = (part as { text?: string }).text;
+            if (reasoningText) {
+              savedParts.push({ type: "reasoning", text: reasoningText });
+            }
           } else if (
             part.type.startsWith("tool-") &&
             "toolCallId" in part &&

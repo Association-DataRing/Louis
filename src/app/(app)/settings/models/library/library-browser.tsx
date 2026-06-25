@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { PROVIDER_CATALOG, type ProviderType } from "@/lib/providers/catalog";
+import { ProviderQuickAdd } from "@/components/provider-quick-add";
 import { MODEL_PRICING } from "@/lib/providers/pricing";
 
 /** H23 : prix par M de tokens (entrée/sortie) pour signaler le coût AVANT
@@ -464,9 +465,9 @@ function NoProviderState() {
         La bibliothèque interroge l&apos;API de vos providers pour vous
         montrer leurs modèles disponibles.
       </p>
-      <Button asChild className="mt-6">
-        <a href="/settings/providers">Configurer un provider</a>
-      </Button>
+      <div className="mt-6 flex justify-center">
+        <ProviderQuickAdd />
+      </div>
     </div>
   );
 }

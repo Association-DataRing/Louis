@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { LouisLogo } from "@/components/louis-logo";
+import { instanceIsFresh } from "@/lib/setup/status";
 import { LoginForm } from "./login-form";
 import { LoginAside } from "./login-aside";
 
@@ -21,6 +22,9 @@ import { LoginAside } from "./login-aside";
 export default async function LoginPage() {
   const session = await auth();
   if (session?.user) redirect("/chat");
+
+  // Instance fraîche (zéro utilisateur) → assistant de premier lancement.
+  if (await instanceIsFresh()) redirect("/setup");
 
   return (
     <main className="grid min-h-dvh flex-1 lg:grid-cols-[1fr_1.15fr]">

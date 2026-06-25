@@ -10,6 +10,7 @@ import { roleMeta } from "./agent-role-meta";
 import { modeMeta } from "./mode-meta";
 import { PipelineActionsMenu } from "./pipeline-actions-menu";
 import { TryPipelineButton } from "./try-pipeline-button";
+import { ReloadButton } from "./reload-button";
 
 export default async function BureauPage() {
   const session = await auth();
@@ -53,12 +54,22 @@ export default async function BureauPage() {
             const mMeta = modeMeta(pipeline.mode);
             const ModeIcon = mMeta.icon;
             return (
-              <Link
+              <div
                 key={pipeline.id}
-                href={`/board/${pipeline.id}`}
-                className="group block rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-foreground/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5"
+                className="group relative rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-foreground/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 focus-within:border-foreground/30"
               >
-                <div className="flex items-start justify-between gap-2">
+                {/* Lien étiré : la carte entière est cliquable sans imbriquer
+                    de boutons dans un <a> (HTML invalide + casse le clavier).
+                    Les contrôles (menu, « Essayer ») passent au-dessus via
+                    z-10. */}
+                <Link
+                  href={`/board/${pipeline.id}`}
+                  className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`Ouvrir ${pipeline.name}`}
+                >
+                  <span className="sr-only">Ouvrir {pipeline.name}</span>
+                </Link>
+                <div className="relative flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[11px] text-foreground/70 uppercase tracking-wider">
@@ -81,7 +92,9 @@ export default async function BureauPage() {
                       {pipeline.name}
                     </h2>
                   </div>
-                  <PipelineActionsMenu pipeline={pipeline} />
+                  <span className="relative z-10">
+                    <PipelineActionsMenu pipeline={pipeline} />
+                  </span>
                 </div>
 
                 {pipeline.description && (
@@ -105,25 +118,27 @@ export default async function BureauPage() {
                         }`}
                         title={a.label}
                       >
-                        <Icon className="size-3" />
-                        <span className="truncate max-w-[70px]">{a.label}</span>
+                        <Icon className="size-3 shrink-0" />
+                        <span className="truncate max-w-[140px]">{a.label}</span>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="relative mt-5 flex items-center justify-between text-xs text-muted-foreground">
                   <span>
                     {agents.length} agent{agents.length > 1 ? "s" : ""}
                   </span>
                   <div className="flex items-center gap-3">
-                    <TryPipelineButton
-                      pipelineId={pipeline.id}
-                      slug={pipeline.slug}
-                      mode={pipeline.mode}
-                      agentCount={agents.length}
-                      rounds={pipeline.rounds}
-                    />
+                    <span className="relative z-10">
+                      <TryPipelineButton
+                        pipelineId={pipeline.id}
+                        slug={pipeline.slug}
+                        mode={pipeline.mode}
+                        agentCount={agents.length}
+                        rounds={pipeline.rounds}
+                      />
+                    </span>
                     <span
                       aria-hidden
                       className="w-px h-3 bg-border self-center"
@@ -134,7 +149,7 @@ export default async function BureauPage() {
                     </span>
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
@@ -150,9 +165,12 @@ function EmptyState() {
         Pas encore de pipeline.
       </p>
       <p className="mt-3 text-sm text-muted-foreground max-w-md">
-        Les pipelines presets sont semés au premier chargement. Rechargez la
-        page si rien n&apos;apparaît.
+        Les pipelines presets sont semés au premier chargement. Si rien
+        n&apos;apparaît, rechargez pour relancer la génération.
       </p>
+      <div className="mt-5">
+        <ReloadButton />
+      </div>
     </div>
   );
 }

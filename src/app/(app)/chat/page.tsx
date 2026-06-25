@@ -18,6 +18,7 @@ import { seedPresetsForUser } from "@/lib/orchestrator";
 import { listEnabledModels } from "../settings/models/actions";
 import { getEnabledSkills } from "../settings/skills/actions";
 import type { ProviderType } from "@/lib/providers/catalog";
+import { ProviderQuickAdd } from "@/components/provider-quick-add";
 import { ChatShell } from "./chat-shell";
 
 type Search = {
@@ -119,7 +120,12 @@ export default async function ChatPage({
       description: p.description,
       isPreset: p.isPreset,
       agentCount: agents.length,
-      mode: (p.mode ?? "sequential") as "sequential" | "council" | "parallel",
+      mode: (p.mode ?? "sequential") as
+        | "sequential"
+        | "council"
+        | "parallel"
+        | "iterative"
+        | "maestro",
       rounds: p.rounds ?? null,
       agents: agents.map((a) => ({
         id: a.id,
@@ -271,20 +277,25 @@ export default async function ChatPage({
 
 function NoProviderState() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-8 md:px-8 md:py-10">
-      <h1 className="font-heading text-3xl tracking-tight">Conversations</h1>
-      <div className="mt-6 border border-dashed border-border rounded-lg p-10 text-center">
-        <h2 className="font-heading text-lg">Aucun provider actif</h2>
-        <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-          Ajoutez et activez au moins un provider IA pour commencer à
-          discuter.
+    <main className="grid min-h-full place-items-center px-6 py-12">
+      <div className="w-full max-w-md text-center motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300">
+        <h1 className="font-heading text-3xl tracking-tight">
+          Une clé, et Louis s&apos;éveille.
+        </h1>
+        <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
+          Louis fonctionne avec vos propres clés API — elles restent chiffrées
+          sur votre instance. Connectez-en une pour lancer votre première
+          conversation.
         </p>
-        <Link
-          href="/providers"
-          className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
-        >
-          Configurer les providers
-        </Link>
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <ProviderQuickAdd />
+          <Link
+            href="/settings/providers"
+            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Voir tous les providers dans les réglages
+          </Link>
+        </div>
       </div>
     </main>
   );

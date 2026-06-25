@@ -234,18 +234,23 @@ export async function legifranceSearch(
     };
 
     const r = await pisteRequest<Raw>(userId, "/search", {
+      fond,
       recherche: {
         champs: [
           {
             typeChamp: "ALL",
-            criteres: [{ typeRecherche: "EXACTE", valeur: query }],
+            operateur: "ET",
+            criteres: [
+              { valeur: query, operateur: "ET", typeRecherche: "UN_DES_MOTS" },
+            ],
           },
         ],
+        filtres: [],
         pageNumber: 1,
         pageSize: 5,
-        typePagination: "DEFAUT",
+        operateur: "ET",
         sort: "PERTINENCE",
-        fond,
+        typePagination: "DEFAUT",
       },
     });
     if (!r.ok) return r;

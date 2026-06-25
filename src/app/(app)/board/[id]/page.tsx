@@ -127,7 +127,20 @@ export default async function PipelineEditorPage({
 
       <PipelineModeBar pipeline={data.pipeline} agentCount={data.agents.length} />
 
-      <div className="relative mt-6">
+      {!data.pipeline.isPreset && (
+        <div className="mt-6 flex items-center justify-between gap-2">
+          <span className="text-[11px] uppercase tracking-wider text-foreground/70">
+            Organigramme
+          </span>
+          <AddAgentDialog
+            pipelineId={data.pipeline.id}
+            providerKeys={keys}
+            enabledModels={enabledModels}
+          />
+        </div>
+      )}
+
+      <div className="relative mt-3">
         {/* Desktop : canvas React Flow. */}
         <div className="hidden sm:block">
           <PipelineWorkflow
@@ -153,15 +166,6 @@ export default async function PipelineEditorPage({
             availableDocuments={availableDocuments}
           />
         </div>
-        {!data.pipeline.isPreset && (
-          <div className="mt-4 sm:mt-0 sm:absolute sm:left-4 sm:bottom-4 sm:z-10">
-            <AddAgentDialog
-              pipelineId={data.pipeline.id}
-              providerKeys={keys}
-              enabledModels={enabledModels}
-            />
-          </div>
-        )}
       </div>
 
       <div className="mt-5 text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -169,8 +173,14 @@ export default async function PipelineEditorPage({
           <IconBulb className="size-3.5" />
           Cliquez un agent pour l&apos;éditer
         </span>
-        {data.pipeline.mode === "sequential" && !data.pipeline.isPreset && (
-          <span>· Glissez les cartes pour réordonner</span>
+        {!data.pipeline.isPreset && data.agents.length > 1 && (
+          data.pipeline.mode === "sequential" ? (
+            <span>· Glissez les cartes pour réordonner</span>
+          ) : (
+            <span>
+              · L&apos;ordre se règle dans « Ordre d&apos;exécution » ci-dessous
+            </span>
+          )
         )}
         {data.pipeline.mode === "council" && (
           <span>

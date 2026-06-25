@@ -16,6 +16,7 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { IconLoader2 } from "@tabler/icons-react";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
 import type {
   AgentSourceFolder,
@@ -76,19 +77,25 @@ const NODE_GAP_X = 80;
 const NODE_HEIGHT = 200;
 const NODE_GAP_Y = 80;
 
+type CanvasMode = "sequential" | "council" | "parallel" | "iterative" | "maestro";
+
 /**
  * Calcule les positions de chaque node selon le mode :
  * - sequential : grille horizontale (gauche → droite)
+ * - iterative  : même chaîne horizontale (le chercheur boucle, puis synthèse)
  * - council    : synthétiseur centré en bas, débatteurs en arc au-dessus
  * - parallel   : synthétiseur en bas, workers étalés au-dessus
+ * - maestro    : même disposition que parallel — le Maestro centré en bas,
+ *                l'équipe au-dessus ; seules les flèches s'inversent (il
+ *                délègue vers les membres au lieu de recevoir leurs sorties).
  */
 function layoutNodes(
   agents: PipelineAgent[],
-  mode: "sequential" | "council" | "parallel"
+  mode: CanvasMode
 ): Array<{ x: number; y: number }> {
   if (agents.length === 0) return [];
 
-  if (mode === "sequential") {
+  if (mode === "sequential" || mode === "iterative") {
     return agents.map((_, i) => ({
       x: i * (NODE_WIDTH + NODE_GAP_X),
       y: 0,
@@ -125,15 +132,16 @@ function layoutNodes(
  * - sequential : chaîne A → B → C
  * - council & parallel : chaque worker pointe vers le synthétiseur ; en
  *   council on ajoute des edges de débat (workers ↔ workers) en pointillés
+ * - maestro : flèches inversées (Maestro → membres) — c'est lui qui délègue
  */
 function buildEdges(
   agents: PipelineAgent[],
-  mode: "sequential" | "council" | "parallel",
+  mode: CanvasMode,
   liveStates: Record<string, string> | undefined
 ): Edge[] {
   if (agents.length < 2) return [];
 
-  if (mode === "sequential") {
+  if (mode === "sequential" || mode === "iterative") {
     return agents.slice(0, -1).map((a, i) => {
       const next = agents[i + 1];
       const active =
@@ -148,18 +156,30 @@ function buildEdges(
     });
   }
 
-  // council & parallel : workers → synthétiseur
+  // council & parallel : workers → synthétiseur. Maestro : sens inverse,
+  // le terminal délègue vers chaque membre de l'équipe.
   const synth = agents[agents.length - 1];
   const workers = agents.slice(0, -1);
   const edges: Edge[] = workers.map((w) => {
-    const active = liveStates?.[w.id] === "done";
-    return {
-      id: `${w.id}->${synth.id}`,
-      source: w.id,
-      target: synth.id,
-      type: "animated",
-      data: { active },
-    };
+    const active =
+      mode === "maestro"
+        ? liveStates?.[w.id] === "active"
+        : liveStates?.[w.id] === "done";
+    return mode === "maestro"
+      ? {
+          id: `${synth.id}->${w.id}`,
+          source: synth.id,
+          target: w.id,
+          type: "animated",
+          data: { active },
+        }
+      : {
+          id: `${w.id}->${synth.id}`,
+          source: w.id,
+          target: synth.id,
+          type: "animated",
+          data: { active },
+        };
   });
 
   // En council, on rajoute des edges de débat entre workers (en pointillés
@@ -198,9 +218,10 @@ function PipelineWorkflowInner({
   const [pendingDelete, setPendingDelete] = useState<PipelineAgent | null>(null);
   const [pending, startTransition] = useTransition();
   const editable = !pipeline.isPreset && !pending;
-  const mode = (pipeline.mode as "sequential" | "council" | "parallel") ?? "sequential";
+  const mode = (pipeline.mode as CanvasMode) ?? "sequential";
   // H7 : le drag ne ré-ordonne l'exécution QU'en mode séquentiel (en
-  // council/parallel, la position n'a aucun effet sur l'ordre → drag trompeur).
+  // council/parallel/itératif, la position n'a aucun effet sur l'ordre → drag
+  // trompeur). En itératif, l'ordre est figé (chercheur → … → synthèse).
   const dragEnabled = editable && mode === "sequential" && agents.length > 1;
 
   const handleDelete = useCallback((agent: PipelineAgent) => {
@@ -347,10 +368,10 @@ function PipelineWorkflowInner({
 
   // Hauteur du canvas en viewport units pour que les nodes (280×200)
   // gardent une taille lisible même avec 5+ agents en ligne.
-  // - sequential : 60vh (min 480px)
-  // - council/parallel : 70vh (min 580px)
+  // - sequential/itératif (chaîne horizontale) : 60vh (min 480px)
+  // - council/parallel (arc) : 70vh (min 580px)
   const canvasStyle: React.CSSProperties =
-    mode === "sequential"
+    mode === "sequential" || mode === "iterative"
       ? { height: "60vh", minHeight: 480 }
       : { height: "70vh", minHeight: 580 };
 
@@ -365,6 +386,17 @@ function PipelineWorkflowInner({
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,transparent,color-mix(in_oklch,var(--color-foreground)_2%,transparent)_70%,color-mix(in_oklch,var(--color-foreground)_4%,transparent))]"
         />
+
+        {/* Overlay pendant une mutation (reorder/suppression/reset/layout) :
+            bloque les interactions et signale le travail en cours. */}
+        {pending && (
+          <div className="absolute inset-0 z-20 grid place-items-center bg-background/40 backdrop-blur-[1px]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+              <IconLoader2 className="size-3.5 animate-spin" />
+              Mise à jour…
+            </span>
+          </div>
+        )}
 
         {/* Bouton reset : visible dès qu'au moins un agent a des
             coordonnées custom (canvasX/Y non null). */}

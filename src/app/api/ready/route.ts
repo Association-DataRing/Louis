@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
-import { getRedis } from "@/lib/redis";
+import { getRedisReady } from "@/lib/redis";
 
 /**
  * Readiness probe — `/api/ready` retourne 200 SEULEMENT si les dépendances
@@ -32,7 +32,8 @@ async function checkDb(): Promise<CheckResult> {
 
 async function checkRedis(): Promise<CheckResult> {
   try {
-    const r = getRedis();
+    const r = await getRedisReady();
+    if (!r) return { ok: false, error: "connexion initiale non établie" };
     const pong = await r.ping();
     if (pong !== "PONG") {
       return { ok: false, error: `unexpected response: ${pong}` };

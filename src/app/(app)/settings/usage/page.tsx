@@ -10,6 +10,7 @@ import {
   formatTotals,
 } from "@/lib/providers/pricing";
 import { getUserMonthlyQuotaCents } from "@/lib/usage/quota";
+import { aggregateToolStats } from "@/lib/observability/query";
 
 export default async function UsagePage() {
   const session = await auth();
@@ -99,6 +100,11 @@ export default async function UsagePage() {
     .innerJoin(conversations, eq(conversations.id, messages.conversationId))
     .where(and(eq(conversations.userId, userId)))
     .then((r) => r[0].n);
+
+  // Fiabilité des outils ce mois-ci (Légifrance, Pappers, RAG, génération de
+  // documents, MCP) — latence + taux de succès. Répond à « quel outil rame ou
+  // échoue », distinct du coût IA.
+  const toolStats = await aggregateToolStats({ since: monthStart, userId });
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-10 md:px-8 md:py-14">
@@ -257,6 +263,68 @@ export default async function UsagePage() {
         </div>
       </section>
 
+      <section className="mb-14 grid lg:grid-cols-[280px_1fr] gap-x-12 gap-y-6">
+        <div>
+          <h2 className="font-heading text-2xl tracking-tight">
+            Fiabilité des outils.
+          </h2>
+          {toolStats.totalCalls > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground tabular-nums">
+              {toolStats.totalCalls} appel
+              {toolStats.totalCalls > 1 ? "s" : ""} ce mois ·{" "}
+              {Math.round(toolStats.successRate)} % de succès
+            </p>
+          )}
+        </div>
+        <div>
+          {toolStats.byTool.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 border-y border-dashed border-border">
+              Aucun appel d&apos;outil ce mois-ci (Légifrance, Pappers,
+              recherche documentaire, génération de documents, MCP).
+            </p>
+          ) : (
+            <ul className="divide-y divide-border border-y border-border">
+              {toolStats.byTool.map((t) => {
+                const rate = Math.round(t.successRate);
+                const healthy = rate >= 95;
+                const degraded = rate >= 80 && rate < 95;
+                return (
+                  <li
+                    key={t.toolName}
+                    className="py-3 grid grid-cols-[1fr_auto_auto_auto] gap-x-6 items-baseline"
+                  >
+                    <span className="font-mono text-xs truncate">
+                      {t.toolName}
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums hidden sm:inline">
+                      {t.calls} appel{t.calls > 1 ? "s" : ""}
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {formatMs(t.avgMs)}
+                      <span className="opacity-60">
+                        {" "}
+                        / {formatMs(t.maxMs)}
+                      </span>
+                    </span>
+                    <span
+                      className={`text-xs font-medium tabular-nums ${
+                        healthy
+                          ? "text-success"
+                          : degraded
+                            ? "text-warning"
+                            : "text-destructive"
+                      }`}
+                    >
+                      {rate} %
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
+
       <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-sm text-muted-foreground">
         Les coûts utilisent les grilles publiques des providers (mai 2026).
         Pour les modèles auto-hébergés (Ollama, vLLM, Albert d&apos;Etalab),
@@ -282,4 +350,9 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatMs(ms: number): string {
+  if (ms < 1000) return `${ms} ms`;
+  return `${(ms / 1000).toFixed(1)} s`;
 }

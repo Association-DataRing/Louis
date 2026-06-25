@@ -5,8 +5,9 @@ import {
   type ToolSet,
 } from "ai";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
-import { buildToolsForUser } from "@/lib/connectors/tools";
-import { buildMcpToolsForUser } from "@/lib/mcp/tools";
+import { instrumentTools } from "@/lib/observability/tools";
+import { withApprovalGates } from "@/lib/ai/approval";
+import { loadAgentCatalogue } from "../tool-catalogue";
 import { resolveAgentRag, omitDocumentaryRagTools } from "./rag-scope";
 import {
   UNTRUSTED_CONTEXT_POLICY,
@@ -108,13 +109,25 @@ export class DefaultAgent implements Agent {
       ctx,
       this.definition.ragScope
     );
-    const [connectorTools, mcpTools] = await Promise.all([
-      buildToolsForUser(ctx.userId, scope),
-      buildMcpToolsForUser(ctx.userId),
-    ]);
+    const { connectorTools, mcpTools } = await loadAgentCatalogue(
+      ctx.userId,
+      scope,
+      ctx.toolCatalogue
+    );
     let merged: ToolSet = { ...connectorTools, ...mcpTools };
     if (hideDocumentaryRag) merged = omitDocumentaryRagTools(merged);
-    const tools = filterTools(merged, this.definition.toolAllowlist);
+    let tools: ToolSet = withApprovalGates(
+      instrumentTools(
+        filterTools(merged, this.definition.toolAllowlist),
+        ctx.userId
+      ),
+      ctx.requestToolApproval
+    );
+    // Outils injectés par l'orchestrateur (mode maestro avec terminal
+    // default-chat) — même contrat que runAgentStream (base.ts).
+    if (ctx.extraTools) {
+      tools = { ...tools, ...ctx.extraTools };
+    }
 
     const cached = applyCachedSystem({
       keyType: key.type,
@@ -133,9 +146,11 @@ export class DefaultAgent implements Agent {
       // laissait aucune marge et coupait le modèle en plein milieu. Au dernier
       // pas autorisé, on retire les outils pour forcer une vraie conclusion
       // plutôt qu'un appel d'outil tronqué.
-      stopWhen: stepCountIs(8),
+      stopWhen: stepCountIs(ctx.maxStepsOverride ?? 8),
       prepareStep: ({ stepNumber }) =>
-        stepNumber >= 7 ? { toolChoice: "none" } : {},
+        stepNumber >= (ctx.maxStepsOverride ?? 8) - 1
+          ? { toolChoice: "none" }
+          : {},
       temperature: this.definition.temperature ?? undefined,
       abortSignal: ctx.abortSignal,
     });

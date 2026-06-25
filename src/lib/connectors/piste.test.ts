@@ -1,5 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { legifranceUrlForId } from "./piste";
+
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
+
+vi.mock("./runtime", () => ({
+  loadConnectorCredentials: vi.fn().mockResolvedValue({
+    key: { id: "test-key" },
+    credentials: { client_id: "test-id", client_secret: "test-secret" },
+  }),
+  listActiveConnectorTypes: vi.fn().mockResolvedValue(["piste"]),
+}));
 
 describe("legifranceUrlForId", () => {
   it("route un article de code vers /codes/article_lc/", () => {
@@ -40,5 +51,45 @@ describe("legifranceUrlForId", () => {
 
   it("id vide → page d'accueil", () => {
     expect(legifranceUrlForId("")).toBe("https://www.legifrance.gouv.fr/");
+  });
+});
+
+describe("legifranceSearch — payload conforme au SearchRequestDTO", () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+    vi.resetModules();
+  });
+
+  it("place `fond` à la racine et les `operateur` requis (sinon erreur 500)", async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes("oauth.piste.gouv.fr")) {
+        return {
+          ok: true,
+          json: async () => ({ access_token: "tok-123", expires_in: 300 }),
+        };
+      }
+      return { ok: true, json: async () => ({ results: [] }) };
+    });
+
+    const { legifranceSearch } = await import("./piste");
+    const res = await legifranceSearch("user-1", "responsabilité du fait des produits", "CODE_DATE");
+    expect(res.ok).toBe(true);
+
+    const searchCall = mockFetch.mock.calls.find((c) =>
+      (c[0] as string).endsWith("/search")
+    );
+    expect(searchCall).toBeDefined();
+    const body = JSON.parse(searchCall![1].body as string);
+
+    // SearchRequestDTO.required = [fond, recherche] : fond DOIT être à la racine
+    expect(body.fond).toBe("CODE_DATE");
+    expect(body.recherche.fond).toBeUndefined();
+    // RechercheSpecifiqueDTO.required inclut operateur
+    expect(body.recherche.operateur).toBe("ET");
+    // CritereDTO.required = [operateur, typeRecherche, valeur]
+    const critere = body.recherche.champs[0].criteres[0];
+    expect(critere.operateur).toBe("ET");
+    expect(critere.typeRecherche).toBeTruthy();
+    expect(critere.valeur).toBe("responsabilité du fait des produits");
   });
 });

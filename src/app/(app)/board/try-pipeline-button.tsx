@@ -23,6 +23,8 @@ const SAMPLE_PROMPTS: Record<string, string> = {
     "Mon client souhaite résilier unilatéralement un contrat de distribution exclusive de 5 ans après 18 mois. Quels risques ?",
   "audit-conformite":
     "Évaluez la conformité d'un outil de scoring automatique de candidats pour le recrutement.",
+  "le-bureau":
+    "Un salarié protégé a été licencié sans autorisation de l'inspection du travail. Quels recours, quels délais, et préparez la trame du courrier au client.",
 };
 
 interface TryPipelineButtonProps {
