@@ -9,6 +9,7 @@ import {
   IconExternalLink,
   IconKey,
   IconPlayerPlay,
+  IconPlus,
   IconStar,
   IconTrash,
 } from "@tabler/icons-react";
@@ -84,6 +85,15 @@ export function ProviderCard({ type, keys }: Props) {
     setDialogOpen(true);
   }
 
+  // Force le mode création même quand un provider est déjà configuré : permet
+  // d'ajouter plusieurs clés du même type (ex. plusieurs endpoints locaux
+  // OpenAI-compatibles sur des ports différents — cf. issue #28).
+  function openCreateDialog() {
+    setDialogMode("create");
+    setError(null);
+    setDialogOpen(true);
+  }
+
   function handleSubmit(formData: FormData) {
     setError(null);
     startTransition(async () => {
@@ -103,6 +113,16 @@ export function ProviderCard({ type, keys }: Props) {
     <>
       <CutoutCard
         className={cn(cutoutCardSurfaceClassName, "flex flex-col")}
+        role="button"
+        tabIndex={0}
+        onClick={openDialog}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openDialog();
+          }
+        }}
+        aria-label={`${isConfigured ? "Modifier" : "Configurer"} ${meta.label}`}
       >
         <CutoutCardMedia
           className="relative h-44 w-full"
@@ -137,6 +157,7 @@ export function ProviderCard({ type, keys }: Props) {
           {isConfigured && (
             <CutoutCardPin
               className="right-3 top-3 flex items-center gap-2 rounded-full bg-card/85 px-2.5 py-1 backdrop-blur-sm"
+              onClick={(e) => e.stopPropagation()}
             >
               <span className="text-[10px] font-medium text-card-foreground/80">
                 {primary.isActive ? "Activé" : "Inactif"}
@@ -196,6 +217,7 @@ export function ProviderCard({ type, keys }: Props) {
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Documentation"
+                onClick={(e) => e.stopPropagation()}
               >
                 <IconExternalLink className="size-3.5" />
               </a>
@@ -206,10 +228,18 @@ export function ProviderCard({ type, keys }: Props) {
                   className="-mt-1 -mr-1 size-7 inline-flex shrink-0 items-center justify-center rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-50"
                   aria-label="Actions"
                   disabled={pending}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <IconDots className="size-3.5" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => openCreateDialog()}>
+                    <IconPlus className="size-4" />
+                    {type === "openai_compatible"
+                      ? "Ajouter un endpoint"
+                      : "Ajouter une autre clé"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     // R5 : testable dès qu'une base existe — soit l'URL du
                     // catalogue, soit le baseUrl saisi par l'utilisateur
@@ -259,17 +289,6 @@ export function ProviderCard({ type, keys }: Props) {
             </p>
           )}
 
-          <div className="mt-auto pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openDialog}
-              aria-label={`${isConfigured ? "Modifier" : "Configurer"} ${meta.label}`}
-            >
-              <IconKey className="size-3.5" />
-              {isConfigured ? "Modifier" : "Configurer"}
-            </Button>
-          </div>
         </CutoutCardContent>
 
         {/* Reveal-on-hover CTA */}
