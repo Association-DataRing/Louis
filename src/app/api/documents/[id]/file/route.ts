@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
-import { getObjectBytes } from "@/lib/storage";
+import { fetchDocumentBytes } from "@/lib/document-crypto";
 
 type Params = { id: string };
 
@@ -31,6 +31,8 @@ export async function GET(
       filename: documents.filename,
       contentType: documents.contentType,
       storageKey: documents.storageKey,
+      encDek: documents.encDek,
+      dekNonce: documents.dekNonce,
     })
     .from(documents)
     .where(and(eq(documents.id, id), eq(documents.userId, userId)))
@@ -40,9 +42,9 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  let bytes: Uint8Array;
+  let bytes: Buffer;
   try {
-    bytes = await getObjectBytes(doc.storageKey);
+    bytes = await fetchDocumentBytes(doc);
   } catch {
     return new Response("Storage error", { status: 500 });
   }

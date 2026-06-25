@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { documents, documentChunks } from "@/db/schema";
 import { chunkText } from "./chunk";
 import { embedTexts, NoEmbeddingProviderError } from "./embed";
+import { decryptDocumentText } from "@/lib/document-crypto";
 
 export type ReindexResult =
   | { ok: true; chunks: number }
@@ -23,14 +24,21 @@ export async function reindexDocument(
   documentId: string
 ): Promise<ReindexResult> {
   const [doc] = await db
-    .select({ id: documents.id, extractedText: documents.extractedText })
+    .select({
+      id: documents.id,
+      extractedText: documents.extractedText,
+      encDek: documents.encDek,
+      encExtractedText: documents.encExtractedText,
+      extractedTextNonce: documents.extractedTextNonce,
+    })
     .from(documents)
     .where(and(eq(documents.id, documentId), eq(documents.userId, userId)))
     .limit(1);
   if (!doc) return { ok: false, reason: "not_found" };
-  if (!doc.extractedText) return { ok: false, reason: "no_text" };
+  const plainText = await decryptDocumentText(doc);
+  if (!plainText) return { ok: false, reason: "no_text" };
 
-  const chunks = chunkText(doc.extractedText);
+  const chunks = chunkText(plainText);
   if (chunks.length === 0) return { ok: false, reason: "no_text" };
 
   let embeddings: number[][];

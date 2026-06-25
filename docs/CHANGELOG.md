@@ -7,6 +7,35 @@ Versionnement : [SemVer](https://semver.org/lang/fr/).
 
 ## [Non publié] — Pré-launch publique
 
+### 2026-06-16 — PDF → Markdown comme représentation canonique
+
+- **Tout PDF devient du Markdown structuré**, qui se substitue au texte brut
+  partout où il était consommé (RAG, injection prompt, analyses tabulaires,
+  outil `search_documents`, diff de versions, affichage). Unifie le rendu avec
+  l'OCR, qui produisait déjà du Markdown — fin de l'incohérence « PDF scanné =
+  joli Markdown / PDF texte = texte brut ».
+- **Conversion locale souveraine** : `src/lib/pdf/to-markdown.ts` reconstruit
+  titres (par taille de police), paragraphes et listes via pdfjs, sans aucune
+  clé ni appel externe. Remplace l'extraction texte-brut de `pdf-parse`.
+- **OCR pluggable et configurable** (`src/lib/ocr/`) pour les PDF scannés, avec
+  une chaîne automatique : Mistral OCR (endpoint dédié) si clé Mistral → sinon
+  **OCR par modèle de vision** via une clé dispo (OpenRouter/OpenAI/Anthropic —
+  ex. Pixtral via OpenRouter) → sinon **Tesseract local** (rastérisation pdfjs +
+  `@napi-rs/canvas`, langue `fra`). Jamais bloquant. Une page **Paramètres → OCR**
+  (`settings/ocr`, table `ocr_settings`) permet de forcer un moteur/modèle précis,
+  et signale quand on retombe sur Tesseract faute de clé. Louis n'est jamais
+  bloqué par l'absence de clé.
+- **DocPanel** : bascule « Aperçu PDF / Markdown » — le PDF reste affiché
+  fidèlement, et l'utilisateur peut voir le Markdown canonique (ce que l'IA lit)
+  avec highlight des citations.
+- **Chunking RAG markdown-aware** : un titre Markdown ouvre un nouveau chunk
+  (frontière de section → meilleure pertinence).
+- Schéma : `documents.text_format` (`'text' | 'markdown'`), appliqué via
+  `db:push`. Le PDF original est **conservé** (téléchargement, archivage).
+- Nouvelles deps : `@napi-rs/canvas`, `tesseract.js`. `next.config` :
+  `serverExternalPackages`. Nouvelle var optionnelle `TESSERACT_LANG_PATH`
+  (OCR hors-ligne).
+
 ### 2026-05-17 — Extraction de la landing publique
 
 - **Landing + Remotion + page Mentions légales déplacés vers un repo

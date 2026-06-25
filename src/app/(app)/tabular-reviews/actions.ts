@@ -18,6 +18,7 @@ import {
 } from "@/db/schema";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { log } from "@/lib/log";
+import { decryptDocumentText } from "@/lib/document-crypto";
 import { nanoid } from "nanoid";
 
 const EXTRACTION_CONCURRENCY = 3;
@@ -454,12 +455,16 @@ async function extractRow({
     .select({
       filename: documents.filename,
       extractedText: documents.extractedText,
+      encDek: documents.encDek,
+      encExtractedText: documents.encExtractedText,
+      extractedTextNonce: documents.extractedTextNonce,
     })
     .from(documents)
     .where(and(eq(documents.id, row.documentId), eq(documents.userId, userId)))
     .limit(1);
 
-  if (!doc || !doc.extractedText) {
+  const plainText = doc ? await decryptDocumentText(doc) : null;
+  if (!doc || !plainText) {
     await db
       .update(tabularReviewRows)
       .set({
@@ -471,7 +476,7 @@ async function extractRow({
     return;
   }
 
-  const promptDoc = doc.extractedText.slice(0, 80_000); // garde-fou contexte
+  const promptDoc = plainText.slice(0, 80_000); // garde-fou contexte
 
   try {
     const result = await generateText({

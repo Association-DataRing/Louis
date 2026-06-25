@@ -3,7 +3,10 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
-import { getObjectBytes } from "@/lib/storage";
+import {
+  decryptDocumentText,
+  fetchDocumentBytes,
+} from "@/lib/document-crypto";
 
 type Params = { id: string };
 
@@ -37,6 +40,11 @@ export async function GET(
       storageKey: documents.storageKey,
       previewStorageKey: documents.previewStorageKey,
       extractedText: documents.extractedText,
+      encDek: documents.encDek,
+      encExtractedText: documents.encExtractedText,
+      extractedTextNonce: documents.extractedTextNonce,
+      dekNonce: documents.dekNonce,
+      textFormat: documents.textFormat,
       extractionStatus: documents.extractionStatus,
     })
     .from(documents)
@@ -47,12 +55,14 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
+  const extractedText = await decryptDocumentText(doc);
+
   // Preview HTML mammoth uniquement comme fallback quand pas de PDF
   // LibreOffice disponible. Sinon le client utilise preview-pdf.
   let html: string | null = null;
   if (doc.contentType === DOCX_MEDIA_TYPE && !doc.previewStorageKey) {
     try {
-      const bytes = Buffer.from(await getObjectBytes(doc.storageKey));
+      const bytes = await fetchDocumentBytes(doc);
       const result = await mammoth.convertToHtml({ buffer: bytes });
       html = result.value;
     } catch {
@@ -66,7 +76,8 @@ export async function GET(
     contentType: doc.contentType,
     sizeBytes: doc.sizeBytes,
     version: doc.version,
-    extractedText: doc.extractedText,
+    extractedText,
+    textFormat: doc.textFormat,
     extractionStatus: doc.extractionStatus,
     hasPdfPreview: Boolean(doc.previewStorageKey),
     html,

@@ -41,8 +41,20 @@ export const documents = pgTable("documents", {
   // Alimente l'injection en prompt système ET le RAG (chunking + embeddings +
   // pgvector), en production — cf. lib/rag/*.
   extractedText: text("extracted_text"),
+  // Format de `extracted_text` : "markdown" pour les PDF (convertis via
+  // lib/pdf/to-markdown ou OCR) et tout doc à structure reconstruite, "text"
+  // pour le brut (DOCX/texte, et anciens PDF importés avant la conversion MD).
+  // Le DocPanel s'en sert pour rendre le Markdown plutôt que du texte plat.
+  textFormat: text("text_format").notNull().default("text"),
   extractionStatus: text("extraction_status").notNull().default("pending"),
   extractionError: text("extraction_error"),
+  // ADR 0005 — chiffrement à enveloppe (Phase 1)
+  // encDek : DEK 32 bytes enveloppée par la master key AES-GCM (JSON EncryptedBlob).
+  // Null = document antérieur au chiffrement (compatibilité ascendante).
+  encDek: text("enc_dek"),
+  dekNonce: text("dek_nonce"),           // base64, nonce XChaCha du blob S3
+  encExtractedText: text("enc_extracted_text"),  // base64 ciphertext XChaCha du texte
+  extractedTextNonce: text("extracted_text_nonce"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [
   // Arbre /documents + familles de versions : filtrés par propriétaire,

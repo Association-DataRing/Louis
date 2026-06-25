@@ -12,8 +12,10 @@ import {
   IconEye,
   IconDeviceFloppy,
 } from "@tabler/icons-react";
+import { IconMarkdown } from "@tabler/icons-react";
 import { Spinner } from "@/components/ui/spinner";
 import { DocxView } from "./docx-view";
+import { MarkdownDocView } from "./markdown-doc-view";
 import { DocEditor, type DocEditorHandle } from "./doc-editor";
 
 // PdfView importe pdfjs qui touche DOMMatrix / window au module-eval —
@@ -38,6 +40,7 @@ type DocPreview = {
   sizeBytes: number;
   version: number;
   extractedText: string | null;
+  textFormat: string;
   extractionStatus: string;
   hasPdfPreview: boolean;
 };
@@ -73,6 +76,11 @@ export function DocPanel({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const editorRef = useRef<DocEditorHandle>(null);
+
+  // PDF : bascule entre l'aperçu visuel fidèle (PdfView) et le Markdown
+  // canonique (ce que l'IA voit réellement). Une citation cliquée ouvre sur
+  // l'aperçu PDF, où le highlight ciblé est le plus précis.
+  const [pdfView, setPdfView] = useState<"pdf" | "markdown">("pdf");
 
   // Le parent passe key={documentId} → ce composant remount sur changement
   // de document, useState repart frais. Pas besoin de reset manuel ici.
@@ -175,6 +183,34 @@ export function DocPanel({
             </button>
           )}
 
+          {/* Toggle Aperçu PDF / Markdown — pour les PDF (le Markdown est la
+              représentation canonique : RAG, prompt, analyses). */}
+          {isPdf && doc?.extractedText && (
+            <button
+              onClick={() =>
+                setPdfView(pdfView === "pdf" ? "markdown" : "pdf")
+              }
+              className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title={
+                pdfView === "pdf"
+                  ? "Voir le Markdown (ce que l'IA lit)"
+                  : "Revenir à l'aperçu PDF fidèle"
+              }
+            >
+              {pdfView === "pdf" ? (
+                <>
+                  <IconMarkdown className="size-4" />
+                  Markdown
+                </>
+              ) : (
+                <>
+                  <IconEye className="size-4" />
+                  Aperçu PDF
+                </>
+              )}
+            </button>
+          )}
+
           {/* Enregistrer — visible en édition. */}
           {editing && (
             <button
@@ -243,7 +279,7 @@ export function DocPanel({
         )}
 
         {/* Aperçu fidèle. */}
-        {!loading && !error && doc && !editing && isPdf && (
+        {!loading && !error && doc && !editing && isPdf && pdfView === "pdf" && (
           // PdfView (react-pdf custom) plutôt qu'un iframe : la toolbar
           // de pdf.js / Firefox n'est pas masquable via #toolbar=0,
           // donc on rend nous-mêmes la page avec une navigation propre.
@@ -252,6 +288,18 @@ export function DocPanel({
             targetText={targetText}
           />
         )}
+        {/* Markdown canonique du PDF (conversion locale ou OCR). */}
+        {!loading &&
+          !error &&
+          doc &&
+          !editing &&
+          isPdf &&
+          pdfView === "markdown" && (
+            <MarkdownDocView
+              markdown={doc.extractedText ?? "*Aucun texte extrait.*"}
+              targetText={targetText}
+            />
+          )}
         {!loading && !error && doc && !editing && !isPdf && doc.hasPdfPreview && (
           // Docs générés par Louis : un PDF preview a été produit via
           // LibreOffice (Gotenberg) au moment de la génération. Vraie
@@ -276,7 +324,9 @@ export function DocPanel({
         {editing
           ? "Édition WYSIWYG — « Enregistrer » crée une nouvelle version .docx."
           : isPdf
-            ? "Aperçu PDF natif du navigateur."
+            ? pdfView === "markdown"
+              ? "Markdown canonique — le texte exact lu par l'IA (RAG, prompt, analyses)."
+              : "Aperçu PDF fidèle. Basculez sur « Markdown » pour voir ce que l'IA lit."
             : doc?.hasPdfPreview
               ? "Aperçu paginé via LibreOffice — identique au document Word téléchargé."
               : "Rendu DOCX via docx-preview — fidèle à l'ouverture Word/Pages."}

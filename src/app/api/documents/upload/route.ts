@@ -8,10 +8,15 @@ import {
   isSupportedContentType,
   ScannedPdfError,
 } from "@/lib/extract";
-import { ocrPdf, NoOcrProviderError } from "@/lib/ocr";
+import { ocrPdf } from "@/lib/ocr";
 import { chunkText } from "@/lib/rag/chunk";
 import { embedTexts, NoEmbeddingProviderError } from "@/lib/rag/embed";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import {
+  generateDek,
+  encryptWithDek,
+  wrapDek,
+} from "@/lib/crypto-envelope";
 import { nanoid } from "nanoid";
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
@@ -120,20 +125,16 @@ export async function POST(req: Request) {
     file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "file";
   const storageKey = `${userId}/${nanoid()}-${safeFilename}`;
 
-  try {
-    await uploadObject(storageKey, buffer, file.type);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Storage error";
-    return new Response(`Failed to store file: ${msg}`, { status: 500 });
-  }
-
-  let extractedText: string | null = null;
+  // --- Extraction de texte (sur le buffer en clair, avant chiffrement) ---
+  let plainExtractedText: string | null = null;
+  let textFormat: "text" | "markdown" = "text";
   let extractionStatus = "ok";
   let extractionError: string | null = null;
 
   try {
     const result = await extractText(buffer, file.type);
-    extractedText = result.text;
+    plainExtractedText = result.text;
+    textFormat = result.format;
     if (result.truncated) extractionStatus = "truncated";
   } catch (err) {
     // PDF scanné (aucune couche texte) → tentative d'OCR souverain plutôt que
@@ -141,10 +142,16 @@ export async function POST(req: Request) {
     // signifiés, PV d'huissier…) deviennent ainsi indexées et interrogeables.
     if (err instanceof ScannedPdfError) {
       try {
-        const ocrText = await ocrPdf(userId, buffer);
-        if (ocrText.length > 0) {
-          extractedText = ocrText;
-          extractionStatus = "ocr";
+        // OCR pluggable : Mistral dédié / modèle vision (au choix) / Tesseract
+        // local. Jamais bloquant — Tesseract est le plancher souverain.
+        const ocr = await ocrPdf(userId, buffer);
+        if (ocr.text.length > 0) {
+          plainExtractedText = ocr.text;
+          // Toutes les voies OCR renvoient du Markdown (texte brut compris).
+          textFormat = "markdown";
+          // `ocr` quand un moteur de qualité a opéré ; `ocr_degraded` quand on
+          // a dû retomber sur Tesseract faute de clé — l'UI peut le signaler.
+          extractionStatus = ocr.degraded ? "ocr_degraded" : "ocr";
         } else {
           extractionStatus = "failed";
           extractionError = err.message;
@@ -152,16 +159,44 @@ export async function POST(req: Request) {
       } catch (ocrErr) {
         extractionStatus = "failed";
         extractionError =
-          ocrErr instanceof NoOcrProviderError
-            ? ocrErr.message
-            : ocrErr instanceof Error
-              ? `OCR : ${ocrErr.message}`
-              : "OCR failed";
+          ocrErr instanceof Error ? `OCR : ${ocrErr.message}` : "OCR failed";
       }
     } else {
       extractionStatus = "failed";
       extractionError = err instanceof Error ? err.message : "Extraction failed";
     }
+  }
+
+  // --- Chiffrement à enveloppe (ADR 0005 Phase 1) ---
+  const dek = await generateDek();
+  let encryptedBuffer: Buffer;
+  let dekNonce: string;
+  let encExtractedText: string | null = null;
+  let extractedTextNonce: string | null = null;
+  let encDek: string;
+  try {
+    const encBlob = await encryptWithDek(buffer, dek);
+    encryptedBuffer = encBlob.ciphertext;
+    dekNonce = encBlob.nonce;
+    if (plainExtractedText) {
+      const encText = await encryptWithDek(
+        Buffer.from(plainExtractedText, "utf8"),
+        dek
+      );
+      encExtractedText = encText.ciphertext.toString("base64");
+      extractedTextNonce = encText.nonce;
+    }
+    encDek = wrapDek(dek);
+  } finally {
+    dek.fill(0);
+  }
+
+  // Upload du blob chiffré
+  try {
+    await uploadObject(storageKey, encryptedBuffer, file.type);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Storage error";
+    return new Response(`Failed to store file: ${msg}`, { status: 500 });
   }
 
   let docId: string;
@@ -178,7 +213,11 @@ export async function POST(req: Request) {
         contentType: file.type,
         sizeBytes: file.size,
         storageKey,
-        extractedText,
+        encDek,
+        dekNonce,
+        encExtractedText,
+        extractedTextNonce,
+        textFormat,
         extractionStatus,
         extractionError,
       })
@@ -192,11 +231,12 @@ export async function POST(req: Request) {
 
   // Best-effort RAG indexation. Failures don't block the upload — the
   // document remains usable via system-prompt injection for small files.
+  // Les chunks restent en clair (ADR 0005 §9 option A).
   let indexedChunks = 0;
   let indexError: string | null = null;
-  if (extractedText) {
+  if (plainExtractedText) {
     try {
-      const chunks = chunkText(extractedText);
+      const chunks = chunkText(plainExtractedText);
       if (chunks.length > 0) {
         const embeddings = await embedTexts(userId, chunks);
         await db.insert(documentChunks).values(

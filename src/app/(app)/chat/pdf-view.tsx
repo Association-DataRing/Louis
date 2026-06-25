@@ -5,6 +5,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { Spinner } from "@/components/ui/spinner";
+import { findNormalizedAdaptive } from "@/lib/text-highlight";
 
 // Worker servi localement par /api/pdf-worker (pas de CDN tiers).
 // Query param avec la version pdfjs runtime → l'URL change quand on
@@ -24,9 +25,7 @@ export function PdfView({ fileUrl, targetText }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markRef = useRef<HTMLElement | null>(null);
 
-  // Le passage cible (chunk) pour customTextRenderer — premières 60 chars
-  // suffisent à matcher une fraction de phrase sans trop de faux positifs.
-  const needle = (targetText ?? "").trim().slice(0, 60);
+  const needle = (targetText ?? "").trim();
 
   // Resize observer pour adapter la largeur de la page au panneau.
   useEffect(() => {
@@ -43,17 +42,17 @@ export function PdfView({ fileUrl, targetText }: Props) {
     setNumPages(doc.numPages);
   }, []);
 
-  // Wrap les segments de texte qui matchent le needle. AnnotationLayer/TextLayer
-  // de react-pdf injectent le HTML retourné directement.
+  // Wrap le segment de texte qui contient le needle. Utilise findNormalized
+  // pour gérer la divergence NFC/NFD entre la sortie pdfjs et le texte LLM.
   const textRenderer = useCallback(
     ({ str }: { str: string }) => {
       if (!needle) return str;
-      const lower = str.toLowerCase();
-      const idx = lower.indexOf(needle.toLowerCase());
-      if (idx < 0) return str;
-      const before = str.slice(0, idx);
-      const match = str.slice(idx, idx + needle.length);
-      const after = str.slice(idx + needle.length);
+      const range = findNormalizedAdaptive(str, needle);
+      if (!range) return str;
+      const [start, end] = range;
+      const before = str.slice(0, start);
+      const match = str.slice(start, end);
+      const after = str.slice(end);
       return `${escapeHtml(before)}<mark class="louis-highlight">${escapeHtml(match)}</mark>${escapeHtml(after)}`;
     },
     [needle]
@@ -112,15 +111,6 @@ export function PdfView({ fileUrl, targetText }: Props) {
           {error}
         </div>
       )}
-
-      <style>{`
-        .louis-highlight {
-          background-color: var(--highlight);
-          color: var(--highlight-foreground);
-          border-radius: 2px;
-          padding: 0 1px;
-        }
-      `}</style>
     </div>
   );
 }

@@ -18,6 +18,34 @@ describe("chunkText", () => {
     expect(out.length).toBeGreaterThan(1);
   });
 
+  it("un titre Markdown ouvre un nouveau chunk (frontière logique RAG)", () => {
+    const text =
+      "Premier paragraphe introductif suffisamment long pour tenir seul.\n\n## Article 2 — Obligations\n\nContenu de la section.";
+    const out = chunkText(text);
+    expect(out.length).toBeGreaterThanOrEqual(2);
+    expect(out.some((c) => c.startsWith("## Article 2"))).toBe(true);
+  });
+
+  it("le titre et son contenu court restent dans le même chunk", () => {
+    const text = "## Définitions\n\nLe terme « client » désigne toute personne physique.";
+    const out = chunkText(text);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain("## Définitions");
+    expect(out[0]).toContain("Le terme");
+  });
+
+  it("plusieurs titres Markdown → autant de chunks distincts", () => {
+    const sections = ["## Section A", "## Section B", "## Section C"];
+    const text = sections
+      .map((h) => `${h}\n\nContenu de la section, texte représentatif.`)
+      .join("\n\n");
+    const out = chunkText(text);
+    expect(out.length).toBeGreaterThanOrEqual(3);
+    sections.forEach((h) => {
+      expect(out.some((c) => c.startsWith(h))).toBe(true);
+    });
+  });
+
   it("overlap par phrase entière : ne coupe pas en plein mot", () => {
     // Deux gros paragraphes → un chunk avec overlap. Le début du 2e chunk doit
     // commencer par une phrase complète (majuscule), pas un fragment de mot.

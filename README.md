@@ -17,22 +17,122 @@ du Droit. Conçue par l'**Association DataRing**
 
 </div>
 
+> **Fork de travail — branche `dev`**
+>
+> Ce dépôt est un fork de [`Association-DataRing/Louis`](https://github.com/Association-DataRing/Louis).
+> La description générale du projet, le manifeste, l'architecture, les instructions d'installation
+> et la roadmap officielle font référence au dépôt amont. Ce fork développe des fonctionnalités
+> expérimentales sur la branche `dev` avant contribution éventuelle vers l'upstream.
+> Voir la section [Apports de ce fork](#apports-de-ce-fork) ci-dessous.
+
 ---
 
 ## Sommaire
 
-1. [Le problème](#le-problème)
-2. [Ce que Louis fait](#ce-que-louis-fait)
-3. [Le manifeste](#le-manifeste)
-4. [Architecture](#architecture)
-5. [Démarrage](#démarrage)
-6. [Configuration](#configuration)
-7. [État réel des fonctionnalités](#état-réel-des-fonctionnalités)
-8. [Stack technique](#stack-technique)
-9. [Roadmap](#roadmap)
-10. [Sécurité](#sécurité)
-11. [Contribuer](#contribuer)
-12. [Licence](#licence)
+1. [Apports de ce fork](#apports-de-ce-fork)
+2. [Le problème](#le-problème)
+3. [Ce que Louis fait](#ce-que-louis-fait)
+4. [Le manifeste](#le-manifeste)
+5. [Architecture](#architecture)
+6. [Démarrage](#démarrage)
+7. [Configuration](#configuration)
+8. [État réel des fonctionnalités](#état-réel-des-fonctionnalités)
+9. [Stack technique](#stack-technique)
+10. [Roadmap](#roadmap)
+11. [Sécurité](#sécurité)
+12. [Contribuer](#contribuer)
+13. [Licence](#licence)
+
+---
+
+## Apports de ce fork
+
+Ce fork ajoute les fonctionnalités suivantes à la base upstream. Elles sont développées
+sur la branche `dev` et non encore mergées dans `main`.
+
+### PDF → Markdown canonique
+
+`src/lib/pdf/to-markdown.ts` — conversion locale pdfjs → Markdown structuré.
+Les titres sont inférés à partir des tailles de police, les listes et paragraphes
+sont préservés. Zéro dépendance externe, souverain, fonctionne hors-ligne.
+Remplace `pdf-parse`.
+
+Le chunking RAG (`src/lib/rag/chunk.ts`) est désormais markdown-aware : un titre
+Markdown ouvre un nouveau chunk, ce qui améliore la pertinence des résultats RAG
+sur les documents structurés.
+
+Le DocPanel propose une bascule « Aperçu PDF / Markdown » (`markdown-doc-view.tsx`).
+
+### OCR pluggable
+
+`src/lib/ocr/` — module OCR avec chaîne de fallback configurable :
+Mistral OCR dédié → modèle vision (OpenRouter / Anthropic / OpenAI) → Tesseract
+local (`fra`). Jamais bloquant. La page **Settings → OCR** permet de forcer un
+moteur ou d'observer l'état du fallback.
+
+### Chiffrement enveloppe DEK complet (ADR 0005 Phase 1 + 2)
+
+Les blobs S3 **et** le texte extrait sont chiffrés à l'upload avec un DEK dédié
+par document (XChaCha20), lui-même enveloppé par la master key AES-256-GCM.
+
+- `src/lib/sodium.ts` — wrapper libsodium-sumo
+- `src/lib/crypto-envelope.ts` — génération DEK, encrypt/decrypt, wrap/unwrap
+- `src/lib/document-crypto.ts` — `decryptDocumentText()`, `fetchDocumentBytes()`,
+  `fetchDocumentDecrypted()` (rétrocompatibilité null-DEK)
+- Architecture documentée dans `docs/architecture/decisions/0005-client-data-encryption.md`
+
+> Les chunks RAG (`document_chunks`) restent en clair — compromis délibéré
+> souveraineté/performance, cf. ADR 0005 §9 option A.
+
+### Embedding configurable
+
+Les embeddings ne sont plus liés à Mistral uniquement. Trois variables `.env`
+suffisent pour pointer vers n'importe quel endpoint compatible
+(`LOUIS_EMBEDDING_BASE_URL`, `LOUIS_EMBEDDING_MODEL`, `LOUIS_EMBEDDING_API_KEY`).
+
+### Téléchargement de documents
+
+Le bouton « Télécharger » est désormais accessible depuis la page `/documents`
+(menu contextuel de chaque ligne), en plus du DocPanel du chat. Le déchiffrement
+S3 est transparent — l'utilisateur reçoit le fichier original en clair.
+
+### Réindexation intelligente
+
+`reindexAllDocumentsAction` accepte un paramètre `{ onlyUnindexed: boolean }`
+(défaut `true`). Par défaut, seuls les documents sans chunk existant sont traités —
+pas de refacturation d'embeddings déjà calculés. L'option `false` force le
+recalcul complet (utile après un changement de modèle d'embedding).
+
+Le bouton de réindexation dans l'UI est devenu un dropdown à deux options :
+_Indexer les nouveaux documents_ / _Tout réindexer (forcer)_.
+
+### Citations cliquables avec surlignage précis
+
+Les citations insérées par Louis dans ses réponses (liens `louis-doc:`) ouvrent
+le DocPanel directement sur la source citée, avec le passage surligné et centré.
+
+- **Normalisation Unicode** — `src/lib/text-highlight.ts` : `findNormalized()`
+  réconcilie NFD/NFC pour éviter les faux-négatifs entre le texte extrait par
+  pdfjs (souvent NFD) et la citation produite par le LLM (souvent NFC).
+- **Aiguille adaptative** — `findNormalizedAdaptive()` tente 120 → 60 → 30 chars
+  pour les citations trop longues pour correspondre mot pour mot.
+- **Highlight inline** — `<mark class="louis-highlight">` inséré via `splitText`
+  (DOM Range) dans le DocPanel Markdown/DOCX, et via le `textRenderer` react-pdf
+  dans le DocPanel PDF.
+- **Animation pulse** — `@keyframes louis-highlight-pulse` (anneau box-shadow,
+  `prefers-reduced-motion` respecté).
+
+### Tests
+
+264 tests Vitest passent (`npx vitest run`), contre 15 dans l'upstream. Ajouts :
+
+| Fichier | Cas couverts |
+|---|---|
+| `src/lib/pdf/to-markdown.test.ts` | H1, H3, liste, paragraphe, document vide |
+| `src/lib/extract.test.ts` | format Markdown, `ScannedPdfError`, troncature, type inconnu |
+| `src/lib/document-crypto.test.ts` | rétrocompat null-DEK, round-trip Markdown, MAC invalide |
+| `src/lib/rag/chunk.test.ts` | frontière titre Markdown, titre + contenu groupés, N titres = N chunks |
+| `src/lib/text-highlight.test.ts` | normalisation accents, fallback adaptatif 120→60→30, edge cases |
 
 ---
 
@@ -447,10 +547,22 @@ pour la référence complète.
 - **Smoke tests** Playwright (11 routes principales) + unit tests
   Vitest (15 tests sur crypto et rate-limit)
 
-### 🟡 Partiel — utilisable mais à affiner
+#### Disponible dans ce fork (branche `dev`)
 
-- Citations cliquables avec surlignage de la cible (propagation
-  `targetText` ok, UX du highlight à valider par type de PDF)
+- **PDF → Markdown** — conversion locale pdfjs, souverain, hors-ligne
+- **OCR pluggable** — Mistral OCR → vision → Tesseract local `fra`, page
+  paramètres dédiée
+- **Vue Markdown dans le DocPanel** — bascule PDF / Markdown
+- **Chunking RAG markdown-aware** — titre Markdown = nouveau chunk
+- **Chiffrement DEK complet (ADR 0005)** — blobs S3 et texte extrait
+  chiffrés, XChaCha20 + AES-256-GCM, rétrocompat null-DEK
+- **Embedding configurable** — plus limité à Mistral, endpoint libre via `.env`
+- **Téléchargement de documents** depuis la page `/documents`
+- **Réindexation intelligente** — indexation des nouveaux seulement par défaut,
+  dropdown « forcer » pour changer de modèle d'embedding
+- **Citations avec surlignage précis** — normalisation Unicode, highlight inline
+  `<mark>` via `splitText`, aiguille adaptative 120→60→30 chars, animation pulse
+- **Tests étendus** — 264 tests Vitest (vs 15 upstream)
 
 ### ⚪ Planifié pour v0.2
 

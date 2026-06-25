@@ -50,7 +50,17 @@ export function chunkText(input: string): string[] {
 
   for (const para of paragraphs) {
     if (chunks.length >= MAX_CHUNKS) break;
+    // Un titre Markdown (#, ##, …) ouvre une section : on clôt le chunk courant
+    // pour que chaque chunk démarre à une frontière logique et reste collé à
+    // son contenu, ce qui améliore nettement la pertinence du RAG sur les
+    // documents convertis en Markdown (PDF, OCR).
+    const isHeading = /^#{1,6}\s/.test(para);
     if (!buffer) {
+      buffer = para;
+      continue;
+    }
+    if (isHeading) {
+      chunks.push(buffer);
       buffer = para;
       continue;
     }
