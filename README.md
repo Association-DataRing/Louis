@@ -17,19 +17,11 @@ du Droit. Conçue par l'**Association DataRing**
 
 </div>
 
-> **Fork de travail — branche `dev`**
->
-> Ce dépôt est un fork de [`Association-DataRing/Louis`](https://github.com/Association-DataRing/Louis).
-> La description générale du projet, le manifeste, l'architecture, les instructions d'installation
-> et la roadmap officielle font référence au dépôt amont. Ce fork développe des fonctionnalités
-> expérimentales sur la branche `dev` avant contribution éventuelle vers l'upstream.
-> Voir la section [Apports de ce fork](#apports-de-ce-fork) ci-dessous.
-
 ---
 
 ## Sommaire
 
-1. [Apports de ce fork](#apports-de-ce-fork)
+1. [Nouveautés récentes](#nouveautés-récentes)
 2. [Le problème](#le-problème)
 3. [Ce que Louis fait](#ce-que-louis-fait)
 4. [Le manifeste](#le-manifeste)
@@ -45,10 +37,11 @@ du Droit. Conçue par l'**Association DataRing**
 
 ---
 
-## Apports de ce fork
+## Nouveautés récentes
 
-Ce fork ajoute les fonctionnalités suivantes à la base upstream. Elles sont développées
-sur la branche `dev` et non encore mergées dans `main`.
+Fonctionnalités récemment ajoutées au projet : chiffrement des documents à
+enveloppe, OCR souverain pluggable, conversion PDF → Markdown canonique et
+citations cliquables avec surlignage précis.
 
 ### PDF → Markdown canonique
 
@@ -124,7 +117,7 @@ le DocPanel directement sur la source citée, avec le passage surligné et centr
 
 ### Tests
 
-264 tests Vitest passent (`npx vitest run`), contre 15 dans l'upstream. Ajouts :
+281 tests Vitest passent (`npx vitest run`). Ajouts :
 
 | Fichier | Cas couverts |
 |---|---|
@@ -194,9 +187,10 @@ La hiérarchie est déclarée dans un fichier de configuration lisible,
 versionnable, auditable. Chaque réponse est accompagnée du journal des
 agents qui y ont contribué — un véritable « audit trail » opposable.
 
-> **État actuel (v0.1) :** un seul agent (`default-chat`) tourne
-> derrière l'orchestrateur. La couche d'abstraction est en place ;
-> les agents spécialisés arrivent en v0.2.
+> **État actuel (v0.2) :** l'orchestrateur fait coopérer de vrais
+> agents spécialisés via le **Board** — Maestro (chef d'orchestre),
+> Recherche, Légifrance, Rédacteur, Relecteur, Citateur. Quatre presets
+> prêts à l'emploi ; un modèle assignable par rôle.
 
 ### Chat juridique avec accès aux textes
 
@@ -342,7 +336,7 @@ et [`docs/architecture/data-model.md`](./docs/architecture/data-model.md).
 | Node.js | 24 LTS | `node -v` |
 | Docker | 24 + Compose v2 | `docker compose version` |
 | Disque libre | ~5 Go (images Docker + pgvector + dépendances) | `df -h .` |
-| Clé Mistral | requise pour le RAG (les embeddings sont fournis uniquement par Mistral en v0.1) | [console.mistral.ai](https://console.mistral.ai) |
+| Embeddings (RAG) | une clé **Mistral** _ou_ un endpoint d'embedding **auto-hébergé** (Ollama / vLLM / llama.cpp / TEI) | [console.mistral.ai](https://console.mistral.ai) |
 
 > Pour les autres modèles (Anthropic, OpenAI, Scaleway, OVH, Albert),
 > les clés sont **optionnelles** et configurables une fois Louis lancé.
@@ -515,8 +509,11 @@ pour la référence complète.
 ### 🟢 Disponible — fonctionnel et testé
 
 - Chat streaming multi-tour, multi-provider, persistance Postgres
-- Tool calling : **Légifrance** (via PISTE), **Pappers**, recherche
-  RAG dans vos documents (pgvector)
+- **Orchestrateur multi-agents (Board)** — agents spécialisés (Maestro,
+  Recherche, Légifrance, Rédacteur, Relecteur, Citateur), presets, un
+  modèle assignable par rôle
+- Tool calling : **Légifrance**, **Judilibre**, **BOFIP**, **BODACC**
+  (via PISTE), **Pappers**, recherche RAG dans vos documents (pgvector)
 - **DocPanel side-by-side** — PDF natif sans toolbar parasite, DOCX
   rendu fidèle via Gotenberg
 - **Cmd+K** — palette de commandes globale (conversations, projets,
@@ -536,7 +533,8 @@ pour la référence complète.
   Gotenberg) avec schéma typé, `edit_document` avec tracked edits
   accept/reject
 - **BYOK chiffré** — clés AES-256-GCM, badges souveraineté FR/UE/US
-- **Connecteurs juridiques** — PISTE OAuth (Légifrance), Pappers
+- **Connecteurs juridiques** — PISTE OAuth (Légifrance, Judilibre,
+  BOFIP, BODACC), Pappers
 - **MCP-native** — serveurs MCP custom par utilisateur
 - **Multi-utilisateur** — NextAuth v5 Credentials + RBAC admin/member
 - **Journal d'audit** append-only sur les opérations sensibles
@@ -544,10 +542,10 @@ pour la référence complète.
 - **Docker Compose** une commande
 - **Sécurité** — rate-limit Redis, headers HTTP OWASP, audit log,
   SSL Postgres strict, sanitization filenames
-- **Smoke tests** Playwright (11 routes principales) + unit tests
-  Vitest (15 tests sur crypto et rate-limit)
+- **Tests** — 281 tests unitaires Vitest (crypto, chiffrement DEK,
+  connecteurs, orchestrateur, RAG, OCR, highlight…) + smoke tests Playwright
 
-#### Disponible dans ce fork (branche `dev`)
+#### Ajouts récents
 
 - **PDF → Markdown** — conversion locale pdfjs, souverain, hors-ligne
 - **OCR pluggable** — Mistral OCR → vision → Tesseract local `fra`, page
@@ -562,12 +560,11 @@ pour la référence complète.
   dropdown « forcer » pour changer de modèle d'embedding
 - **Citations avec surlignage précis** — normalisation Unicode, highlight inline
   `<mark>` via `splitText`, aiguille adaptative 120→60→30 chars, animation pulse
-- **Tests étendus** — 264 tests Vitest (vs 15 upstream)
+- **Tests étendus** — 281 tests Vitest
 
-### ⚪ Planifié pour v0.2
+### ⚪ Planifié
 
-- Sub-APIs PISTE étendues : Judilibre (Cour de cassation), JADE
-  (Conseil d'État), INPI, BODACC
+- Sub-APIs PISTE supplémentaires : JADE (Conseil d'État), INPI
 - Project sharing par email entre membres du cabinet
 - Internationalisation anglaise
 - Veille juridique automatisée — surveillance Légifrance / JADE / BODACC
@@ -597,9 +594,9 @@ pour la référence complète.
 
 | Milestone | Date cible | Statut |
 |---|---|---|
-| v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | 🟡 En cours |
-| v0.1.x — Sub-APIs PISTE étendues + sécurité durcie | 2026-Q3 | ⚪ À venir |
-| v0.2 — Orchestrateur multi-agents (recherche, rédaction, relecteur, citateur) + pipelines métier | 2026-Q4 | ⚪ À venir |
+| v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | ✅ Livré |
+| v0.2 — Board multi-agents + connecteurs PISTE étendus (Judilibre, BOFIP, BODACC) + chiffrement DEK des documents + OCR souverain + RAG souverain | 2026-Q2 | ✅ Livré |
+| v0.2.x — JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
 | v0.3 — i18n, project sharing, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
 | v1.0 — Production-ready, documentation complète | 2027 | ⚪ À venir |
 
