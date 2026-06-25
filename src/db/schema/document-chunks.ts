@@ -11,11 +11,15 @@ import {
 import { documents } from "./documents";
 
 /**
- * 1536 dimensions matches OpenAI text-embedding-3-small output size (default
- * via OpenRouter). Mistral mistral-embed (1024) is no longer the default.
- * All existing chunks must be cleared before changing this value.
+ * 1024 dimensions matches Mistral's `mistral-embed` output size — the
+ * default sovereign embedding model for Louis (cf. lib/rag/embed.ts), et
+ * aussi des backends auto-hébergés recommandés (Qwen3-Embedding-0.6B).
+ * Un déploiement qui privilégie OpenAI text-embedding-3-small (1536) ajuste
+ * cette valeur et ré-indexe — une seule dimension par déploiement, pas de
+ * mélange à chaud. Tous les chunks existants doivent être purgés avant de
+ * changer cette valeur.
  */
-export const EMBEDDING_DIM = 1536;
+export const EMBEDDING_DIM = 1024;
 
 export const documentChunks = pgTable(
   "document_chunks",
