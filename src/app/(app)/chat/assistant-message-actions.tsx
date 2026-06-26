@@ -6,6 +6,7 @@ import {
   IconCheck,
   IconRefresh,
   IconArrowsExchange,
+  IconGitFork,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -32,6 +33,8 @@ type Props = {
   availableModels: ModelOption[];
   onRegenerate: () => void;
   onRegenerateWith: (modelId: string) => void;
+  /** Forke la conversation jusqu'à ce message inclus. Caché si absent. */
+  onFork?: () => void;
   disabled?: boolean;
 };
 
@@ -47,6 +50,7 @@ export function AssistantMessageActions({
   availableModels,
   onRegenerate,
   onRegenerateWith,
+  onFork,
   disabled = false,
 }: Props) {
   const [copied, setCopied] = useState(false);
@@ -89,6 +93,18 @@ export function AssistantMessageActions({
       >
         <IconRefresh className="size-3.5" />
       </button>
+      {onFork && (
+        <button
+          type="button"
+          onClick={onFork}
+          disabled={disabled}
+          title="Forker la conversation à partir d'ici"
+          aria-label="Forker la conversation à partir d'ici"
+          className="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          <IconGitFork className="size-3.5" />
+        </button>
+      )}
       {availableModels.length > 1 && (
         <DropdownMenu>
           <DropdownMenuTrigger

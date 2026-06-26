@@ -15,6 +15,7 @@ import {
   IconPinFilled,
   IconDownload,
   IconPrinter,
+  IconGitFork,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ import {
   togglePinConversation,
   exportConversationMarkdown,
   exportConversationAuditJson,
+  forkConversation,
 } from "./actions";
 import { moveConversationToProject } from "../projects/actions";
 
@@ -104,6 +106,13 @@ export function ConversationItem({
     startTransition(async () => {
       await togglePinConversation(id);
       router.refresh();
+    });
+  }
+
+  function handleFork() {
+    startTransition(async () => {
+      const result = await forkConversation(id);
+      if (result.ok) router.push(`/chat?id=${result.id}`);
     });
   }
 
@@ -192,6 +201,10 @@ export function ConversationItem({
           >
             <IconPencil className="size-4" />
             Renommer
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleFork}>
+            <IconGitFork className="size-4" />
+            Forker
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleExport}>
             <IconDownload className="size-4" />

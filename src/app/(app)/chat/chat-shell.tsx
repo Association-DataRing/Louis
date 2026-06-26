@@ -47,7 +47,7 @@ import {
   type ModelOption,
 } from "./assistant-message-actions";
 import { ModelPicker } from "./model-picker";
-import { editUserMessageAndTrim } from "./actions";
+import { editUserMessageAndTrim, forkConversation } from "./actions";
 import { uiPartsFromSaved } from "@/lib/ai/saved-parts";
 import {
   unwrapToolResult,
@@ -1733,6 +1733,24 @@ export function ChatShell({
     });
   }
 
+  // Forke la conversation jusqu'à un message donné (inclus), à la manière de
+  // la webui llama.cpp. On envoie l'ID du message ET sa position : l'ID est
+  // précis quand la conv a été rechargée (vrais IDs DB), mais pendant la
+  // session courante les IDs viennent de l'AI SDK et ne matchent pas la DB —
+  // le serveur retombe alors sur `upToCount`. La nouvelle conv s'ouvre.
+  const handleForkMessage = useCallback(
+    (messageId: string, upToCount: number) => {
+      if (!conversationId) return;
+      void forkConversation(conversationId, {
+        upToMessageId: messageId,
+        upToCount,
+      }).then((result) => {
+        if (result.ok) router.push(`/chat?id=${result.id}`);
+      });
+    },
+    [conversationId, router]
+  );
+
   function handleSubmit() {
     const trimmed = input.trim();
     if (!trimmed || isBusy) return;
@@ -2364,6 +2382,11 @@ export function ChatShell({
                         availableModels={assistantActionModels}
                         onRegenerate={handleRegenerateCurrent}
                         onRegenerateWith={handleRegenerateWithModel}
+                        onFork={
+                          conversationId
+                            ? () => handleForkMessage(m.id, msgIdx + 1)
+                            : undefined
+                        }
                         disabled={isBusy}
                       />
                     </div>
