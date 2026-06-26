@@ -118,22 +118,13 @@ export async function listAccessibleProjectIds(
  * projet auquel il a accès. Sert au contrôle d'accès des routes documents
  * (preview / file) en contexte collaboratif.
  */
-export async function userCanAccessDocument(
+async function folderIsInAccessibleProject(
   userId: string,
-  documentId: string
+  folderId: string
 ): Promise<boolean> {
-  const [doc] = await db
-    .select({ ownerId: documents.userId, folderId: documents.folderId })
-    .from(documents)
-    .where(eq(documents.id, documentId))
-    .limit(1);
-  if (!doc) return false;
-  if (doc.ownerId === userId) return true;
-  if (!doc.folderId) return false;
-
-  // Remonte la chaîne des dossiers parents (du dossier du document jusqu'à la
+  // Remonte la chaîne des dossiers parents (du dossier donné jusqu'à la
   // racine) puis cherche un projet dont le dossier-racine est un de ces
-  // ancêtres ; si l'utilisateur a accès à ce projet, l'accès au doc est accordé.
+  // ancêtres ; si l'utilisateur a accès à ce projet, l'accès est accordé.
   const folders = await db
     .select({
       id: documentFolders.id,
@@ -142,7 +133,7 @@ export async function userCanAccessDocument(
     .from(documentFolders);
   const parentById = new Map(folders.map((f) => [f.id, f.parentFolderId]));
   const ancestry = new Set<string>();
-  let cur: string | null = doc.folderId;
+  let cur: string | null = folderId;
   while (cur && !ancestry.has(cur)) {
     ancestry.add(cur);
     cur = parentById.get(cur) ?? null;
@@ -159,6 +150,40 @@ export async function userCanAccessDocument(
     if (access) return true;
   }
   return false;
+}
+
+export async function userCanAccessDocument(
+  userId: string,
+  documentId: string
+): Promise<boolean> {
+  const [doc] = await db
+    .select({ ownerId: documents.userId, folderId: documents.folderId })
+    .from(documents)
+    .where(eq(documents.id, documentId))
+    .limit(1);
+  if (!doc) return false;
+  if (doc.ownerId === userId) return true;
+  if (!doc.folderId) return false;
+  return folderIsInAccessibleProject(userId, doc.folderId);
+}
+
+/**
+ * Un utilisateur peut écrire dans un dossier s'il en est propriétaire, ou si
+ * le dossier appartient au périmètre d'un projet auquel il a accès (un
+ * collaborateur peut déposer un document dans le dossier du projet partagé).
+ */
+export async function userCanAccessFolder(
+  userId: string,
+  folderId: string
+): Promise<boolean> {
+  const [folder] = await db
+    .select({ ownerId: documentFolders.userId })
+    .from(documentFolders)
+    .where(eq(documentFolders.id, folderId))
+    .limit(1);
+  if (!folder) return false;
+  if (folder.ownerId === userId) return true;
+  return folderIsInAccessibleProject(userId, folderId);
 }
 
 export type CollaboratorView = {

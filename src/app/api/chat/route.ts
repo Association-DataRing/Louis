@@ -292,8 +292,15 @@ export async function POST(req: Request) {
   // autorité que la déontologie ou la politique d'outils.
   const untrustedBlocks: UntrustedBlock[] = [];
   if (documentIds && documentIds.length > 0) {
-    const docs = await db
+    // Un document joint est autorisé s'il appartient à l'utilisateur OU s'il
+    // fait partie du périmètre du projet courant (collaboration). On charge
+    // par id puis on filtre, plutôt qu'un eq(userId) qui exclurait les docs
+    // partagés par le propriétaire.
+    const allowedProjectDocIds = new Set(projectScope?.documentIds ?? []);
+    const rawDocs = await db
       .select({
+        id: documents.id,
+        ownerId: documents.userId,
         filename: documents.filename,
         extractedText: documents.extractedText,
         encDek: documents.encDek,
@@ -302,9 +309,10 @@ export async function POST(req: Request) {
         extractionStatus: documents.extractionStatus,
       })
       .from(documents)
-      .where(
-        and(eq(documents.userId, userId), inArray(documents.id, documentIds))
-      );
+      .where(inArray(documents.id, documentIds));
+    const docs = rawDocs.filter(
+      (d) => d.ownerId === userId || allowedProjectDocIds.has(d.id)
+    );
 
     for (const d of docs) {
       const extractedText = await decryptDocumentText(d);
