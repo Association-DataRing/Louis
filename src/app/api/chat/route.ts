@@ -28,6 +28,7 @@ import { newApprovalId, registerApproval } from "@/lib/ai/approval";
 import { recordAudit } from "@/lib/audit";
 import { loadProviderKey, modelFromKey } from "@/lib/providers/factory";
 import { getProjectScope } from "@/lib/projects/scope";
+import { resolveProjectAccess } from "@/lib/projects/access";
 import { indexMessageForProject } from "@/lib/rag/message-search";
 import {
   getMonthlySpendCents,
@@ -136,14 +137,26 @@ export async function POST(req: Request) {
   let effectiveProjectId: string | null = null;
   if (conversationId) {
     const [conv] = await db
-      .select({ id: conversations.id, projectId: conversations.projectId })
+      .select({
+        id: conversations.id,
+        userId: conversations.userId,
+        projectId: conversations.projectId,
+      })
       .from(conversations)
-      .where(
-        and(eq(conversations.id, conversationId), eq(conversations.userId, userId))
-      )
+      .where(eq(conversations.id, conversationId))
       .limit(1);
     if (!conv) {
       return new Response("Conversation not found", { status: 404 });
+    }
+    // Autorisation : propriétaire de la conversation, ou collaborateur d'un
+    // projet partagé auquel elle est rattachée (sinon cross-user injection).
+    if (conv.userId !== userId) {
+      const access = conv.projectId
+        ? await resolveProjectAccess(userId, conv.projectId)
+        : null;
+      if (!access) {
+        return new Response("Conversation not found", { status: 404 });
+      }
     }
     effectiveProjectId = conv.projectId;
   }
@@ -163,6 +176,14 @@ export async function POST(req: Request) {
   }
 
   if (!conversationId) {
+    // Si un projet est demandé, vérifier que l'utilisateur y a accès
+    // (propriétaire, collaborateur ou admin) avant d'y rattacher la conv —
+    // sinon on ignore le projet plutôt que de faire confiance au body.
+    let newProjectId: string | null = null;
+    if (projectIdFromBody) {
+      const access = await resolveProjectAccess(userId, projectIdFromBody);
+      if (access) newProjectId = projectIdFromBody;
+    }
     const firstUser = uiMessages.find((m) => m.role === "user");
     const title = extractTextPreview(firstUser) || "Nouvelle conversation";
     const [created] = await db
@@ -170,13 +191,13 @@ export async function POST(req: Request) {
       .values({
         userId,
         providerKeyId,
-        projectId: projectIdFromBody ?? null,
+        projectId: newProjectId,
         modelId: modelOverride ?? null,
         title: title.slice(0, 80),
       })
       .returning({ id: conversations.id });
     conversationId = created.id;
-    effectiveProjectId = projectIdFromBody ?? null;
+    effectiveProjectId = newProjectId;
   }
 
   const finalConversationId = conversationId;
@@ -184,8 +205,15 @@ export async function POST(req: Request) {
   // Périmètre projet (modèle dossier = projet) : documents du sous-arbre du
   // dossier-racine + dossier de destination des documents générés. Sert au
   // scoping RAG des outils documentaires et à l'historique des conversations.
+  // Le périmètre documentaire appartient au PROPRIÉTAIRE du projet : on résout
+  // l'owner (collaboration) et on calcule le scope avec son id, pas celui de
+  // l'utilisateur courant (qui peut être un collaborateur).
   const projectScope = effectiveProjectId
-    ? await getProjectScope(userId, effectiveProjectId)
+    ? await getProjectScope(
+        (await resolveProjectAccess(userId, effectiveProjectId))?.ownerId ??
+          userId,
+        effectiveProjectId
+      )
     : null;
 
   // Régénération : le message user existe déjà (tour initial). On purge

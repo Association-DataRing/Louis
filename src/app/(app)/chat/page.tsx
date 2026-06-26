@@ -15,6 +15,7 @@ import {
   workflows,
 } from "@/db/schema";
 import { seedPresetsForUser } from "@/lib/orchestrator";
+import { resolveProjectAccess } from "@/lib/projects/access";
 import { listEnabledModels } from "../settings/models/actions";
 import { getEnabledSkills } from "../settings/skills/actions";
 import type { ProviderType } from "@/lib/providers/catalog";
@@ -45,14 +46,18 @@ export default async function ChatPage({
   // l'utilisateur et on récupère son nom pour l'afficher en breadcrumb.
   let projectContext: { id: string; name: string } | null = null;
   if (projectIdFromUrl) {
-    const [proj] = await db
-      .select({ id: projects.id, name: projects.name })
-      .from(projects)
-      .where(
-        and(eq(projects.id, projectIdFromUrl), eq(projects.userId, userId))
-      )
-      .limit(1);
-    if (proj) projectContext = proj;
+    // Autorise propriétaire, membre ou admin (collaboration). Le projet
+    // appartient au propriétaire, mais un collaborateur peut y démarrer une
+    // conversation rattachée.
+    const access = await resolveProjectAccess(userId, projectIdFromUrl);
+    if (access) {
+      const [proj] = await db
+        .select({ id: projects.id, name: projects.name })
+        .from(projects)
+        .where(eq(projects.id, projectIdFromUrl))
+        .limit(1);
+      if (proj) projectContext = proj;
+    }
   }
 
   const activeKeys = await db
@@ -193,11 +198,17 @@ export default async function ChatPage({
     const [conv] = await db
       .select()
       .from(conversations)
-      .where(
-        and(eq(conversations.id, currentId), eq(conversations.userId, userId))
-      )
+      .where(eq(conversations.id, currentId))
       .limit(1);
     if (!conv) redirect("/chat");
+    // Autorisation : propriétaire de la conversation, ou collaborateur d'un
+    // projet partagé auquel la conversation est rattachée.
+    if (conv.userId !== userId) {
+      const access = conv.projectId
+        ? await resolveProjectAccess(userId, conv.projectId)
+        : null;
+      if (!access) redirect("/chat");
+    }
     if (conv.providerKeyId && activeKeys.some((k) => k.id === conv.providerKeyId)) {
       initialProviderKeyId = conv.providerKeyId;
     }
@@ -206,9 +217,7 @@ export default async function ChatPage({
       const [p] = await db
         .select({ id: projects.id, name: projects.name })
         .from(projects)
-        .where(
-          and(eq(projects.id, conv.projectId), eq(projects.userId, userId))
-        )
+        .where(eq(projects.id, conv.projectId))
         .limit(1);
       if (p) conversationProjectContext = p;
     }

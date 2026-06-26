@@ -94,11 +94,11 @@ export async function buildToolsForUser(
             .from(documentChunks)
             .innerJoin(documents, eq(documents.id, documentChunks.documentId))
             .where(
+              // En mode projet, scopedDocIds est la frontière d'autorisation
+              // (périmètre du propriétaire) — pas de filtre userId, sinon un
+              // collaborateur ne « verrait » pas les documents partagés.
               scoped
-                ? and(
-                    eq(documents.userId, userId),
-                    inArray(documentChunks.documentId, scopedDocIds)
-                  )
+                ? inArray(documentChunks.documentId, scopedDocIds)
                 : eq(documents.userId, userId)
             )
             .limit(1);
@@ -467,10 +467,7 @@ export async function buildToolsForUser(
           .from(documents)
           .where(
             scoped
-              ? and(
-                  eq(documents.userId, userId),
-                  inArray(documents.id, scopedDocIds)
-                )
+              ? inArray(documents.id, scopedDocIds)
               : eq(documents.userId, userId)
           )
           .orderBy(desc(documents.createdAt))
@@ -529,10 +526,12 @@ export async function buildToolsForUser(
           })
           .from(documents)
           .where(
-            and(
-              eq(documents.id, document_id),
-              eq(documents.userId, userId)
-            )
+            // scopedDocSet.has(document_id) a déjà autorisé l'accès en mode
+            // projet → pas besoin du filtre userId (qui exclurait les docs du
+            // propriétaire pour un collaborateur).
+            scoped
+              ? eq(documents.id, document_id)
+              : and(eq(documents.id, document_id), eq(documents.userId, userId))
           )
           .limit(1);
         if (!doc) {
@@ -598,7 +597,9 @@ export async function buildToolsForUser(
           })
           .from(documents)
           .where(
-            and(eq(documents.id, document_id), eq(documents.userId, userId))
+            scoped
+              ? eq(documents.id, document_id)
+              : and(eq(documents.id, document_id), eq(documents.userId, userId))
           )
           .limit(1);
         if (!doc) return toolError("validation", "Document introuvable.");
@@ -701,7 +702,9 @@ export async function buildToolsForUser(
           })
           .from(documents)
           .where(
-            and(eq(documents.id, document_id), eq(documents.userId, userId))
+            scoped
+              ? eq(documents.id, document_id)
+              : and(eq(documents.id, document_id), eq(documents.userId, userId))
           )
           .limit(1);
         if (!doc) return toolError("validation", "Document introuvable.");
