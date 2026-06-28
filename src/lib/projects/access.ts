@@ -7,6 +7,7 @@ import {
   documents,
   documentFolders,
 } from "@/db/schema";
+import { buildChildrenMap, collectSubtree } from "./scope";
 
 /**
  * Brique d'autorisation centrale du partage de projet. Tout accès à un projet
@@ -184,6 +185,52 @@ export async function userCanAccessFolder(
   if (!folder) return false;
   if (folder.ownerId === userId) return true;
   return folderIsInAccessibleProject(userId, folderId);
+}
+
+/**
+ * IDs des documents accessibles à `userId` via un projet PARTAGÉ (où il est
+ * MEMBRE, pas propriétaire) : tous les documents rangés dans le sous-arbre du
+ * dossier-racine de chaque projet partagé. Sert au picker de documents du chat,
+ * pour proposer les documents des projets partagés en plus des documents perso.
+ *
+ * Ne couvre volontairement PAS les projets owned (déjà listés par le filtre
+ * `documents.userId = userId`) ni les projets accessibles en tant qu'admin
+ * (cf. note de `listAccessibleProjectIds` : un admin y accède par lien direct,
+ * pour ne pas noyer ses listes).
+ */
+export async function listSharedDocumentIds(userId: string): Promise<string[]> {
+  const memberProjects = await db
+    .select({ folderId: projects.folderId })
+    .from(projectMembers)
+    .innerJoin(projects, eq(projects.id, projectMembers.projectId))
+    .where(eq(projectMembers.userId, userId));
+
+  const roots = memberProjects
+    .map((p) => p.folderId)
+    .filter((id): id is string => Boolean(id));
+  if (roots.length === 0) return [];
+
+  // Pas de filtre userId : les sous-arbres traversent les dossiers du
+  // propriétaire (le périmètre du projet lui appartient).
+  const folders = await db
+    .select({
+      id: documentFolders.id,
+      parentFolderId: documentFolders.parentFolderId,
+    })
+    .from(documentFolders);
+  const childrenByParent = buildChildrenMap(folders);
+
+  const allowed = new Set<string>();
+  for (const root of roots) {
+    for (const id of collectSubtree(root, childrenByParent)) allowed.add(id);
+  }
+  if (allowed.size === 0) return [];
+
+  const docs = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(inArray(documents.folderId, Array.from(allowed)));
+  return docs.map((d) => d.id);
 }
 
 export type CollaboratorView = {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -15,7 +15,10 @@ import {
   workflows,
 } from "@/db/schema";
 import { seedPresetsForUser } from "@/lib/orchestrator";
-import { resolveProjectAccess } from "@/lib/projects/access";
+import {
+  listSharedDocumentIds,
+  resolveProjectAccess,
+} from "@/lib/projects/access";
 import { listEnabledModels } from "../settings/models/actions";
 import { getEnabledSkills } from "../settings/skills/actions";
 import type { ProviderType } from "@/lib/providers/catalog";
@@ -140,6 +143,14 @@ export default async function ChatPage({
     };
   });
 
+  // Picker du trombone : documents perso + documents des projets partagés
+  // (où l'utilisateur est collaborateur), pour pouvoir les joindre au chat.
+  const sharedDocIds = await listSharedDocumentIds(userId);
+  const docOwnerOrShared =
+    sharedDocIds.length > 0
+      ? or(eq(documents.userId, userId), inArray(documents.id, sharedDocIds))
+      : eq(documents.userId, userId);
+
   const docList = await db
     .select({
       id: documents.id,
@@ -150,7 +161,7 @@ export default async function ChatPage({
     .from(documents)
     .where(
       and(
-        eq(documents.userId, userId),
+        docOwnerOrShared,
         or(isNotNull(documents.extractedText), isNotNull(documents.encExtractedText))
       )
     )

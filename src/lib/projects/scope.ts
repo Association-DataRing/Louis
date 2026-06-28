@@ -23,7 +23,7 @@ export type ProjectScope = {
 };
 
 /** IDs des dossiers du sous-arbre enraciné en `rootFolderId` (inclus). */
-function collectSubtree(
+export function collectSubtree(
   rootFolderId: string,
   childrenByParent: Map<string | null, string[]>
 ): string[] {
@@ -38,7 +38,7 @@ function collectSubtree(
   return out;
 }
 
-function buildChildrenMap(
+export function buildChildrenMap(
   folders: { id: string; parentFolderId: string | null }[]
 ): Map<string | null, string[]> {
   const childrenByParent = new Map<string | null, string[]>();
