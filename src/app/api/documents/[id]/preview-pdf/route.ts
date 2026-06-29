@@ -1,8 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
 import { getObjectBytes } from "@/lib/storage";
+import { userCanAccessDocument } from "@/lib/projects/access";
 
 type Params = { id: string };
 
@@ -27,10 +28,14 @@ export async function GET(
       previewStorageKey: documents.previewStorageKey,
     })
     .from(documents)
-    .where(and(eq(documents.id, id), eq(documents.userId, userId)))
+    .where(eq(documents.id, id))
     .limit(1);
 
-  if (!doc || !doc.previewStorageKey) {
+  if (
+    !doc ||
+    !doc.previewStorageKey ||
+    !(await userCanAccessDocument(userId, id))
+  ) {
     return new Response("Preview PDF non disponible", { status: 404 });
   }
 

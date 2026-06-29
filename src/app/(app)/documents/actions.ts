@@ -11,21 +11,28 @@ import { recordAudit } from "@/lib/audit";
 import { reindexDocument, type ReindexResult } from "@/lib/rag/index-document";
 import { diffLines, collapseDiff, type DisplayOp } from "@/lib/diff/line-diff";
 import { decryptDocumentText } from "@/lib/document-crypto";
+import {
+  userCanAccessDocument,
+  userCanAccessFolder,
+} from "@/lib/projects/access";
 
 export async function deleteDocument(id: string): Promise<void> {
   const userId = await requireUserId();
 
+  // Partage : un collaborateur peut supprimer un document du projet partagé
+  // (« membre = accès complet », choix MVP). L'autorisation passe par le
+  // périmètre du projet, plus par le seul propriétaire du document.
+  if (!(await userCanAccessDocument(userId, id))) return;
+
   const [doc] = await db
     .select({ storageKey: documents.storageKey, filename: documents.filename })
     .from(documents)
-    .where(and(eq(documents.id, id), eq(documents.userId, userId)))
+    .where(eq(documents.id, id))
     .limit(1);
 
   if (!doc) return;
 
-  await db
-    .delete(documents)
-    .where(and(eq(documents.id, id), eq(documents.userId, userId)));
+  await db.delete(documents).where(eq(documents.id, id));
 
   await deleteObject(doc.storageKey).catch(() => {
     // Object may already be gone — DB delete is the source of truth.
@@ -116,23 +123,27 @@ export async function createFolder(
   const parsed = folderNameSchema.safeParse(name);
   if (!parsed.success) return { ok: false, error: "Nom invalide." };
 
+  // Le sous-dossier hérite du propriétaire de son parent. Dans un projet
+  // partagé, un collaborateur crée donc un dossier appartenant au propriétaire
+  // du projet — indispensable pour que `getProjectScope` (qui résout les
+  // dossiers du sous-arbre via `userId = owner`) le voie rester dans le
+  // périmètre. À la racine (pas de parent), le dossier reste perso.
+  let ownerId = userId;
   if (parentFolderId) {
     const [parent] = await db
-      .select({ id: documentFolders.id })
+      .select({ ownerId: documentFolders.userId })
       .from(documentFolders)
-      .where(
-        and(
-          eq(documentFolders.id, parentFolderId),
-          eq(documentFolders.userId, userId)
-        )
-      )
+      .where(eq(documentFolders.id, parentFolderId))
       .limit(1);
-    if (!parent) return { ok: false, error: "Dossier parent introuvable." };
+    if (!parent || !(await userCanAccessFolder(userId, parentFolderId))) {
+      return { ok: false, error: "Dossier parent introuvable." };
+    }
+    ownerId = parent.ownerId;
   }
 
   const [row] = await db
     .insert(documentFolders)
-    .values({ userId, name: parsed.data, parentFolderId })
+    .values({ userId: ownerId, name: parsed.data, parentFolderId })
     .returning({ id: documentFolders.id });
 
   revalidatePath("/documents");
@@ -146,12 +157,11 @@ export async function renameFolder(
   const userId = await requireUserId();
   const parsed = folderNameSchema.safeParse(name);
   if (!parsed.success) return { ok: false };
+  if (!(await userCanAccessFolder(userId, id))) return { ok: false };
   await db
     .update(documentFolders)
     .set({ name: parsed.data })
-    .where(
-      and(eq(documentFolders.id, id), eq(documentFolders.userId, userId))
-    );
+    .where(eq(documentFolders.id, id));
   revalidatePath("/documents");
   return { ok: true };
 }
@@ -163,11 +173,8 @@ export async function renameFolder(
  */
 export async function deleteFolder(id: string): Promise<void> {
   const userId = await requireUserId();
-  await db
-    .delete(documentFolders)
-    .where(
-      and(eq(documentFolders.id, id), eq(documentFolders.userId, userId))
-    );
+  if (!(await userCanAccessFolder(userId, id))) return;
+  await db.delete(documentFolders).where(eq(documentFolders.id, id));
   revalidatePath("/documents");
 }
 
@@ -177,24 +184,17 @@ export async function moveDocumentToFolder(
 ): Promise<{ ok: boolean }> {
   const userId = await requireUserId();
 
-  if (folderId) {
-    const [folder] = await db
-      .select({ id: documentFolders.id })
-      .from(documentFolders)
-      .where(
-        and(
-          eq(documentFolders.id, folderId),
-          eq(documentFolders.userId, userId)
-        )
-      )
-      .limit(1);
-    if (!folder) return { ok: false };
+  // Le document doit être accessible (perso ou dans un projet partagé) et, si
+  // une cible est fournie, le dossier de destination doit l'être aussi.
+  if (!(await userCanAccessDocument(userId, documentId))) return { ok: false };
+  if (folderId && !(await userCanAccessFolder(userId, folderId))) {
+    return { ok: false };
   }
 
   await db
     .update(documents)
     .set({ folderId })
-    .where(and(eq(documents.id, documentId), eq(documents.userId, userId)));
+    .where(eq(documents.id, documentId));
 
   revalidatePath("/documents");
   return { ok: true };
