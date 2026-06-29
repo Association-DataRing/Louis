@@ -39,9 +39,34 @@ du Droit. Conçue par l'**Association DataRing**
 
 ## Nouveautés récentes
 
-Fonctionnalités récemment ajoutées au projet : chiffrement des documents à
-enveloppe, OCR souverain pluggable, conversion PDF → Markdown canonique et
-citations cliquables avec surlignage précis.
+Fonctionnalités récemment ajoutées au projet : collaboration de projet entre
+membres du cabinet, chiffrement des documents à enveloppe, OCR souverain
+pluggable, conversion PDF → Markdown canonique et citations cliquables avec
+surlignage précis.
+
+### Collaboration de projet
+
+Un projet (dossier client) peut être partagé avec d'autres comptes du cabinet.
+Le **propriétaire** ajoute des **collaborateurs** depuis `/projects/[id]` ; un
+projet partagé porte un badge **« Partagé »** dans `/projects`.
+
+- **Modèle d'accès** : « membre = accès complet » au périmètre du projet
+  (dossiers + documents). Pas de rôle lecteur/éditeur distinct à ce stade. La
+  gestion des membres est réservée au **propriétaire** et aux **admins**.
+- **Le périmètre appartient au propriétaire** : `resolveProjectAccess` /
+  `getProjectScope(ownerId, …)` calculent les documents et dossiers du projet
+  côté propriétaire, et cette liste **est** la frontière d'autorisation. Le RAG,
+  les outils et les routes documents sont scopés via `ownerId` /
+  `userCanAccessDocument` plutôt que par un simple filtre `userId`.
+- **Lecture et écriture partagées** : un collaborateur voit les conversations du
+  projet, interroge ses documents (RAG + outils scopés), et peut déposer,
+  versionner, renommer, déplacer ou supprimer dans le périmètre partagé.
+- **Mono-cabinet** (single-tenant). Repose sur la table `project_members` et la
+  master key globale (ADR 0005 phase 1) — pas de re-chiffrement par membre.
+
+> La page `/documents` n'est pas encore adaptée au partage : un collaborateur
+> accède aux dossiers/documents du projet via `/projects/[id]`. Architecture et
+> questions ouvertes : issue de design dédiée (#36).
 
 ### PDF → Markdown canonique
 
@@ -537,6 +562,9 @@ pour la référence complète.
   BOFIP, BODACC), Pappers
 - **MCP-native** — serveurs MCP custom par utilisateur
 - **Multi-utilisateur** — NextAuth v5 Credentials + RBAC admin/member
+- **Collaboration de projet** — partage d'un projet (dossier client) entre
+  comptes du cabinet : badge « Partagé », membres autorisés (accès complet),
+  RAG / outils / routes documents scopés via le périmètre du propriétaire
 - **Journal d'audit** append-only sur les opérations sensibles
   (auth, users, providers, connecteurs, documents, cabinet)
 - **Docker Compose** une commande
@@ -547,6 +575,8 @@ pour la référence complète.
 
 #### Ajouts récents
 
+- **Collaboration de projet** — partage d'un dossier client entre membres du
+  cabinet (table `project_members`, périmètre scopé sur le propriétaire)
 - **PDF → Markdown** — conversion locale pdfjs, souverain, hors-ligne
 - **OCR pluggable** — Mistral OCR → vision → Tesseract local `fra`, page
   paramètres dédiée
@@ -565,7 +595,8 @@ pour la référence complète.
 ### ⚪ Planifié
 
 - Sub-APIs PISTE supplémentaires : JADE (Conseil d'État), INPI
-- Project sharing par email entre membres du cabinet
+- Collaboration de projet : invitation par email (hors comptes déjà créés) et
+  rôles fins (lecteur / éditeur)
 - Internationalisation anglaise
 - Veille juridique automatisée — surveillance Légifrance / JADE / BODACC
 - Mode SecNumCloud-ready — checklist et configuration documentée
@@ -596,8 +627,8 @@ pour la référence complète.
 |---|---|---|
 | v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | ✅ Livré |
 | v0.2 — Board multi-agents + connecteurs PISTE étendus (Judilibre, BOFIP, BODACC) + chiffrement DEK des documents + OCR souverain + RAG souverain | 2026-Q2 | ✅ Livré |
-| v0.2.x — JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
-| v0.3 — i18n, project sharing, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
+| v0.2.x — collaboration de projet, JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
+| v0.3 — i18n, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
 | v1.0 — Production-ready, documentation complète | 2027 | ⚪ À venir |
 
 ---
