@@ -1,42 +1,16 @@
-import type { Agent, AgentDefinition, AgentRole } from "../types";
-import { DefaultAgent } from "./default";
-import { ResearchAgent } from "./research";
-import { CitatorAgent } from "./citator";
-import { ReviewerAgent } from "./reviewer";
-import { DraftingAgent } from "./drafting";
-import { LegifranceAgent } from "./legifrance";
-import { OrchestratorAgent } from "./orchestrator-agent";
-
-/**
- * Registry des constructeurs d'agents indexés par rôle. Pour ajouter un
- * nouveau rôle, importer la classe ici, l'ajouter au registry, et
- * réserver son identifiant dans `AgentRole` (types.ts).
- */
-export const AGENT_REGISTRY: Partial<
-  Record<AgentRole, new (def: AgentDefinition) => Agent>
-> = {
-  "default-chat": DefaultAgent,
-  orchestrator: OrchestratorAgent,
-  research: ResearchAgent,
-  citator: CitatorAgent,
-  reviewer: ReviewerAgent,
-  drafting: DraftingAgent,
-  legifrance: LegifranceAgent,
-};
-
-export function resolveAgentConstructor(
-  role: AgentRole
-): (new (def: AgentDefinition) => Agent) | undefined {
-  return AGENT_REGISTRY[role];
-}
-
-export { DefaultAgent } from "./default";
-export { ResearchAgent, RESEARCH_SYSTEM_PROMPT } from "./research";
-export { CitatorAgent, CITATOR_SYSTEM_PROMPT } from "./citator";
-export { ReviewerAgent, REVIEWER_SYSTEM_PROMPT } from "./reviewer";
-export { DraftingAgent, DRAFTING_SYSTEM_PROMPT } from "./drafting";
-export { LegifranceAgent, LEGIFRANCE_SYSTEM_PROMPT } from "./legifrance";
+export { runAgentStream, type AgentFactoryDefaults } from "./base";
 export {
-  OrchestratorAgent,
+  runDefaultAgent,
+  composeSystem,
+  filterTools,
+  DEFAULT_CHAT_SYSTEM_PROMPT,
+} from "./default";
+export {
+  AGENT_DEFAULTS,
+  RESEARCH_SYSTEM_PROMPT,
+  CITATOR_SYSTEM_PROMPT,
+  REVIEWER_SYSTEM_PROMPT,
+  DRAFTING_SYSTEM_PROMPT,
+  LEGIFRANCE_SYSTEM_PROMPT,
   ORCHESTRATOR_SYSTEM_PROMPT,
-} from "./orchestrator-agent";
+} from "./roles";

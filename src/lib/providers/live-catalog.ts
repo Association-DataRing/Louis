@@ -11,8 +11,6 @@ export interface LiveModel {
   label: string;
   /** Hint dérivé (famille, taille, prix indicatif…). Optionnel. */
   hint?: string;
-  /** Contexte max si disponible (utile pour l'UI de filtrage). */
-  contextWindow?: number;
   /** Provenance détectée — chez OpenRouter on a un sous-provider d'origine. */
   vendor?: string;
 }
@@ -163,7 +161,6 @@ async function fetchOpenAiCompat(
         id: m.id,
         label: m.name?.trim() || prettyId(m.id),
         hint: m.description?.trim() || undefined,
-        contextWindow: m.context_length ?? m.context_window ?? undefined,
         vendor: m.owned_by ?? undefined,
       }))
   );
@@ -284,7 +281,6 @@ async function fetchOpenRouter(apiKey: string): Promise<LiveModel[]> {
           id: m.id,
           label: m.name?.trim() || prettyId(m.id),
           hint: hints.length > 0 ? hints.join(" · ") : undefined,
-          contextWindow: m.context_length,
           vendor,
         };
       })

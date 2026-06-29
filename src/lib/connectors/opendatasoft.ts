@@ -2,15 +2,14 @@ import { toolError, toolOk, type ToolResult } from "@/lib/tools/result";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
-export type ODSSearchOptions = {
+type ODSSearchOptions = {
   q?: string;
   where?: string;
   orderBy?: string;
   limit?: number;
-  offset?: number;
 };
 
-export type ODSResult = {
+type ODSResult = {
   total_count: number;
   results: Record<string, unknown>[];
 };
@@ -33,7 +32,6 @@ export async function odsSearch(
   if (opts.where) url.searchParams.set("where", opts.where);
   if (opts.orderBy) url.searchParams.set("order_by", opts.orderBy);
   url.searchParams.set("limit", String(opts.limit ?? 10));
-  if (opts.offset !== undefined) url.searchParams.set("offset", String(opts.offset));
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);

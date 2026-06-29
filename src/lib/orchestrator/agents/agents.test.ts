@@ -1,55 +1,58 @@
 import { describe, expect, it } from "vitest";
 import {
-  AGENT_REGISTRY,
-  CitatorAgent,
-  DefaultAgent,
-  DraftingAgent,
-  LegifranceAgent,
-  OrchestratorAgent,
-  ResearchAgent,
-  ReviewerAgent,
-  resolveAgentConstructor,
+  AGENT_DEFAULTS,
+  CITATOR_SYSTEM_PROMPT,
+  DRAFTING_SYSTEM_PROMPT,
+  LEGIFRANCE_SYSTEM_PROMPT,
+  ORCHESTRATOR_SYSTEM_PROMPT,
+  RESEARCH_SYSTEM_PROMPT,
+  REVIEWER_SYSTEM_PROMPT,
 } from "./index";
 import { composeSystem, filterTools } from "./default";
 import type { AgentContext, AgentDefinition } from "../types";
 
-describe("Agent registry: résolution par rôle", () => {
-  it("default-chat → DefaultAgent", () => {
-    expect(resolveAgentConstructor("default-chat")).toBe(DefaultAgent);
+describe("AGENT_DEFAULTS: table des rôles spécialisés", () => {
+  it("default-chat n'est PAS dans la table (fallback runDefaultAgent)", () => {
+    expect(AGENT_DEFAULTS["default-chat"]).toBeUndefined();
   });
 
-  it("research → ResearchAgent", () => {
-    expect(resolveAgentConstructor("research")).toBe(ResearchAgent);
+  it("research : sourcing large, prompt dédié", () => {
+    expect(AGENT_DEFAULTS.research?.systemPrompt).toBe(RESEARCH_SYSTEM_PROMPT);
+    expect(AGENT_DEFAULTS.research?.toolAllowlist).toEqual([
+      "legifrance_search",
+      "pappers_search",
+      "pappers_get",
+      "search_documents",
+    ]);
   });
 
-  it("citator → CitatorAgent", () => {
-    expect(resolveAgentConstructor("citator")).toBe(CitatorAgent);
+  it("citator : un seul outil de vérification", () => {
+    expect(AGENT_DEFAULTS.citator?.systemPrompt).toBe(CITATOR_SYSTEM_PROMPT);
+    expect(AGENT_DEFAULTS.citator?.toolAllowlist).toEqual(["legifrance_search"]);
   });
 
-  it("reviewer → ReviewerAgent", () => {
-    expect(resolveAgentConstructor("reviewer")).toBe(ReviewerAgent);
+  it("reviewer : aucun outil (analyse de texte pure)", () => {
+    expect(AGENT_DEFAULTS.reviewer?.systemPrompt).toBe(REVIEWER_SYSTEM_PROMPT);
+    expect(AGENT_DEFAULTS.reviewer?.toolAllowlist).toEqual([]);
   });
 
-  it("orchestrator → OrchestratorAgent", () => {
-    expect(resolveAgentConstructor("orchestrator")).toBe(OrchestratorAgent);
+  it("orchestrator : tous les outils (terminal de synthèse)", () => {
+    expect(AGENT_DEFAULTS.orchestrator?.systemPrompt).toBe(
+      ORCHESTRATOR_SYSTEM_PROMPT
+    );
+    expect(AGENT_DEFAULTS.orchestrator?.toolAllowlist).toBeNull();
   });
 
-  it("drafting → DraftingAgent (P6 : rôle désormais implémenté)", () => {
-    expect(resolveAgentConstructor("drafting")).toBe(DraftingAgent);
+  it("drafting : génération + édition de documents", () => {
+    expect(AGENT_DEFAULTS.drafting?.systemPrompt).toBe(DRAFTING_SYSTEM_PROMPT);
+    expect(AGENT_DEFAULTS.drafting?.toolAllowlist).toContain("generate_document");
   });
 
-  it("legifrance → LegifranceAgent (P6 : rôle désormais implémenté)", () => {
-    expect(resolveAgentConstructor("legifrance")).toBe(LegifranceAgent);
-  });
-
-  it("AGENT_REGISTRY est cohérent avec les exports nommés", () => {
-    expect(AGENT_REGISTRY["default-chat"]).toBe(DefaultAgent);
-    expect(AGENT_REGISTRY.research).toBe(ResearchAgent);
-    expect(AGENT_REGISTRY.citator).toBe(CitatorAgent);
-    expect(AGENT_REGISTRY.reviewer).toBe(ReviewerAgent);
-    expect(AGENT_REGISTRY.orchestrator).toBe(OrchestratorAgent);
-    expect(AGENT_REGISTRY.drafting).toBe(DraftingAgent);
-    expect(AGENT_REGISTRY.legifrance).toBe(LegifranceAgent);
+  it("legifrance : sourcing Légifrance focalisé", () => {
+    expect(AGENT_DEFAULTS.legifrance?.systemPrompt).toBe(
+      LEGIFRANCE_SYSTEM_PROMPT
+    );
+    expect(AGENT_DEFAULTS.legifrance?.toolAllowlist).toEqual(["legifrance_search"]);
   });
 });
 

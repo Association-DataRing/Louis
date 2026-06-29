@@ -269,21 +269,3 @@ export async function pruneOrphanModels(): Promise<ActionResult> {
   revalidatePath("/board");
   return { ok: true };
 }
-
-/** Compat : conserve l'ancienne API pour les pages déjà branchées. */
-export async function getDisabledModelKeys(
-  userId: string
-): Promise<Set<string>> {
-  // Migration logique : l'ancienne page n'utilise plus ce concept,
-  // mais on garde une implémentation pour ne pas casser les imports.
-  const rows = await db
-    .select({
-      providerType: modelSettings.providerType,
-      modelId: modelSettings.modelId,
-    })
-    .from(modelSettings)
-    .where(
-      and(eq(modelSettings.userId, userId), eq(modelSettings.enabled, false))
-    );
-  return new Set(rows.map((r) => `${r.providerType}:${r.modelId}`));
-}
