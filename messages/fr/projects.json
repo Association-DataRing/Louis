@@ -48,7 +48,22 @@
     "backToProjects": "Tous les projets",
     "conversations": "Conversations",
     "newConversation": "Nouvelle conversation",
-    "emptyConversations": "Démarrez une conversation rattachée à ce dossier pour en garder l'historique au même endroit."
+    "emptyConversations": "Démarrez une conversation rattachée à ce dossier pour en garder l'historique au même endroit.",
+    "sharedBadge": "Partagé",
+    "sharedBadgeTitle": "Projet partagé",
+    "dossierOf": "Dossier de {name}",
+    "sharedWithYouSuffix": " · partagé avec vous",
+    "adminAccessSuffix": " · accès administrateur"
+  },
+  "collaborators": {
+    "heading": "Collaborateurs",
+    "addCollaborator": "Ajouter un collaborateur",
+    "firmAccounts": "Comptes du cabinet",
+    "owner": "Propriétaire",
+    "removeTitle": "Retirer du projet",
+    "removeAria": "Retirer {name} du projet",
+    "emptyManage": "Ajoutez des collègues du cabinet pour travailler à plusieurs sur ce dossier.",
+    "emptyReadonly": "Aucun collaborateur pour l'instant."
   },
   "list": {
     "eyebrow": "Dossiers clients · matières · affaires",
@@ -58,6 +73,8 @@
     "intro": "Regroupez conversations et documents autour d'un dossier client, d'une affaire, d'une thématique.",
     "srConversations": "conversations",
     "srDocuments": "documents",
+    "sharedBadge": "Partagé",
+    "sharedByTitle": "Partagé par {name}",
     "aside": "Un projet est un conteneur partagé : conversations, documents et, bientôt, connecteurs activés y sont regroupés. Particulièrement adapté pour suivre un dossier client de bout en bout.",
     "emptyTitle": "Pas encore de projet.",
     "emptyBody": "Un projet groupe les conversations et documents liés à un même dossier client. Vous gardez la trace de l'affaire complète plutôt qu'une suite de conversations isolées."

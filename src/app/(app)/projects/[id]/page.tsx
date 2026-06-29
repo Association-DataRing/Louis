@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import {
   IconArrowLeft,
   IconMessageCircle,
@@ -108,10 +108,10 @@ export default async function ProjectDetailPage({
             {isShared && (
               <span
                 className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
-                title="Projet partagé"
+                title={t("sharedBadgeTitle")}
               >
                 <IconUsersGroup className="size-3" />
-                Partagé
+                {t("sharedBadge")}
               </span>
             )}
           </h1>
@@ -122,11 +122,11 @@ export default async function ProjectDetailPage({
           )}
           {!access.isOwner && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Dossier de {owner[0]?.name ?? "—"}
+              {t("dossierOf", { name: owner[0]?.name ?? "—" })}
               {access.isMember
-                ? " · partagé avec vous"
+                ? t("sharedWithYouSuffix")
                 : access.isAdmin
-                  ? " · accès administrateur"
+                  ? t("adminAccessSuffix")
                   : ""}
             </p>
           )}

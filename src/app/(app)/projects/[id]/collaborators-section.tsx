@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconUsers, IconUserPlus, IconX } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -43,6 +44,7 @@ export function CollaboratorsSection({
   canManage,
 }: Props) {
   const router = useRouter();
+  const t = useTranslations("projects.collaborators");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +71,7 @@ export function CollaboratorsSection({
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-heading text-lg tracking-tight inline-flex items-center gap-2">
           <IconUsers className="size-4 text-muted-foreground" />
-          Collaborateurs
+          {t("heading")}
           <span className="text-xs text-muted-foreground font-normal">
             ({collaborators.length + 1})
           </span>
@@ -81,11 +83,11 @@ export function CollaboratorsSection({
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2 disabled:opacity-50"
             >
               <IconUserPlus className="size-3.5" />
-              Ajouter un collaborateur
+              {t("addCollaborator")}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
               <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                Comptes du cabinet
+                {t("firmAccounts")}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {addableUsers.map((u) => (
@@ -122,7 +124,7 @@ export function CollaboratorsSection({
             </p>
           </div>
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Propriétaire
+            {t("owner")}
           </span>
         </div>
 
@@ -143,8 +145,8 @@ export function CollaboratorsSection({
                 type="button"
                 onClick={() => handleRemove(c.userId)}
                 disabled={pending}
-                title="Retirer du projet"
-                aria-label={`Retirer ${c.name} du projet`}
+                title={t("removeTitle")}
+                aria-label={t("removeAria", { name: c.name })}
                 className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
               >
                 <IconX className="size-3.5" />
@@ -156,9 +158,7 @@ export function CollaboratorsSection({
 
       {collaborators.length === 0 && (
         <p className="mt-2 text-xs text-muted-foreground">
-          {canManage
-            ? "Ajoutez des collègues du cabinet pour travailler à plusieurs sur ce dossier."
-            : "Aucun collaborateur pour l'instant."}
+          {canManage ? t("emptyManage") : t("emptyReadonly")}
         </p>
       )}
     </section>

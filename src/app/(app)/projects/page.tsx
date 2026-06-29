@@ -152,10 +152,10 @@ export default async function ProjectsPage() {
                     {p.shared && (
                       <span
                         className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-                        title={`Partagé par ${p.ownerName ?? ""}`}
+                        title={t("sharedByTitle", { name: p.ownerName ?? "" })}
                       >
                         <IconUsersGroup className="size-3" />
-                        Partagé
+                        {t("sharedBadge")}
                       </span>
                     )}
                   </p>

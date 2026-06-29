@@ -48,7 +48,22 @@
     "backToProjects": "All projects",
     "conversations": "Conversations",
     "newConversation": "New conversation",
-    "emptyConversations": "Start a conversation attached to this folder to keep its history in one place."
+    "emptyConversations": "Start a conversation attached to this folder to keep its history in one place.",
+    "sharedBadge": "Shared",
+    "sharedBadgeTitle": "Shared project",
+    "dossierOf": "{name}'s folder",
+    "sharedWithYouSuffix": " · shared with you",
+    "adminAccessSuffix": " · administrator access"
+  },
+  "collaborators": {
+    "heading": "Collaborators",
+    "addCollaborator": "Add a collaborator",
+    "firmAccounts": "Firm accounts",
+    "owner": "Owner",
+    "removeTitle": "Remove from project",
+    "removeAria": "Remove {name} from the project",
+    "emptyManage": "Add colleagues from your firm to work together on this matter.",
+    "emptyReadonly": "No collaborators yet."
   },
   "list": {
     "eyebrow": "Client matters · subjects · cases",
@@ -58,6 +73,8 @@
     "intro": "Group conversations and documents around a client matter, a case, a theme.",
     "srConversations": "conversations",
     "srDocuments": "documents",
+    "sharedBadge": "Shared",
+    "sharedByTitle": "Shared by {name}",
     "aside": "A project is a shared container: conversations, documents and, soon, enabled connectors are gathered there. Especially suited to following a client matter from end to end.",
     "emptyTitle": "No projects yet.",
     "emptyBody": "A project groups the conversations and documents tied to the same client matter. You keep track of the whole case rather than a series of isolated conversations."
