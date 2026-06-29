@@ -1,0 +1,42 @@
+{
+  "confirmDelete": {
+    "cancel": "Cancel",
+    "action": "Delete",
+    "pending": "Deleting…"
+  },
+  "dropzone": {
+    "overlayLabel": "Drop your files",
+    "overlayHint": "PDF, DOCX or text — 25 MB max per file",
+    "announce": "Drop the files to upload them"
+  },
+  "moduleHelp": {
+    "label": "Help for this module",
+    "learnMore": "Learn more"
+  },
+  "providerKeyForm": {
+    "legend": "AI provider",
+    "recommended": "Recommended",
+    "mistralHint": "Mistral (🇫🇷) also powers search across your documents — it's the best place to start.",
+    "keyLabel": "{provider} key",
+    "apiKeyLabel": "{provider} API key",
+    "apiKeyPlaceholder": "Paste your key here",
+    "getKey": "Get my {provider} key",
+    "baseUrlLabel": "Base URL",
+    "saveWithoutTest": "Save without testing",
+    "testing": "Testing the key…",
+    "testAndSave": "Test and save",
+    "encryptionNote": "Encrypted with AES-256-GCM before storage, decrypted only at the moment of the call, server-side. It never leaves your instance."
+  },
+  "providerQuickAdd": {
+    "button": "Connect an AI key",
+    "title": "Connect your intelligence.",
+    "description": "Pick a provider, paste your key: Louis tests it before saving, then enables the matching models.",
+    "success": "{label} key connected — your models are ready."
+  },
+  "ui": {
+    "close": "Close",
+    "loading": "Loading",
+    "commandSearchTitle": "Search",
+    "commandSearchDescription": "Global search in Louis"
+  }
+}

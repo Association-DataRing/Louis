@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconCheck,
   IconCircleDashed,
@@ -64,6 +65,7 @@ type Props = {
 };
 
 export function ConnectorCard({ type, keys }: Props) {
+  const t = useTranslations("settings.connectors");
   const meta = CONNECTOR_CATALOG[type];
   const Icon = meta.icon;
   const primary = keys[0] ?? null;
@@ -134,7 +136,7 @@ export function ConnectorCard({ type, keys }: Props) {
               className="right-3 top-3 flex items-center gap-2 rounded-full bg-card/85 px-2.5 py-1 backdrop-blur-sm"
             >
               <span className="text-[10px] font-medium text-card-foreground/80">
-                {primary.isActive ? "Activé" : "Inactif"}
+                {primary.isActive ? t("status.active") : t("status.inactive")}
               </span>
               <Switch
                 checked={primary.isActive}
@@ -145,7 +147,7 @@ export function ConnectorCard({ type, keys }: Props) {
                     if (!result.ok) toast.error(result.error);
                   });
                 }}
-                aria-label="Activer ce connecteur"
+                aria-label={t("card.toggleAria")}
               />
             </CutoutCardPin>
           )}
@@ -156,7 +158,7 @@ export function ConnectorCard({ type, keys }: Props) {
               <>
                 <IconCheck className="size-3.5 text-success" />
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-card-foreground">
-                  Configuré
+                  {t("status.configured")}
                 </span>
                 {keys.length > 1 && (
                   <Badge variant="outline" className="text-[10px]">
@@ -168,7 +170,7 @@ export function ConnectorCard({ type, keys }: Props) {
               <>
                 <IconCircleDashed className="size-3.5 text-muted-foreground" />
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Non configuré
+                  {t("status.notConfigured")}
                 </span>
               </>
             )}
@@ -189,7 +191,7 @@ export function ConnectorCard({ type, keys }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Documentation"
+                aria-label={t("card.docsAria")}
               >
                 <IconExternalLink className="size-3.5" />
               </a>
@@ -198,7 +200,7 @@ export function ConnectorCard({ type, keys }: Props) {
               <DropdownMenu>
                 <DropdownMenuTrigger
                   className="-mt-1 -mr-1 size-7 inline-flex shrink-0 items-center justify-center rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-50"
-                  aria-label="Actions"
+                  aria-label={t("card.actionsAria")}
                   disabled={pending}
                 >
                   <IconDots className="size-3.5" />
@@ -209,18 +211,18 @@ export function ConnectorCard({ type, keys }: Props) {
                     onSelect={() =>
                       startTransition(async () => {
                         const status = await testConnectorKey(primary.id);
-                        if (status === "ok") toast.success("Connexion réussie");
+                        if (status === "ok") toast.success(t("toast.success"));
                         else if (status === "auth_error")
-                          toast.error("Identifiants refusés (401/403)");
+                          toast.error(t("toast.authError"));
                         else if (status === "config_error")
-                          toast.error("Connecteur non configuré ou désactivé");
+                          toast.error(t("toast.configError"));
                         else if (status)
-                          toast.error("Connexion impossible (réseau/serveur)");
+                          toast.error(t("toast.networkError"));
                       })
                     }
                   >
                     <IconPlayerPlay className="size-4" />
-                    Tester la connexion
+                    {t("menu.test")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     variant="destructive"
@@ -228,7 +230,7 @@ export function ConnectorCard({ type, keys }: Props) {
                     onSelect={() => setDeleteOpen(true)}
                   >
                     <IconTrash className="size-4" />
-                    Supprimer
+                    {t("menu.delete")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -245,7 +247,7 @@ export function ConnectorCard({ type, keys }: Props) {
 
           <div className="flex items-center gap-1 flex-wrap">
             <span className="text-[10px] text-muted-foreground mr-1">
-              Débloque :
+              {t("card.unlocks")}
             </span>
             {meta.unlocks.map((u) => (
               <Badge key={u} variant="outline" className="text-[10px]">
@@ -255,7 +257,7 @@ export function ConnectorCard({ type, keys }: Props) {
             {meta.comingSoon && meta.comingSoon.length > 0 && (
               <>
                 <span className="text-[10px] text-muted-foreground/70 ml-1">
-                  à venir :
+                  {t("card.comingSoon")}
                 </span>
                 {meta.comingSoon.map((u) => (
                   <Badge
@@ -284,10 +286,13 @@ export function ConnectorCard({ type, keys }: Props) {
               variant="outline"
               size="sm"
               onClick={openDialog}
-              aria-label={`${isConfigured ? "Modifier" : "Configurer"} ${meta.label}`}
+              aria-label={t(
+                isConfigured ? "card.editLabel" : "card.configureLabel",
+                { label: meta.label }
+              )}
             >
               <IconKey className="size-3.5" />
-              {isConfigured ? "Modifier" : "Configurer"}
+              {isConfigured ? t("card.edit") : t("card.configure")}
             </Button>
           </div>
         </CutoutCardContent>
@@ -295,7 +300,7 @@ export function ConnectorCard({ type, keys }: Props) {
         <CutoutCardAction className="right-5 bottom-5">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-primary-foreground shadow-sm">
             <IconKey className="size-3" />
-            {isConfigured ? "Modifier" : "Configurer"}
+            {isConfigured ? t("card.edit") : t("card.configure")}
           </span>
         </CutoutCardAction>
       </CutoutCard>
@@ -304,14 +309,8 @@ export function ConnectorCard({ type, keys }: Props) {
         <ConfirmDeleteDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          title="Supprimer ce connecteur ?"
-          description={
-            <>
-              « {primary.label} » sera supprimé. La clé chiffrée est
-              retirée — l&apos;intégration ne fonctionnera plus tant
-              qu&apos;une nouvelle clé n&apos;est pas saisie.
-            </>
-          }
+          title={t("delete.title")}
+          description={t("delete.description", { label: primary.label })}
           pending={pending}
           onConfirm={() => {
             startTransition(async () => {
@@ -327,21 +326,14 @@ export function ConnectorCard({ type, keys }: Props) {
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               <Icon className="size-5" />
-              {dialogMode === "create" ? "Configurer" : "Modifier"} ·{" "}
-              {meta.label}
+              {dialogMode === "create"
+                ? t("dialog.titleCreate", { label: meta.label })
+                : t("dialog.titleEdit", { label: meta.label })}
             </DialogTitle>
             <DialogDescription>
-              {dialogMode === "create" ? (
-                <>
-                  Vos identifiants sont chiffrés avant stockage (AES-256-GCM).
-                  Aucun appel à cette API ne transite par un service tiers.
-                </>
-              ) : (
-                <>
-                  Modifier le libellé ou rotater les identifiants. Les champs
-                  vides sont conservés à l&apos;identique.
-                </>
-              )}
+              {dialogMode === "create"
+                ? t("dialog.descCreate")
+                : t("dialog.descEdit")}
             </DialogDescription>
           </DialogHeader>
 
@@ -353,14 +345,14 @@ export function ConnectorCard({ type, keys }: Props) {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor={`label-${meta.type}`}>Libellé</Label>
+              <Label htmlFor={`label-${meta.type}`}>{t("dialog.labelField")}</Label>
               <Input
                 id={`label-${meta.type}`}
                 name="label"
                 required={dialogMode === "create"}
                 maxLength={80}
                 defaultValue={dialogMode === "edit" ? primary?.label ?? "" : ""}
-                placeholder={`ex. Compte cabinet ${meta.label}`}
+                placeholder={t("dialog.labelPlaceholder", { label: meta.label })}
               />
             </div>
 
@@ -370,7 +362,7 @@ export function ConnectorCard({ type, keys }: Props) {
                   {field.label}
                   {dialogMode === "edit" && (
                     <span className="ml-1 text-[10px] text-muted-foreground font-normal">
-                      (laisser vide pour conserver)
+                      {t("dialog.keepEmpty")}
                     </span>
                   )}
                 </Label>
@@ -389,7 +381,7 @@ export function ConnectorCard({ type, keys }: Props) {
             ))}
 
             <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
-              <span>Débloque :</span>
+              <span>{t("card.unlocks")}</span>
               {meta.unlocks.map((u) => (
                 <Badge key={u} variant="outline" className="text-[10px]">
                   {u}
@@ -397,7 +389,7 @@ export function ConnectorCard({ type, keys }: Props) {
               ))}
               {meta.comingSoon && meta.comingSoon.length > 0 && (
                 <>
-                  <span className="text-muted-foreground/70">à venir :</span>
+                  <span className="text-muted-foreground/70">{t("card.comingSoon")}</span>
                   {meta.comingSoon.map((u) => (
                     <Badge
                       key={u}
@@ -417,7 +409,7 @@ export function ConnectorCard({ type, keys }: Props) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2"
             >
-              S&apos;inscrire / obtenir les identifiants
+              {t("dialog.getCredentials")}
               <IconExternalLink className="size-3" />
             </a>
 
@@ -433,14 +425,14 @@ export function ConnectorCard({ type, keys }: Props) {
                 variant="ghost"
                 onClick={() => setDialogOpen(false)}
               >
-                Annuler
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={pending}>
                 {pending
-                  ? "Enregistrement…"
+                  ? t("dialog.saving")
                   : dialogMode === "create"
-                    ? "Configurer"
-                    : "Modifier"}
+                    ? t("card.configure")
+                    : t("card.edit")}
               </Button>
             </DialogFooter>
           </form>
@@ -452,18 +444,19 @@ export function ConnectorCard({ type, keys }: Props) {
 
 /** Dernier résultat du test de connexion d'un connecteur (R5). */
 function ConnectorTestBadge({ status }: { status: string }) {
+  const t = useTranslations("settings.connectors");
   const map: Record<string, { label: string; cls: string }> = {
-    ok: { label: "Connecté", cls: "text-success border-success/40" },
+    ok: { label: t("test.ok"), cls: "text-success border-success/40" },
     auth_error: {
-      label: "Auth refusée",
+      label: t("test.authError"),
       cls: "text-destructive border-destructive/40",
     },
     config_error: {
-      label: "Non configuré",
+      label: t("test.configError"),
       cls: "text-warning border-warning/40",
     },
     network_error: {
-      label: "Injoignable",
+      label: t("test.networkError"),
       cls: "text-destructive border-destructive/40",
     },
   };
@@ -475,7 +468,7 @@ function ConnectorTestBadge({ status }: { status: string }) {
         m.cls
       )}
     >
-      Dernier test : {m.label}
+      {t("test.lastTest", { label: m.label })}
     </span>
   );
 }

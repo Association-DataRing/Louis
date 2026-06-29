@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconCheck,
   IconAlertTriangle,
@@ -24,12 +25,12 @@ type Props = {
 };
 
 export function ReviewGrid({ columns, rows, reviewId }: Props) {
+  const t = useTranslations("tabularReviews");
   if (rows.length === 0) {
     return (
       <div className="border border-dashed border-border rounded-lg p-10 text-center">
         <p className="text-sm text-muted-foreground">
-          Aucun document n&apos;a été ajouté à cette analyse. Recréez une
-          analyse en sélectionnant des documents.
+          {t("grid.emptyNoRows")}
         </p>
       </div>
     );
@@ -44,20 +45,20 @@ export function ReviewGrid({ columns, rows, reviewId }: Props) {
             requis pour un tableau statique). */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <caption className="sr-only">Résultats d&apos;extraction</caption>
+            <caption className="sr-only">{t("grid.caption")}</caption>
             <thead className="bg-muted/40">
               <tr>
                 <th
                   scope="col"
                   className="text-left font-medium px-4 py-2.5 border-b border-border sticky left-0 bg-muted/40 min-w-[200px]"
                 >
-                  Document
+                  {t("grid.colDocument")}
                 </th>
                 <th
                   scope="col"
                   className="text-center font-medium px-3 py-2.5 border-b border-border w-[80px]"
                 >
-                  Statut
+                  {t("grid.colStatus")}
                 </th>
                 {columns.map((c) => (
                   <th
@@ -101,6 +102,7 @@ export function ReviewGrid({ columns, rows, reviewId }: Props) {
 
 function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
   const router = useRouter();
+  const t = useTranslations("tabularReviews");
   const [pending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -126,7 +128,7 @@ function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
             disabled={pending || row.status === "running"}
             onClick={rerun}
             className="size-10 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-            aria-label="Ré-extraire ce document"
+            aria-label={t("grid.rerunRow")}
           >
             <IconRefresh className="size-4" />
           </button>
@@ -135,7 +137,7 @@ function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
             disabled={pending}
             onClick={() => setDeleteOpen(true)}
             className="size-10 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            aria-label="Retirer"
+            aria-label={t("grid.removeRow")}
           >
             <IconTrash className="size-4" />
           </button>
@@ -144,15 +146,10 @@ function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Retirer ce document de l'analyse ?"
-        description={
-          <>
-            « {row.filename} » sera retiré du tableau d&apos;analyse. Le
-            document lui-même reste dans votre bibliothèque.
-          </>
-        }
-        actionLabel="Retirer"
-        pendingLabel="Retrait…"
+        title={t("grid.removeTitle")}
+        description={t("grid.removeDescription", { filename: row.filename })}
+        actionLabel={t("grid.removeAction")}
+        pendingLabel={t("grid.removePending")}
         pending={pending}
         onConfirm={() => {
           startTransition(async () => {
@@ -186,6 +183,7 @@ function RowCard({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
 
 function RowItem({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
   const router = useRouter();
+  const t = useTranslations("tabularReviews");
   const [pending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -229,8 +227,8 @@ function RowItem({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
             disabled={pending || row.status === "running"}
             onClick={rerun}
             className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-            aria-label="Ré-extraire ce document"
-            title="Ré-extraire ce document"
+            aria-label={t("grid.rerunRow")}
+            title={t("grid.rerunRow")}
           >
             <IconRefresh className="size-3.5" />
           </button>
@@ -239,7 +237,7 @@ function RowItem({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
             disabled={pending}
             onClick={() => setDeleteOpen(true)}
             className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            aria-label="Retirer"
+            aria-label={t("grid.removeRow")}
           >
             <IconTrash className="size-3.5" />
           </button>
@@ -247,15 +245,10 @@ function RowItem({ row, columns }: { row: Row; columns: ReviewColumn[] }) {
         <ConfirmDeleteDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          title="Retirer ce document de l'analyse ?"
-          description={
-            <>
-              « {row.filename} » sera retiré du tableau d&apos;analyse. Le
-              document lui-même reste dans votre bibliothèque.
-            </>
-          }
-          actionLabel="Retirer"
-          pendingLabel="Retrait…"
+          title={t("grid.removeTitle")}
+          description={t("grid.removeDescription", { filename: row.filename })}
+          actionLabel={t("grid.removeAction")}
+          pendingLabel={t("grid.removePending")}
           pending={pending}
           onConfirm={() => {
             startTransition(async () => {
@@ -276,15 +269,16 @@ function StatusBadge({
   status: string;
   error: string | null;
 }) {
+  const t = useTranslations("tabularReviews");
   if (status === "pending") {
     return (
       <span
         className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-muted text-muted-foreground"
-        title="En attente"
-        aria-label="En attente"
+        title={t("grid.statusPending")}
+        aria-label={t("grid.statusPending")}
       >
         <IconClock className="size-3" />
-        En attente
+        {t("grid.statusPending")}
       </span>
     );
   }
@@ -292,7 +286,7 @@ function StatusBadge({
     return (
       <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-primary/10 text-primary">
         <Spinner className="size-3" />
-        En cours
+        {t("grid.statusRunning")}
       </span>
     );
   }
@@ -300,7 +294,7 @@ function StatusBadge({
     return (
       <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-success/10 text-success">
         <IconCheck className="size-3" />
-        OK
+        {t("grid.statusOk")}
       </span>
     );
   }
@@ -308,10 +302,10 @@ function StatusBadge({
     <span
       className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs bg-destructive/10 text-destructive"
       title={error ?? undefined}
-      aria-label={error ?? "Erreur"}
+      aria-label={error ?? t("grid.statusError")}
     >
       <IconAlertTriangle className="size-3" />
-      Erreur
+      {t("grid.statusError")}
     </span>
   );
 }

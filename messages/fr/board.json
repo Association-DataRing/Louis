@@ -1,0 +1,319 @@
+{
+  "common": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…"
+  },
+  "home": {
+    "eyebrow": "Board",
+    "title": "Votre cabinet d'IA.",
+    "subtitle": "Chaque pipeline est une équipe d'agents. Ouvrez-la pour voir son organigramme, modifier chaque rôle, choisir le modèle et le prompt système.",
+    "openPipeline": "Ouvrir {name}",
+    "preset": "Preset",
+    "pipelineCabinet": "Pipeline cabinet",
+    "roundsCount": "{count, plural, one {# tour} other {# tours}}",
+    "slugTitle": "slug: {slug}",
+    "agentsCount": "{count, plural, one {# agent} other {# agents}}",
+    "open": "Ouvrir",
+    "emptyTitle": "Pas encore de pipeline.",
+    "emptyBody": "Les pipelines presets sont semés au premier chargement. Si rien n'apparaît, rechargez pour relancer la génération.",
+    "emptyKeysTitle": "Configurez d'abord une clé provider.",
+    "emptyKeysBody": "Le board orchestre des agents qui appellent des modèles via vos clés. Rendez-vous dans {link}Réglages › Providers{/link} pour en ajouter une."
+  },
+  "reload": {
+    "label": "Recharger"
+  },
+  "tryButton": {
+    "label": "Essayer",
+    "labelWithCalls": "Essayer · ~{calls} appels",
+    "callsTitle": "{count, plural, one {~# appel LLM par question} other {~# appels LLM par question}}",
+    "samplePrompts": {
+      "chat-simple": "Synthétise les obligations principales d'un mandataire social en SAS.",
+      "recherche-juridique": "Quelles sont les conditions de validité d'une clause de non-concurrence post-contractuelle en droit du travail ?",
+      "redaction-actes": "Rédige une mise en demeure pour défaut de paiement d'une facture de prestations à 30 jours.",
+      "revue-contractuelle": "Analyse la clause suivante : « Le Client renonce expressément à tout recours contre le Prestataire au-delà du montant facturé sur les 3 derniers mois. »",
+      "comite-strategique": "Mon client souhaite résilier unilatéralement un contrat de distribution exclusive de 5 ans après 18 mois. Quels risques ?",
+      "audit-conformite": "Évaluez la conformité d'un outil de scoring automatique de candidats pour le recrutement.",
+      "le-bureau": "Un salarié protégé a été licencié sans autorisation de l'inspection du travail. Quels recours, quels délais, et préparez la trame du courrier au client."
+    }
+  },
+  "agentCard": {
+    "noToolAllowed": "Aucun outil autorisé",
+    "toolsCount": "{count, plural, one {# outil} other {# outils}}",
+    "edit": "Modifier {label}"
+  },
+  "pipelineBoard": {
+    "noAgents": "Cette pipeline n'a aucun agent configuré.",
+    "reliesOn": "s'appuie sur",
+    "step": "Étape {n}"
+  },
+  "editSheet": {
+    "toastSaved": "Agent enregistré",
+    "toastSavedDesc": "{name} a été mis à jour.",
+    "toastSaveError": "Enregistrement impossible",
+    "title": "Modifier l'agent",
+    "optional": "(optionnel)",
+    "roleLabel": "Rôle",
+    "roleChangeWarning": "Changer le rôle modifie le prompt « factory » et les outils par défaut de l'agent. Votre prompt système personnalisé est conservé.",
+    "nameLabel": "Nom affiché",
+    "providerLabel": "Clé provider",
+    "inheritPlaceholder": "Hériter du chat",
+    "inheritOption": "Hériter du chat (clé choisie au moment de l'envoi)",
+    "providerHelp": "Permet d'assigner un provider/modèle différent par agent — par exemple Mistral-small pour le Relecteur, Claude pour le Maestro.",
+    "modelLabel": "Modèle",
+    "modelDefaultPlaceholder": "Par défaut du provider",
+    "modelDefaultOption": "Par défaut du provider",
+    "modelInputPlaceholder": "ex. mistral-small-latest",
+    "temperatureLabel": "Température",
+    "tempDefault": "Défaut",
+    "tempCustom": "Personnalisée",
+    "tempLow": "0 · précis / factuel",
+    "tempHigh": "créatif · 2",
+    "tempHelp": "Température par défaut du provider — convient à la plupart des usages. Passez en « Personnalisée » pour un Relecteur très factuel (bas) ou un Rédacteur plus créatif (haut).",
+    "systemPromptLabel": "System prompt",
+    "charCount": "{count} / 8000",
+    "promptPlaceholder": "Vide = prompt « factory » du rôle \"{role}\".",
+    "promptWarning": "Ce prompt sera répété à chaque appel de cet agent — un prompt long multiplie les coûts en mode council/parallel.",
+    "promptHelp": "Vide = prompt « factory » du rôle. Plus le prompt est long, plus chaque appel coûte cher.",
+    "toolsLabel": "Outils autorisés",
+    "toolsAll": "Tous les outils",
+    "toolsCustom": "Sélection",
+    "noToolsAvailable": "Aucun outil disponible — configurez un connecteur ou un serveur MCP.",
+    "unavailable": "indisponible",
+    "toolsHelpAll": "L'agent peut utiliser tous les outils disponibles.",
+    "toolsHelpNone": "Aucun outil — l'agent travaille uniquement sur le texte.",
+    "toolsHelpSelected": "{count, plural, one {# outil sélectionné} other {# outils sélectionnés}}.",
+    "ragLabel": "Sources documentaires",
+    "ragTag": "(RAG)",
+    "ragInherit": "Périmètre de la conversation",
+    "ragNone": "Aucun document",
+    "ragFolders": "Dossiers choisis",
+    "ragDocuments": "Documents choisis",
+    "noFolders": "Aucun dossier — créez-en dans l'onglet Documents.",
+    "noDocuments": "Aucun document importé.",
+    "notIndexed": "non indexé",
+    "ragHelpInherit": "L'agent lit les pièces du projet de la conversation (par défaut).",
+    "ragHelpNone": "L'agent ne lit aucune pièce — il travaille sans recherche documentaire.",
+    "ragHelpFolders": "{count, plural, one {# dossier sélectionné} other {# dossiers sélectionnés}} — intersecté avec le périmètre du projet de la conversation.",
+    "ragHelpDocuments": "{count, plural, one {# document sélectionné} other {# documents sélectionnés}} — intersecté avec le périmètre du projet de la conversation."
+  },
+  "pipelineActions": {
+    "cloned": "Pipeline clonée",
+    "cloneError": "Clonage impossible",
+    "deleted": "Pipeline supprimée",
+    "deleteError": "Suppression impossible",
+    "updated": "Pipeline mise à jour",
+    "updateError": "Mise à jour impossible",
+    "menuAria": "Actions sur la pipeline",
+    "clone": "Cloner",
+    "rename": "Renommer",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer « {name} » ?",
+    "deleteDescription": "Cette action est irréversible. Les conversations qui ont utilisé cette pipeline conservent leur historique mais ne pourront plus l'invoquer.",
+    "deleting": "Suppression…",
+    "renameTitle": "Renommer la pipeline",
+    "renameDescription": "Changement de nom et de description visibles dans le sélecteur de pipeline du chat.",
+    "nameLabel": "Nom",
+    "descriptionLabel": "Description"
+  },
+  "cloneToEdit": {
+    "cloned": "Pipeline clonée",
+    "clonedDesc": "Vous pouvez maintenant éditer chaque agent.",
+    "cloneError": "Clonage impossible",
+    "creating": "Création de la copie…",
+    "label": "Cloner pour éditer"
+  },
+  "inlineRename": {
+    "renamed": "Pipeline renommée",
+    "renameError": "Renommage impossible",
+    "renameAria": "Renommer la pipeline",
+    "renameNamed": "Renommer {name}"
+  },
+  "executionOrder": {
+    "title": "Ordre d'exécution",
+    "respondsLast": "répond en dernier",
+    "moveUp": "Monter {label}",
+    "moveDown": "Descendre {label}",
+    "modeHint": {
+      "sequential": "Chaîne : chaque agent voit la sortie des précédents. Le dernier agent rend la réponse finale.",
+      "council": "Conseil : tous les agents délibèrent (N tours). Le dernier agent — le terminal — synthétise et rend la réponse.",
+      "parallel": "Parallèle : les agents travaillent en même temps sur la question. Le dernier agent — le terminal — agrège et rend la réponse.",
+      "iterative": "Itératif : le premier agent reprend ses notes à chaque tour pour creuser les lacunes. Le dernier agent — le terminal — synthétise et rend la réponse.",
+      "maestro": "Maestro : le dernier agent dirige l'équipe — il choisit qui consulter, avec quelle consigne, dans l'ordre qu'il juge utile, puis rend la réponse. L'ordre ci-dessous n'est qu'indicatif."
+    }
+  },
+  "modeBar": {
+    "orchestrationMode": "Mode d'orchestration",
+    "roundsOption": "{count, plural, one {# tour de débat} other {# tours de débat}}",
+    "modeAria": "{label} — {pitch}",
+    "active": "Actif",
+    "costEstimate": "{count, plural, one {Coût estimé : # appel LLM par question} other {Coût estimé : # appels LLM par question}} — {breakdown}",
+    "breakdownCouncil": "{debaters, plural, one {# débatteur} other {# débatteurs}} sur {rounds, plural, one {# tour} other {# tours}}, plus 1 synthèse finale.",
+    "breakdownIterative": "{rounds, plural, one {# tour} other {# tours}} d'approfondissement{multi, select, yes {, plus 1 synthèse finale.} other {.}}",
+    "breakdownParallel": "{debaters, plural, one {# agent} other {# agents}} en parallèle, plus 1 synthèse finale.",
+    "breakdownMaestro": "estimation — le Maestro décide en direct qui consulter ({debaters, plural, one {# agent disponible} other {# agents disponibles}}, rappels possibles).",
+    "breakdownSequential": "1 appel par agent ({count} en chaîne).",
+    "presetLocked": "Mode verrouillé sur les presets — clonez la pipeline pour le modifier."
+  },
+  "flowNode": {
+    "agentActive": "Agent actif",
+    "done": "Terminé",
+    "agentDone": "Agent terminé",
+    "error": "Erreur",
+    "agentError": "Agent en erreur",
+    "step": "Étape {n}",
+    "terminalSuffix": "· terminal",
+    "edit": "Modifier {label}",
+    "delete": "Supprimer {label}",
+    "defaultModel": "modèle par défaut",
+    "ragDisabled": "RAG désactivé",
+    "ragFolders": "{count, plural, one {lit : # dossier} other {lit : # dossiers}}",
+    "ragDocs": "{count, plural, one {lit : # doc} other {lit : # docs}}",
+    "allTools": "Tous les outils",
+    "noTools": "Aucun outil",
+    "toolsCount": "{count, plural, one {# outil} other {# outils}}"
+  },
+  "editorPage": {
+    "back": "Board",
+    "presetEyebrow": "Preset système",
+    "pipelineCabinet": "Pipeline cabinet",
+    "presetTitle": "Cette pipeline est un preset système — lecture seule.",
+    "presetBody": "Pour personnaliser ses agents (modèle, prompt, outils), clonez-la d'un clic. Votre copie sera modifiable et utilisable immédiatement dans le chat.",
+    "orgChart": "Organigramme",
+    "hintClickAgent": "Cliquez un agent pour l'éditer",
+    "hintDrag": "· Glissez les cartes pour réordonner",
+    "hintOrder": "· L'ordre se règle dans « Ordre d'exécution » ci-dessous",
+    "hintRounds": "{count, plural, one {· # tour de débat} other {· # tours de débat}}",
+    "hintAudit": "· Chaque exécution est tracée dans l'audit"
+  },
+  "addAgent": {
+    "nameRequired": "Donnez un nom à l'agent (ex: « Avocat des entreprises »).",
+    "added": "Agent ajouté",
+    "addedDesc": "{name} fait désormais partie de la pipeline.",
+    "addError": "Impossible d'ajouter l'agent",
+    "heading": "Ajouter un agent",
+    "description": "Vous pourrez affiner son prompt système et ses outils après ajout en cliquant sur sa carte.",
+    "personaLabel": "Démarrer avec une persona",
+    "manualHint": "Ou configurez manuellement ci-dessous.",
+    "roleLabel": "Rôle",
+    "nameLabel": "Nom affiché",
+    "namePlaceholder": "ex. \"Avocat des entreprises\", \"Contradicteur\"",
+    "providerLabel": "Clé provider",
+    "inheritPlaceholder": "Hériter du chat",
+    "inheritOption": "Hériter du chat (clé du moment de l'envoi)",
+    "noKeyHint": "Choisissez une clé provider ci-dessus pour sélectionner un modèle. Sans clé, l'agent hérite du modèle du chat au moment de l'envoi.",
+    "modelLabel": "Modèle",
+    "modelDefaultPlaceholder": "Par défaut du provider",
+    "modelDefaultOption": "Par défaut du provider",
+    "adding": "Ajout…",
+    "submit": "Ajouter"
+  },
+  "workflow": {
+    "agentRemoved": "Agent retiré",
+    "agentRemovedDesc": "{name} a été retiré de la pipeline.",
+    "removeError": "Suppression impossible",
+    "reorderError": "Réordonnancement impossible",
+    "layoutReset": "Disposition réinitialisée",
+    "resetError": "Réinitialisation impossible",
+    "updating": "Mise à jour…",
+    "resetLayoutTitle": "Remet les nodes à leur position automatique selon le mode",
+    "resetLayout": "Réinitialiser la disposition",
+    "removeTitle": "Retirer « {name} » de la pipeline ?",
+    "removeDescription": "Cet agent ne participera plus aux exécutions futures. Vous pourrez toujours l'ajouter à nouveau. Les exécutions passées conservent leur trace dans l'audit.",
+    "removing": "Suppression…",
+    "remove": "Retirer"
+  },
+  "meta": {
+    "roles": {
+      "orchestrator": {
+        "label": "Maestro",
+        "pitch": "Coordonne et synthétise — rend la réponse finale à l'utilisateur."
+      },
+      "research": {
+        "label": "Recherche",
+        "pitch": "Cherche, source, organise les références."
+      },
+      "citator": {
+        "label": "Citateur",
+        "pitch": "Vérifie chaque référence juridique citée."
+      },
+      "reviewer": {
+        "label": "Relecteur",
+        "pitch": "Déontologie, hallucinations, ton."
+      },
+      "drafting": {
+        "label": "Rédacteur",
+        "pitch": "Rédige acte, mémoire, note de synthèse."
+      },
+      "legifrance": {
+        "label": "Légifrance",
+        "pitch": "Lookup verbatim FR/EU."
+      },
+      "default-chat": {
+        "label": "Assistant",
+        "pitch": "Modèle généraliste — recherche, raisonnement, rédaction."
+      }
+    },
+    "modes": {
+      "sequential": {
+        "label": "Séquentiel",
+        "short": "Chaîne",
+        "pitch": "Chaque agent voit la sortie des précédents et l'enrichit. A → B → C."
+      },
+      "council": {
+        "label": "Conseil",
+        "short": "Débat",
+        "pitch": "N tours où chaque membre voit les positions des autres et révise la sienne."
+      },
+      "parallel": {
+        "label": "Parallèle",
+        "short": "Fan-out",
+        "pitch": "Tous les agents travaillent en parallèle, le dernier synthétise."
+      },
+      "iterative": {
+        "label": "Itératif",
+        "short": "Approfondi",
+        "pitch": "Le chercheur reprend ses notes à chaque tour pour creuser les lacunes, puis le dernier synthétise."
+      },
+      "maestro": {
+        "label": "Maestro",
+        "short": "Routeur",
+        "pitch": "Le dernier agent dirige : il choisit qui consulter, avec quelle consigne, et peut re-déléguer avant de répondre."
+      }
+    },
+    "personas": {
+      "avocat-affaires": {
+        "label": "Avocat d'affaires",
+        "pitch": "Défend les intérêts de l'entreprise — protection des marges, maîtrise du risque."
+      },
+      "avocat-consommateur": {
+        "label": "Avocat des consommateurs",
+        "pitch": "Défend la contrepartie faible — déséquilibre significatif, clauses abusives."
+      },
+      "dpo": {
+        "label": "DPO senior",
+        "pitch": "Conformité RGPD — base légale, finalités, durée, AIPD."
+      },
+      "compliance": {
+        "label": "Compliance officer",
+        "pitch": "Conformité réglementaire transverse — Sapin II, LCB-FT, sanctions."
+      },
+      "contradicteur": {
+        "label": "Contradicteur",
+        "pitch": "Avocat du diable — argumentation contraire systématique."
+      },
+      "pragmatique": {
+        "label": "Pragmatique",
+        "pitch": "Cherche le compromis défendable en pratique."
+      },
+      "fiscaliste": {
+        "label": "Fiscaliste",
+        "pitch": "Optimisation et risque fiscal — IS, TVA, prix de transfert."
+      },
+      "procedure": {
+        "label": "Expert procédure",
+        "pitch": "Opposabilité, juridiction, exécution forcée."
+      }
+    }
+  }
+}

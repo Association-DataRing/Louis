@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { toggleSkill } from "./actions";
@@ -14,6 +15,7 @@ interface SkillToggleProps {
 
 export function SkillToggle({ skillId, enabled, name }: SkillToggleProps) {
   const router = useRouter();
+  const t = useTranslations("settings.skills");
   const [pending, startTransition] = useTransition();
 
   function handleChange(next: boolean) {
@@ -21,11 +23,14 @@ export function SkillToggle({ skillId, enabled, name }: SkillToggleProps) {
       const result = await toggleSkill(skillId, next);
       if (result.ok) {
         router.refresh();
-        toast.success(next ? "Compétence activée" : "Compétence désactivée", {
-          description: name,
-        });
+        toast.success(
+          next ? t("toast.enabled") : t("toast.disabled"),
+          {
+            description: name,
+          }
+        );
       } else {
-        toast.error("Échec", { description: result.error });
+        toast.error(t("toast.toggleError"), { description: result.error });
       }
     });
   }
@@ -35,7 +40,11 @@ export function SkillToggle({ skillId, enabled, name }: SkillToggleProps) {
       checked={enabled}
       onCheckedChange={handleChange}
       disabled={pending}
-      aria-label={`${enabled ? "Désactiver" : "Activer"} ${name}`}
+      aria-label={
+        enabled
+          ? t("toggle.ariaDisable", { name })
+          : t("toggle.ariaEnable", { name })
+      }
     />
   );
 }

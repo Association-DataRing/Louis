@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { desc, eq, sql } from "drizzle-orm";
 import {
   IconArrowUpRight,
@@ -38,6 +39,7 @@ export default async function ProjectsPage() {
   // plutôt que de crasher sur session.user.id.
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("projects.list");
 
   const convCountSql = sql<number>`(
     SELECT COUNT(*) FROM ${conversations}
@@ -119,20 +121,17 @@ export default async function ProjectsPage() {
       <header className="mb-10 flex items-end justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Dossiers clients · matières · affaires
+            {t("eyebrow")}
           </p>
           <div className="mt-2 flex items-center gap-2">
-            <h1 className="font-heading text-4xl tracking-tight">Projets.</h1>
-            <ModuleHelp slug="user/projects" title="Travailler par projet">
-              Un projet regroupe les conversations et documents d&apos;un
-              dossier client, et restreint le raisonnement de l&apos;IA à ce
-              seul périmètre.
+            <h1 className="font-heading text-4xl tracking-tight">
+              {t("title")}
+            </h1>
+            <ModuleHelp slug="user/projects" title={t("helpTitle")}>
+              {t("helpBody")}
             </ModuleHelp>
           </div>
-          <p className="mt-3 text-muted-foreground">
-            Regroupez conversations et documents autour d&apos;un dossier
-            client, d&apos;une affaire, d&apos;une thématique.
-          </p>
+          <p className="mt-3 text-muted-foreground">{t("intro")}</p>
         </div>
         <AddProjectDialog folders={folders} />
       </header>
@@ -153,10 +152,10 @@ export default async function ProjectsPage() {
                     {p.shared && (
                       <span
                         className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-                        title={`Partagé par ${p.ownerName ?? ""}`}
+                        title={t("sharedByTitle", { name: p.ownerName ?? "" })}
                       >
                         <IconUsersGroup className="size-3" />
-                        Partagé
+                        {t("sharedBadge")}
                       </span>
                     )}
                   </p>
@@ -173,24 +172,24 @@ export default async function ProjectsPage() {
                     <span className="inline-flex items-center gap-1">
                       <IconMessageCircle className="size-3.5" aria-hidden />
                       {p.convCount}
-                      <span className="sr-only">conversations</span>
+                      <span className="sr-only">{t("srConversations")}</span>
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <IconFileText className="size-3.5" aria-hidden />
                       {p.docCount}
-                      <span className="sr-only">documents</span>
+                      <span className="sr-only">{t("srDocuments")}</span>
                     </span>
                   </span>
                 </div>
                 <span className="hidden sm:inline-flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
                   <IconMessageCircle className="size-3.5" aria-hidden />
                   {p.convCount}
-                  <span className="sr-only">conversations</span>
+                  <span className="sr-only">{t("srConversations")}</span>
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
                   <IconFileText className="size-3.5" aria-hidden />
                   {p.docCount}
-                  <span className="sr-only">documents</span>
+                  <span className="sr-only">{t("srDocuments")}</span>
                 </span>
                 <span className="text-xs text-muted-foreground tabular-nums sm:w-20 sm:text-right inline-flex items-center gap-1 justify-end">
                   {new Date(p.updatedAt).toLocaleDateString("fr-FR")}
@@ -206,24 +205,19 @@ export default async function ProjectsPage() {
       )}
 
       <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-sm text-muted-foreground">
-        Un projet est un conteneur partagé : conversations, documents et,
-        bientôt, connecteurs activés y sont regroupés. Particulièrement adapté
-        pour suivre un dossier client de bout en bout.
+        {t("aside")}
       </aside>
     </main>
   );
 }
 
-function EmptyState() {
+async function EmptyState() {
+  const t = await getTranslations("projects.list");
   return (
     <div className="py-16 border-y border-dashed border-border">
-      <p className="font-heading text-2xl tracking-tight">
-        Pas encore de projet.
-      </p>
+      <p className="font-heading text-2xl tracking-tight">{t("emptyTitle")}</p>
       <p className="mt-3 text-sm text-muted-foreground max-w-md">
-        Un projet groupe les conversations et documents liés à un même
-        dossier client. Vous gardez la trace de l&apos;affaire complète
-        plutôt qu&apos;une suite de conversations isolées.
+        {t("emptyBody")}
       </p>
     </div>
   );

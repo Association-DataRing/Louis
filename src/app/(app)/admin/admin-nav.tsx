@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconChartBar,
   IconUsers,
@@ -11,23 +12,24 @@ import {
 
 const sections = [
   {
-    group: "Cabinet",
+    groupKey: "groupCabinet",
     items: [
-      { href: "/admin", label: "Vue d'ensemble", icon: IconChartBar },
-      { href: "/admin/cabinet", label: "Configuration", icon: IconBuilding },
+      { href: "/admin", labelKey: "overview", icon: IconChartBar },
+      { href: "/admin/cabinet", labelKey: "configuration", icon: IconBuilding },
     ],
   },
   {
-    group: "Sécurité",
+    groupKey: "groupSecurity",
     items: [
-      { href: "/admin/users", label: "Utilisateurs", icon: IconUsers },
-      { href: "/admin/audit", label: "Journal d'audit", icon: IconHistory },
+      { href: "/admin/users", labelKey: "users", icon: IconUsers },
+      { href: "/admin/audit", labelKey: "auditLog", icon: IconHistory },
     ],
   },
 ];
 
 export function AdminNav({ horizontal }: { horizontal?: boolean }) {
   const pathname = usePathname();
+  const t = useTranslations("admin.nav");
 
   if (horizontal) {
     const items = sections.flatMap((s) => s.items);
@@ -52,7 +54,7 @@ export function AdminNav({ horizontal }: { horizontal?: boolean }) {
               }`}
             >
               <Icon className="size-3.5" />
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           );
         })}
@@ -63,9 +65,9 @@ export function AdminNav({ horizontal }: { horizontal?: boolean }) {
   return (
     <nav className="w-full flex flex-col gap-5">
       {sections.map((group) => (
-        <div key={group.group}>
+        <div key={group.groupKey}>
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1 px-2">
-            {group.group}
+            {t(group.groupKey)}
           </p>
           <ul className="space-y-0.5">
             {group.items.map((item) => {
@@ -86,7 +88,7 @@ export function AdminNav({ horizontal }: { horizontal?: boolean }) {
                     }`}
                   >
                     <Icon className="size-4 shrink-0" />
-                    {item.label}
+                    {t(item.labelKey)}
                   </Link>
                 </li>
               );

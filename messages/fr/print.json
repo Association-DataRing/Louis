@@ -1,0 +1,20 @@
+{
+  "documentTitle": "Louis – {title}",
+  "trigger": {
+    "print": "Imprimer / PDF"
+  },
+  "exportedOn": "Conversation exportée le {date}",
+  "createdOn": "Créée le {date}",
+  "roles": {
+    "you": "Vous",
+    "assistant": "Louis"
+  },
+  "footer": {
+    "generatedBy": "Généré par Louis — assistant juridique souverain",
+    "convLabel": "conv:",
+    "sha256Label": "sha256:",
+    "messagesLabel": "messages:",
+    "modelsLabel": "modèles:",
+    "pageLabel": "Page"
+  }
+}

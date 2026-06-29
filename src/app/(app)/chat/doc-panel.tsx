@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import {
   IconX,
   IconFileText,
@@ -63,6 +64,7 @@ export function DocPanel({
   onReplace,
   closing,
 }: Props) {
+  const t = useTranslations("chat");
   const [doc, setDoc] = useState<DocPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,13 +102,13 @@ export function DocPanel({
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Erreur de chargement");
+        setError(err instanceof Error ? err.message : t("docPanel.loadError"));
         setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [documentId]);
+  }, [documentId, t]);
 
   const isPdf = doc?.contentType === "application/pdf";
   const isDocx = doc?.contentType === DOCX_MEDIA_TYPE;
@@ -131,7 +133,7 @@ export function DocPanel({
       if (onReplace) onReplace(newId);
     } catch (e) {
       setSaveError(
-        e instanceof Error ? e.message : "Échec de l'enregistrement"
+        e instanceof Error ? e.message : t("docPanel.saveError")
       );
     } finally {
       setSaving(false);
@@ -146,13 +148,13 @@ export function DocPanel({
           : "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-6 motion-safe:duration-300 motion-safe:ease-out"
       }`}
       role="region"
-      aria-label="Aperçu du document"
+      aria-label={t("docPanel.regionAria")}
     >
       <header className="flex items-center justify-between gap-2 border-b border-border px-3 h-[52px] shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="size-4 text-muted-foreground shrink-0" />
           <span className="text-sm font-medium truncate">
-            {doc?.filename ?? "Chargement…"}
+            {doc?.filename ?? t("docPanel.loading")}
           </span>
           {doc && doc.version > 1 && (
             <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -167,17 +169,17 @@ export function DocPanel({
             <button
               onClick={() => setMode(editing ? "preview" : "edit")}
               className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title={editing ? "Aperçu fidèle (PDF)" : "Éditer le document"}
+              title={editing ? t("docPanel.previewTitle") : t("docPanel.editTitle")}
             >
               {editing ? (
                 <>
                   <IconEye className="size-4" />
-                  Aperçu
+                  {t("docPanel.preview")}
                 </>
               ) : (
                 <>
                   <IconPencil className="size-4" />
-                  Éditer
+                  {t("docPanel.edit")}
                 </>
               )}
             </button>
@@ -193,19 +195,19 @@ export function DocPanel({
               className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title={
                 pdfView === "pdf"
-                  ? "Voir le Markdown (ce que l'IA lit)"
-                  : "Revenir à l'aperçu PDF fidèle"
+                  ? t("docPanel.viewMarkdownTitle")
+                  : t("docPanel.backToPdfTitle")
               }
             >
               {pdfView === "pdf" ? (
                 <>
                   <IconMarkdown className="size-4" />
-                  Markdown
+                  {t("docPanel.markdown")}
                 </>
               ) : (
                 <>
                   <IconEye className="size-4" />
-                  Aperçu PDF
+                  {t("docPanel.pdfPreview")}
                 </>
               )}
             </button>
@@ -217,14 +219,14 @@ export function DocPanel({
               onClick={handleSave}
               disabled={!dirty || saving}
               className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-opacity disabled:opacity-40"
-              title="Enregistrer comme nouvelle version"
+              title={t("docPanel.saveAsVersion")}
             >
               {saving ? (
                 <Spinner className="size-3.5" />
               ) : (
                 <IconDeviceFloppy className="size-4" />
               )}
-              Enregistrer
+              {t("docPanel.save")}
             </button>
           )}
 
@@ -233,8 +235,8 @@ export function DocPanel({
               href={`/api/documents/${documentId}/file?download=1`}
               download={doc.filename}
               className="size-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Télécharger"
-              aria-label="Télécharger"
+              title={t("docPanel.download")}
+              aria-label={t("docPanel.download")}
             >
               <IconDownload className="size-4" />
             </a>
@@ -242,7 +244,7 @@ export function DocPanel({
           <button
             onClick={onClose}
             className="size-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            aria-label="Fermer le document"
+            aria-label={t("docPanel.closeDoc")}
           >
             <IconX className="size-4" />
           </button>
@@ -296,7 +298,7 @@ export function DocPanel({
           isPdf &&
           pdfView === "markdown" && (
             <MarkdownDocView
-              markdown={doc.extractedText ?? "*Aucun texte extrait.*"}
+              markdown={doc.extractedText ?? t("docPanel.noExtractedText")}
               targetText={targetText}
             />
           )}
@@ -322,14 +324,14 @@ export function DocPanel({
 
       <footer className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground shrink-0">
         {editing
-          ? "Édition WYSIWYG — « Enregistrer » crée une nouvelle version .docx."
+          ? t("docPanel.footerEditing")
           : isPdf
             ? pdfView === "markdown"
-              ? "Markdown canonique — le texte exact lu par l'IA (RAG, prompt, analyses)."
-              : "Aperçu PDF fidèle. Basculez sur « Markdown » pour voir ce que l'IA lit."
+              ? t("docPanel.footerMarkdown")
+              : t("docPanel.footerPdf")
             : doc?.hasPdfPreview
-              ? "Aperçu paginé via LibreOffice — identique au document Word téléchargé."
-              : "Rendu DOCX via docx-preview — fidèle à l'ouverture Word/Pages."}
+              ? t("docPanel.footerLibreOffice")
+              : t("docPanel.footerDocx")}
       </footer>
     </aside>
   );

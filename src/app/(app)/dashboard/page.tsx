@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import {
   IconArrowUpRight,
@@ -32,6 +33,7 @@ import { ModuleHelp } from "@/components/module-help";
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const t = await getTranslations("dashboard");
   const userId = session.user.id;
   const firstName = session?.user?.name?.split(/[\s.]/)[0] ?? "";
 
@@ -115,8 +117,8 @@ export default async function DashboardPage() {
   const quotaReached = quotaCents != null && spentCentsMonth >= quotaCents;
   const monthHint =
     quotaCents != null
-      ? `${formatCost({ amount: spentCentsMonth / 100, currency: "EUR" })} / ${formatCost({ amount: quotaCents / 100, currency: "EUR" })}${quotaReached ? " — plafond atteint" : quotaPct >= 80 ? ` — ${quotaPct} %` : ""}`
-      : "coût estimé";
+      ? `${formatCost({ amount: spentCentsMonth / 100, currency: "EUR" })} / ${formatCost({ amount: quotaCents / 100, currency: "EUR" })}${quotaReached ? ` — ${t("month.capReached")}` : quotaPct >= 80 ? ` — ${t("month.percent", { pct: quotaPct })}` : ""}`
+      : t("month.costEstimated");
   const monthHintTone: "default" | "warning" | "danger" = quotaReached
     ? "danger"
     : quotaCents != null && quotaPct >= 80
@@ -127,16 +129,17 @@ export default async function DashboardPage() {
     <main className="mx-auto w-full max-w-5xl px-6 py-10 md:px-8 md:py-14">
       <header className="mb-12">
         <p className="text-xs text-muted-foreground uppercase tracking-wider">
-          Tableau de bord
+          {t("eyebrow")}
         </p>
         <div className="mt-2 flex items-center gap-2">
           <h1 className="font-heading text-4xl md:text-5xl tracking-tight">
-            Bonjour{firstName ? `, ${firstName}` : ""}.
+            {firstName ? t("greetingNamed", { name: firstName }) : t("greeting")}
           </h1>
-          <ModuleHelp slug="user/getting-started" title="Prise en main">
-            Nouveau sur Louis ? Le parcours de mise en route en 5 étapes :
-            connecter une clé provider, vos sources juridiques, puis lancer
-            votre première conversation.
+          <ModuleHelp
+            slug="user/getting-started"
+            title={t("gettingStartedTitle")}
+          >
+            {t("gettingStartedBody")}
           </ModuleHelp>
         </div>
       </header>
@@ -152,24 +155,24 @@ export default async function DashboardPage() {
       {/* Stats inline en grande typographie, pas une grille de cartes */}
       <section className="mb-14 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-6 border-b border-border pb-12">
         <Stat
-          label="Ce mois"
+          label={t("stats.thisMonth")}
           value={formatTotals(monthCost)}
           hint={monthHint}
           hintTone={monthHintTone}
           href="/settings/usage"
         />
         <Stat
-          label="Projets"
+          label={t("stats.projects")}
           value={projectCount.toString()}
           href="/projects"
         />
         <Stat
-          label="Documents"
+          label={t("stats.documents")}
           value={docCount.toString()}
           href="/documents"
         />
         <Stat
-          label="Providers actifs"
+          label={t("stats.activeProviders")}
           value={activeKeys.length.toString()}
           href="/settings/providers"
         />
@@ -179,11 +182,10 @@ export default async function DashboardPage() {
       <section className="grid lg:grid-cols-[280px_1fr] gap-12">
         <div>
           <h2 className="font-heading text-2xl tracking-tight">
-            Reprendre.
+            {t("recent.title")}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Vos cinq dernières conversations. Cliquez pour reprendre où vous
-            étiez.
+            {t("recent.subtitle")}
           </p>
         </div>
         {hasContent ? (
@@ -198,7 +200,7 @@ export default async function DashboardPage() {
                     <p className="font-medium truncate">{c.title}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {formatRelativeFr(c.updatedAt)}
-                      {c.projectId && " · dans un projet"}
+                      {c.projectId && ` · ${t("recent.inProject")}`}
                     </p>
                   </div>
                   <IconArrowUpRight className="size-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
@@ -210,7 +212,7 @@ export default async function DashboardPage() {
                 href="/chat"
                 className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline underline-offset-2"
               >
-                Nouvelle conversation
+                {t("recent.newConversation")}
                 <IconArrowUpRight className="size-3.5" />
               </Link>
             </li>
@@ -229,7 +231,7 @@ export default async function DashboardPage() {
  * connecteur (optionnel) → chat. Reste affichée tant que provider OU modèle
  * manque ; disparaît une fois les deux présents.
  */
-function ReadinessChecklist({
+async function ReadinessChecklist({
   hasProvider,
   hasModel,
   hasConnector,
@@ -238,24 +240,25 @@ function ReadinessChecklist({
   hasModel: boolean;
   hasConnector: boolean;
 }) {
+  const t = await getTranslations("dashboard");
   const steps = [
     {
       done: hasProvider,
-      label: "Ajouter une clé provider IA",
+      label: t("readiness.stepProvider"),
       href: "/settings/providers",
-      hint: "Mistral, Scaleway, OVH, Albert, Anthropic, ou endpoint compatible.",
+      hint: t("readiness.stepProviderHint"),
     },
     {
       done: hasModel,
-      label: "Activer au moins un modèle",
+      label: t("readiness.stepModel"),
       href: "/settings/models/library",
-      hint: "Sans modèle activé, le chat reste vide.",
+      hint: t("readiness.stepModelHint"),
     },
     {
       done: hasConnector,
-      label: "Brancher une source juridique",
+      label: t("readiness.stepConnector"),
       href: "/settings/connectors",
-      hint: "Légifrance (PISTE), Pappers.",
+      hint: t("readiness.stepConnectorHint"),
       optional: true,
     },
   ];
@@ -266,9 +269,9 @@ function ReadinessChecklist({
       <div className="flex items-start gap-3">
         <IconKey className="size-5 shrink-0 text-primary mt-0.5" />
         <div className="flex-1">
-          <p className="font-medium">Mise en route</p>
+          <p className="font-medium">{t("readiness.heading")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Quelques étapes pour rendre Louis opérationnel sur votre instance.
+            {t("readiness.subtitle")}
           </p>
           <ol className="mt-4 space-y-2.5">
             {steps.map((s, i) => (
@@ -294,7 +297,7 @@ function ReadinessChecklist({
                 </Link>
                 {s.optional && !s.done && (
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    optionnel
+                    {t("readiness.optional")}
                   </span>
                 )}
                 {!s.done && (
@@ -317,7 +320,7 @@ function ReadinessChecklist({
                     : "text-muted-foreground pointer-events-none"
                 }
               >
-                Lancer une première conversation
+                {t("readiness.startConversation")}
               </Link>
             </li>
           </ol>
@@ -333,7 +336,8 @@ function ReadinessChecklist({
  * « Mise en route » et la carte « Prise en main » de la sidebar — trois
  * rappels identiques sur un même écran seraient du bruit.
  */
-function FirstSteps() {
+async function FirstSteps() {
+  const t = await getTranslations("dashboard");
   return (
     <ol className="space-y-5 text-sm">
       <li className="flex gap-3">
@@ -342,7 +346,7 @@ function FirstSteps() {
         </span>
         <Link href="/documents" className="hover:text-primary inline-flex items-center gap-1.5">
           <IconFolder className="size-3.5" />
-          Importer un premier document
+          {t("firstSteps.importDocument")}
         </Link>
       </li>
       <li className="flex gap-3">
@@ -351,7 +355,7 @@ function FirstSteps() {
         </span>
         <Link href="/projects" className="hover:text-primary inline-flex items-center gap-1.5">
           <IconFolders className="size-3.5" />
-          Créer un projet pour un dossier client
+          {t("firstSteps.createProject")}
         </Link>
       </li>
       <li className="flex gap-3">
@@ -360,7 +364,7 @@ function FirstSteps() {
         </span>
         <Link href="/chat" className="hover:text-primary inline-flex items-center gap-1.5">
           <IconMessageCircle className="size-3.5" />
-          Lancer une première conversation
+          {t("firstSteps.startConversation")}
         </Link>
       </li>
     </ol>

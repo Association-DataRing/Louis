@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconPlus, IconFolder } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ export type FolderNode = {
 
 export function AddProjectDialog({ folders }: { folders: FolderNode[] }) {
   const router = useRouter();
+  const t = useTranslations("projects.addDialog");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -37,7 +39,7 @@ export function AddProjectDialog({ folders }: { folders: FolderNode[] }) {
   function handleSubmit(formData: FormData) {
     setError(null);
     if (mode === "existing" && !selectedFolderId) {
-      setError("Choisissez un dossier existant ou créez-en un nouveau.");
+      setError(t("chooseFolderError"));
       return;
     }
     startTransition(async () => {
@@ -58,51 +60,45 @@ export function AddProjectDialog({ folders }: { folders: FolderNode[] }) {
       <DialogTrigger asChild>
         <Button>
           <IconPlus className="size-4" />
-          Nouveau projet
+          {t("trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-heading">Nouveau projet</DialogTitle>
-          <DialogDescription>
-            Un projet regroupe les conversations et documents d&apos;un dossier.
-            Choisissez où ses pièces seront stockées.
-          </DialogDescription>
+          <DialogTitle className="font-heading">{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nom du projet</Label>
+            <Label htmlFor="name">{t("nameLabel")}</Label>
             <Input
               id="name"
               name="name"
               required
               maxLength={80}
               autoFocus
-              placeholder="ex. Dossier Dupont · Litige bail commercial"
+              placeholder={t("namePlaceholder")}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">
-              Description{" "}
+              {t("descriptionLabel")}{" "}
               <span className="text-[10px] text-muted-foreground font-normal">
-                (optionnel)
+                {t("optional")}
               </span>
             </Label>
             <Input
               id="description"
               name="description"
               maxLength={500}
-              placeholder="Note interne, n° dossier, partie adverse…"
+              placeholder={t("descriptionPlaceholder")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Emplacement de stockage</Label>
-            <p className="text-xs text-muted-foreground">
-              Les documents du projet — et ce que Louis prendra en compte en
-              RAG — sont ceux rangés dans ce dossier et ses sous-dossiers.
-            </p>
+            <Label>{t("storageLabel")}</Label>
+            <p className="text-xs text-muted-foreground">{t("storageHint")}</p>
 
             <input type="hidden" name="folderMode" value={mode} />
 
@@ -117,7 +113,7 @@ export function AddProjectDialog({ folders }: { folders: FolderNode[] }) {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Nouveau dossier
+                  {t("newFolder")}
                 </button>
                 <button
                   type="button"
@@ -128,7 +124,7 @@ export function AddProjectDialog({ folders }: { folders: FolderNode[] }) {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Dossier existant
+                  {t("existingFolder")}
                 </button>
               </div>
             )}
@@ -137,7 +133,7 @@ export function AddProjectDialog({ folders }: { folders: FolderNode[] }) {
               <Input
                 name="folderName"
                 maxLength={80}
-                placeholder="Nom du dossier (par défaut : le nom du projet)"
+                placeholder={t("folderNamePlaceholder")}
               />
             ) : (
               <>
@@ -167,10 +163,10 @@ export function AddProjectDialog({ folders }: { folders: FolderNode[] }) {
               variant="ghost"
               onClick={() => setOpen(false)}
             >
-              Annuler
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? "Création…" : "Créer"}
+              {pending ? t("creating") : t("create")}
             </Button>
           </DialogFooter>
         </form>

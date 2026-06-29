@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { and, asc, eq } from "drizzle-orm";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -17,6 +18,7 @@ export default async function PrintConversationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const t = await getTranslations("print");
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -87,14 +89,14 @@ export default async function PrintConversationPage({
           <span className="font-heading text-lg tracking-tight">Louis</span>
         </div>
         <div className="text-xs text-gray-500">
-          Conversation exportée le {new Date().toLocaleDateString("fr-FR")}
+          {t("exportedOn", { date: new Date().toLocaleDateString("fr-FR") })}
         </div>
       </header>
 
       <h1 className="font-heading text-3xl tracking-tight mb-1">
         {conv.title}
       </h1>
-      <p className="text-sm text-gray-500 mb-8">Créée le {dateStr}</p>
+      <p className="text-sm text-gray-500 mb-8">{t("createdOn", { date: dateStr })}</p>
 
       <main className="space-y-6">
         {rows.map((m, i) => (
@@ -104,7 +106,7 @@ export default async function PrintConversationPage({
           >
             <div className="flex items-center justify-between mb-2 text-xs uppercase tracking-wider text-gray-500">
               <span className="font-semibold">
-                {m.role === "user" ? "Vous" : "Louis"}
+                {m.role === "user" ? t("roles.you") : t("roles.assistant")}
                 {m.role === "assistant" && m.modelId && (
                   <span className="ml-2 normal-case tracking-normal font-normal text-gray-400">
                     · {m.modelId}
@@ -124,23 +126,23 @@ export default async function PrintConversationPage({
 
       <footer className="mt-10 pt-4 border-t border-gray-200 text-xs text-gray-500">
         <p className="text-center">
-          Généré par Louis — assistant juridique souverain
+          {t("footer.generatedBy")}
         </p>
         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-[10px] leading-snug">
           <div className="flex gap-2">
-            <dt className="text-gray-600 shrink-0">conv:</dt>
+            <dt className="text-gray-600 shrink-0">{t("footer.convLabel")}</dt>
             <dd className="truncate">{shortConvId}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-gray-600 shrink-0">sha256:</dt>
+            <dt className="text-gray-600 shrink-0">{t("footer.sha256Label")}</dt>
             <dd className="truncate">{integrityHash}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-gray-600 shrink-0">messages:</dt>
+            <dt className="text-gray-600 shrink-0">{t("footer.messagesLabel")}</dt>
             <dd>{rows.length}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-gray-600 shrink-0">modèles:</dt>
+            <dt className="text-gray-600 shrink-0">{t("footer.modelsLabel")}</dt>
             <dd className="truncate">
               {modelsUsed.length > 0 ? modelsUsed.join(", ") : "—"}
             </dd>
@@ -153,7 +155,7 @@ export default async function PrintConversationPage({
           @page {
             margin: 1.5cm;
             @bottom-right {
-              content: "Page " counter(page) " / " counter(pages);
+              content: "${t("footer.pageLabel")} " counter(page) " / " counter(pages);
               font-family: ui-monospace, monospace;
               font-size: 9px;
               color: #6b7280;

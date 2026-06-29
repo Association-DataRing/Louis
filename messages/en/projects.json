@@ -1,0 +1,82 @@
+{
+  "actions": {
+    "actionsAria": "Actions",
+    "edit": "Edit",
+    "deleteProject": "Delete project",
+    "editTitle": "Edit project",
+    "editDescription": "The name is visible everywhere (sidebar, project list, etc.).",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "optional": "(optional)",
+    "descriptionPlaceholder": "Internal note, matter no., opposing party…",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "save": "Save",
+    "deleteTitle": "Delete this project?",
+    "deleteDescription": "“{name}” will be deleted. Conversations and documents will be detached but kept — you will find them back in their original location."
+  },
+  "documentsPanel": {
+    "heading": "Documents",
+    "sending": "Sending…",
+    "importDocument": "Import a document",
+    "dismissError": "Dismiss error",
+    "overlayLabel": "Drop to add to this project",
+    "overlayHint": "PDF, DOCX or text — 25 MB max per file",
+    "empty": "Drag your files here, or import them — they will be attached to this folder.",
+    "uploading": "{count, plural, one {Uploading # file…} other {Uploading # files…}}"
+  },
+  "addDialog": {
+    "chooseFolderError": "Choose an existing folder or create a new one.",
+    "trigger": "New project",
+    "title": "New project",
+    "description": "A project groups the conversations and documents of a matter. Choose where its files will be stored.",
+    "nameLabel": "Project name",
+    "namePlaceholder": "e.g. Dupont matter · Commercial lease dispute",
+    "descriptionLabel": "Description",
+    "optional": "(optional)",
+    "descriptionPlaceholder": "Internal note, matter no., opposing party…",
+    "storageLabel": "Storage location",
+    "storageHint": "The project's documents — and what Louis will consider in RAG — are those filed in this folder and its subfolders.",
+    "newFolder": "New folder",
+    "existingFolder": "Existing folder",
+    "folderNamePlaceholder": "Folder name (default: the project name)",
+    "cancel": "Cancel",
+    "creating": "Creating…",
+    "create": "Create"
+  },
+  "detail": {
+    "backToProjects": "All projects",
+    "conversations": "Conversations",
+    "newConversation": "New conversation",
+    "emptyConversations": "Start a conversation attached to this folder to keep its history in one place.",
+    "sharedBadge": "Shared",
+    "sharedBadgeTitle": "Shared project",
+    "dossierOf": "{name}'s folder",
+    "sharedWithYouSuffix": " · shared with you",
+    "adminAccessSuffix": " · administrator access"
+  },
+  "collaborators": {
+    "heading": "Collaborators",
+    "addCollaborator": "Add a collaborator",
+    "firmAccounts": "Firm accounts",
+    "owner": "Owner",
+    "removeTitle": "Remove from project",
+    "removeAria": "Remove {name} from the project",
+    "emptyManage": "Add colleagues from your firm to work together on this matter.",
+    "emptyReadonly": "No collaborators yet."
+  },
+  "list": {
+    "eyebrow": "Client matters · subjects · cases",
+    "title": "Projects.",
+    "helpTitle": "Work by project",
+    "helpBody": "A project groups the conversations and documents of a client matter, and restricts the AI's reasoning to that scope only.",
+    "intro": "Group conversations and documents around a client matter, a case, a theme.",
+    "srConversations": "conversations",
+    "srDocuments": "documents",
+    "sharedBadge": "Shared",
+    "sharedByTitle": "Shared by {name}",
+    "aside": "A project is a shared container: conversations, documents and, soon, enabled connectors are gathered there. Especially suited to following a client matter from end to end.",
+    "emptyTitle": "No projects yet.",
+    "emptyBody": "A project groups the conversations and documents tied to the same client matter. You keep track of the whole case rather than a series of isolated conversations."
+  }
+}

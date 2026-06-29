@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { IconBriefcase, IconLoader2, IconCheck, IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { roleMeta } from "../board/agent-role-meta";
@@ -29,16 +30,6 @@ interface LiveWorkflowPanelProps {
   onOpenTheatre?: () => void;
 }
 
-const verbByRole: Record<string, string> = {
-  orchestrator: "synthétise",
-  research: "cherche",
-  citator: "vérifie les citations",
-  reviewer: "relit",
-  drafting: "rédige",
-  legifrance: "consulte Légifrance",
-  "default-chat": "réfléchit",
-};
-
 /**
  * Panneau flottant qui s'affiche au-dessus du composer pendant l'exécution
  * d'une pipeline. Chaque agent est représenté comme une carte qui s'allume
@@ -55,6 +46,7 @@ export function LiveWorkflowPanel({
   onClose,
   onOpenTheatre,
 }: LiveWorkflowPanelProps) {
+  const t = useTranslations("chat");
   const reduceMotion = useReducedMotion();
   return (
     <AnimatePresence>
@@ -79,8 +71,10 @@ export function LiveWorkflowPanel({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Board en action
-                {round && totalRounds ? ` · Tour ${round}/${totalRounds}` : ""}
+                {t("livePanel.boardInAction")}
+                {round && totalRounds
+                  ? t("livePanel.roundSuffix", { round, total: totalRounds })
+                  : ""}
               </div>
               <div className="text-sm font-medium truncate">{pipelineName}</div>
             </div>
@@ -92,7 +86,7 @@ export function LiveWorkflowPanel({
                 type="button"
                 onClick={onClose}
                 className="size-9 grid place-items-center rounded-md hover:bg-accent transition-colors"
-                aria-label="Fermer"
+                aria-label={t("livePanel.close")}
               >
                 <IconX className="size-4" />
               </button>
@@ -121,9 +115,13 @@ export function LiveWorkflowPanel({
 }
 
 function AgentStep({ agent }: { agent: LiveAgentState }) {
+  const t = useTranslations("chat");
+  const tBoard = useTranslations("board");
   const meta = roleMeta(agent.role);
   const Icon = meta.icon;
-  const verb = verbByRole[agent.role] ?? "travaille";
+  const verb = t.has(`livePanel.verbs.${agent.role}`)
+    ? t(`livePanel.verbs.${agent.role}`)
+    : t("livePanel.verbs.default");
 
   return (
     <motion.div
@@ -150,7 +148,7 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            {meta.label}
+            {tBoard(meta.labelKey)}
           </div>
           <div className="text-xs font-medium truncate">{agent.label}</div>
         </div>
@@ -173,7 +171,7 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
                 <span className="relative inline-flex size-1.5 rounded-full bg-foreground/80" />
               </span>
               {(agent.retryAttempt ?? 0) > 1
-                ? `nouvelle tentative ${agent.retryAttempt}…`
+                ? t("livePanel.retrying", { attempt: agent.retryAttempt ?? 0 })
                 : `${verb}…`}
             </span>
           </motion.div>
@@ -185,7 +183,7 @@ function AgentStep({ agent }: { agent: LiveAgentState }) {
             animate={{ opacity: 1 }}
             className="mt-2 text-xs text-muted-foreground"
           >
-            terminé en {formatLatency(agent.latencyMs)}
+            {t("livePanel.doneIn", { latency: formatLatency(agent.latencyMs) })}
           </motion.div>
         )}
         {agent.state === "error" && agent.error && (

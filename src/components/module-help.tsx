@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { IconInfoCircle, IconArrowUpRight } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +30,7 @@ export function ModuleHelp({
   title,
   children,
   align = "start",
-  label = "Aide sur ce module",
+  label,
 }: {
   /** Chemin de la page de doc, ex. "user/getting-started" (sans slash initial). */
   slug: string;
@@ -41,6 +42,7 @@ export function ModuleHelp({
   /** aria-label du bouton (accessibilité). */
   label?: string;
 }) {
+  const t = useTranslations("components");
   const href = `${DOCS_BASE}/${slug}`;
 
   return (
@@ -51,7 +53,7 @@ export function ModuleHelp({
           variant="ghost"
           size="icon-sm"
           className="text-muted-foreground hover:text-foreground"
-          aria-label={label}
+          aria-label={label ?? t("moduleHelp.label")}
         >
           <IconInfoCircle className="size-4" />
         </Button>
@@ -69,7 +71,7 @@ export function ModuleHelp({
           rel="noopener noreferrer"
           className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
         >
-          En savoir plus
+          {t("moduleHelp.learnMore")}
           <IconArrowUpRight className="size-3.5" />
         </Link>
       </PopoverContent>

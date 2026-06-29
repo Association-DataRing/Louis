@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconRefresh } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
  */
 export function ReloadButton() {
   const router = useRouter();
+  const t = useTranslations("board");
   return (
     <Button
       type="button"
@@ -20,7 +22,7 @@ export function ReloadButton() {
       className="gap-1.5"
     >
       <IconRefresh className="size-3.5" />
-      Recharger
+      {t("reload.label")}
     </Button>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export function PdfView({ fileUrl, targetText }: Props) {
+  const t = useTranslations("chat");
   const [numPages, setNumPages] = useState<number | null>(null);
   const [width, setWidth] = useState(380);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +90,7 @@ export function PdfView({ fileUrl, targetText }: Props) {
           }
           error={
             <div className="text-sm text-destructive p-4">
-              Impossible de charger le PDF.
+              {t("docPanel.loadPdfError")}
             </div>
           }
         >

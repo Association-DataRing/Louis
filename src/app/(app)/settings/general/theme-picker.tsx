@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
 import { IconSun, IconMoon, IconDeviceLaptop, IconCheck } from "@tabler/icons-react";
 
 function useMounted(): boolean {
@@ -13,21 +14,22 @@ function useMounted(): boolean {
 }
 
 const options = [
-  { value: "light", label: "Clair", icon: IconSun },
-  { value: "dark", label: "Sombre", icon: IconMoon },
-  { value: "system", label: "Système", icon: IconDeviceLaptop },
-];
+  { value: "light", labelKey: "light", icon: IconSun },
+  { value: "dark", labelKey: "dark", icon: IconMoon },
+  { value: "system", labelKey: "system", icon: IconDeviceLaptop },
+] as const;
 
 export function ThemePicker() {
   const { theme, setTheme } = useTheme();
   const mounted = useMounted();
+  const t = useTranslations("theme");
   const current = mounted ? theme ?? "system" : "system";
 
   return (
     <div
       className="inline-flex rounded-lg border border-border bg-card p-1 gap-1"
       role="radiogroup"
-      aria-label="Thème"
+      aria-label={t("label")}
     >
       {options.map((o) => {
         const Icon = o.icon;
@@ -46,7 +48,7 @@ export function ThemePicker() {
             }`}
           >
             <Icon className="size-4" />
-            {o.label}
+            {t(o.labelKey)}
             {active && <IconCheck className="size-3.5" aria-hidden />}
           </button>
         );

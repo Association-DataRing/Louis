@@ -1,0 +1,33 @@
+{
+  "form": {
+    "titleCredentials": "Welcome back",
+    "titleTotp": "Verification",
+    "subtitleCredentials": "Sign in to access your case files.",
+    "subtitleTotp": "Enter the code from your authenticator app.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@firm.com",
+    "passwordLabel": "Password",
+    "change": "Change",
+    "totpLabel": "Verification code",
+    "totpHint": "6-digit code, or a recovery code if needed.",
+    "submitting": "Signing in…",
+    "submitCredentials": "Sign in",
+    "submitTotp": "Verify code",
+    "backToCredentials": "Back to sign-in",
+    "forgotPassword": "Forgot your password? Your firm administrator can reset it."
+  },
+  "aside": {
+    "tagline": "From question to action —<br></br>under your sole control.",
+    "trustEncryption": "Encryption at rest",
+    "trustTwoFactor": "Two-factor authentication",
+    "trustAudit": "Audit log",
+    "mockWindowTitle": "New summons",
+    "mockSourcesVerified": "Sources verified",
+    "mockDrafting": "Drafting the document…",
+    "mockDocHeading": "PARIS JUDICIAL COURT",
+    "mockComposerPlaceholder": "Ask a legal question…"
+  },
+  "page": {
+    "footer": "Private platform — access restricted to firm members."
+  }
+}

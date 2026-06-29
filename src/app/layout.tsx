@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, EB_Garamond } from "next/font/google";
 import { Toaster } from "sonner";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -27,14 +29,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
   return (
     <html
-      lang="fr"
+      lang={locale}
       suppressHydrationWarning
       className={cn(
         "h-full antialiased",
@@ -45,23 +48,25 @@ export default function RootLayout({
       )}
     >
       <body className="min-h-full flex flex-col">
-        <ThemeProvider>
-          {children}
-          <Toaster
-            position="bottom-right"
-            richColors
-            closeButton
-            theme="system"
-            toastOptions={{
-              classNames: {
-                toast:
-                  "!font-sans !rounded-xl !border !border-border !bg-card !text-foreground !shadow-lg",
-                title: "!font-medium !text-sm",
-                description: "!text-xs !text-muted-foreground",
-              },
-            }}
-          />
-        </ThemeProvider>
+        <NextIntlClientProvider>
+          <ThemeProvider>
+            {children}
+            <Toaster
+              position="bottom-right"
+              richColors
+              closeButton
+              theme="system"
+              toastOptions={{
+                classNames: {
+                  toast:
+                    "!font-sans !rounded-xl !border !border-border !bg-card !text-foreground !shadow-lg",
+                  title: "!font-medium !text-sm",
+                  description: "!text-xs !text-muted-foreground",
+                },
+              }}
+            />
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconKey } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,10 +22,11 @@ import { ProviderKeyForm } from "@/components/provider-key-form";
  * le détour par /settings/providers au premier lancement.
  */
 export function ProviderQuickAdd({
-  buttonLabel = "Connecter une clé IA",
+  buttonLabel,
 }: {
   buttonLabel?: string;
 }) {
+  const t = useTranslations("components");
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
@@ -33,24 +35,23 @@ export function ProviderQuickAdd({
       <DialogTrigger asChild>
         <Button className="h-11 px-5 text-sm">
           <IconKey className="size-4" />
-          {buttonLabel}
+          {buttonLabel ?? t("providerQuickAdd.button")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-heading text-2xl tracking-tight">
-            Connectez votre intelligence.
+            {t("providerQuickAdd.title")}
           </DialogTitle>
           <DialogDescription>
-            Choisissez un provider, collez votre clé : Louis la teste avant de
-            l&apos;enregistrer, puis active les modèles correspondants.
+            {t("providerQuickAdd.description")}
           </DialogDescription>
         </DialogHeader>
         <ProviderKeyForm
           idPrefix="quickadd"
           onSuccess={(label) => {
             setOpen(false);
-            toast.success(`Clé ${label} connectée — vos modèles sont prêts.`);
+            toast.success(t("providerQuickAdd.success", { label }));
             router.refresh();
           }}
         />

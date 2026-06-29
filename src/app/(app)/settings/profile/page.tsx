@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { eq } from "drizzle-orm";
 import { count } from "drizzle-orm";
 import {
@@ -21,6 +22,7 @@ import { NameForm } from "./name-form";
 import { PasswordForm } from "./password-form";
 
 export default async function ProfilePage() {
+  const t = await getTranslations("settings.profile");
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
@@ -80,15 +82,15 @@ export default async function ProfilePage() {
             {user?.role === "admin" && (
               <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-primary/10 text-primary px-2 py-0.5 font-medium">
                 <IconShield className="size-2.5" />
-                Administrateur
+                {t("badge.admin")}
               </span>
             )}
             <span className="text-[10px] text-muted-foreground">
-              Compte créé le {formatDate(user?.createdAt)}
+              {t("createdAt", { date: formatDate(user?.createdAt) })}
             </span>
             {user?.lastLogin && (
               <span className="text-[10px] text-muted-foreground">
-                · Dernière connexion {formatDate(user.lastLogin)}
+                {t("lastLogin", { date: formatDate(user.lastLogin) })}
               </span>
             )}
           </div>
@@ -97,26 +99,28 @@ export default async function ProfilePage() {
 
       {/* Stats grid */}
       <section className="mb-10">
-        <h2 className="font-heading text-lg tracking-tight mb-3">Activité</h2>
+        <h2 className="font-heading text-lg tracking-tight mb-3">
+          {t("sections.activity")}
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard
             icon={IconMessageCircle}
-            label="Conversations"
+            label={t("stats.conversations")}
             value={convCount}
           />
           <StatCard
             icon={IconFolders}
-            label="Projets"
+            label={t("stats.projects")}
             value={projCount}
           />
           <StatCard
             icon={IconFileText}
-            label="Documents"
+            label={t("stats.documents")}
             value={docCount}
           />
           <StatCard
             icon={IconTable}
-            label="Analyses"
+            label={t("stats.reviews")}
             value={reviewCount}
           />
         </div>
@@ -124,7 +128,9 @@ export default async function ProfilePage() {
 
       {/* Identité */}
       <section className="mb-10">
-        <h2 className="font-heading text-lg tracking-tight mb-3">Identité</h2>
+        <h2 className="font-heading text-lg tracking-tight mb-3">
+          {t("sections.identity")}
+        </h2>
         <div className="border border-border rounded-lg bg-card p-5">
           <NameForm initialName={user?.name ?? ""} />
         </div>
@@ -132,7 +138,9 @@ export default async function ProfilePage() {
 
       {/* Sécurité */}
       <section>
-        <h2 className="font-heading text-lg tracking-tight mb-3">Sécurité</h2>
+        <h2 className="font-heading text-lg tracking-tight mb-3">
+          {t("sections.security")}
+        </h2>
         <div className="border border-border rounded-lg bg-card p-5">
           <PasswordForm />
         </div>

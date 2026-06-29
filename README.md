@@ -39,10 +39,26 @@ du Droit. Conçue par l'**Association DataRing**
 
 ## Nouveautés récentes
 
-Fonctionnalités récemment ajoutées au projet : collaboration de projet entre
-membres du cabinet, chiffrement des documents à enveloppe, OCR souverain
-pluggable, conversion PDF → Markdown canonique et citations cliquables avec
-surlignage précis.
+Fonctionnalités récemment ajoutées au projet : internationalisation de
+l'interface (français + anglais), collaboration de projet entre membres du
+cabinet, chiffrement des documents à enveloppe, OCR souverain pluggable,
+conversion PDF → Markdown canonique et citations cliquables avec surlignage
+précis.
+
+### Internationalisation (français + anglais)
+
+L'interface est désormais entièrement traduisible. **next-intl** en mode
+cookie-based (`LOUIS_LOCALE`, sans préfixe d'URL ni middleware) sert les messages
+selon la langue choisie — **français par défaut, anglais disponible**, bascule
+depuis **Settings → Général**. Aucun appel réseau : les catalogues sont locaux,
+souverains.
+
+- Messages organisés par namespace dans `messages/{fr,en}/<namespace>.json`,
+  agrégés par des barrels statiques (`messages/{fr,en}/index.ts`).
+- ~1480 clés ; alignement fr ↔ en vérifié par `scripts/i18n-check.ts`.
+- Toute l'UI est externalisée (nav, chat, settings, admin, Board, documents,
+  projets, analyses tabulaires, workflows, login, impression…).
+- Architecture et conventions : [`docs/design/i18n-internationalization.md`](./docs/design/i18n-internationalization.md).
 
 ### Collaboration de projet
 
@@ -575,6 +591,8 @@ pour la référence complète.
 
 #### Ajouts récents
 
+- **Internationalisation (fr + en)** — next-intl cookie-based, bascule de langue
+  (Settings → Général), ~1480 clés, alignement fr/en vérifié (`scripts/i18n-check.ts`)
 - **Collaboration de projet** — partage d'un dossier client entre membres du
   cabinet (table `project_members`, périmètre scopé sur le propriétaire)
 - **PDF → Markdown** — conversion locale pdfjs, souverain, hors-ligne
@@ -597,7 +615,8 @@ pour la référence complète.
 - Sub-APIs PISTE supplémentaires : JADE (Conseil d'État), INPI
 - Collaboration de projet : invitation par email (hors comptes déjà créés) et
   rôles fins (lecteur / éditeur)
-- Internationalisation anglaise
+- Internationalisation : langues supplémentaires (au-delà de fr / en) et
+  traduction des messages d'erreur des server actions
 - Veille juridique automatisée — surveillance Légifrance / JADE / BODACC
 - Mode SecNumCloud-ready — checklist et configuration documentée
 - CSP nonces (durcissement script-src)
@@ -610,6 +629,7 @@ pour la référence complète.
   Compiler, output `standalone`
 - **UI** : shadcn/ui · Tailwind CSS v4 · Tabler Icons · EB Garamond
   (heading) + Geist Sans (body)
+- **i18n** : next-intl 4 — français + anglais, cookie-based (sans routing)
 - **Base de données** : PostgreSQL 16 + pgvector · Drizzle ORM
 - **Auth** : NextAuth v5 — Credentials, sessions JWT signées
 - **IA** : Vercel AI SDK v6, multi-providers
@@ -627,8 +647,8 @@ pour la référence complète.
 |---|---|---|
 | v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | ✅ Livré |
 | v0.2 — Board multi-agents + connecteurs PISTE étendus (Judilibre, BOFIP, BODACC) + chiffrement DEK des documents + OCR souverain + RAG souverain | 2026-Q2 | ✅ Livré |
-| v0.2.x — collaboration de projet, JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
-| v0.3 — i18n, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
+| v0.2.x — collaboration de projet, i18n (fr + en), JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
+| v0.3 — config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
 | v1.0 — Production-ready, documentation complète | 2027 | ⚪ À venir |
 
 ---

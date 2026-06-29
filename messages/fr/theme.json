@@ -1,0 +1,9 @@
+{
+  "label": "Thème",
+  "light": "Clair",
+  "dark": "Sombre",
+  "system": "Système",
+  "toggleLight": "Thème : clair (clic pour sombre)",
+  "toggleDark": "Thème : sombre (clic pour système)",
+  "toggleSystem": "Thème : système (clic pour clair)"
+}

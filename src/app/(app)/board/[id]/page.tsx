@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { IconArrowLeft, IconBulb, IconInfoCircle } from "@tabler/icons-react";
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
@@ -27,6 +28,7 @@ export default async function PipelineEditorPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("board");
 
   const { id } = await params;
   const data = await getPipeline(id);
@@ -76,13 +78,15 @@ export default async function PipelineEditorPage({
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
         >
           <IconArrowLeft className="size-3.5" />
-          Board
+          {t("editorPage.back")}
         </Link>
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0 max-w-2xl">
             <div className="text-xs text-foreground/70 uppercase tracking-wider">
-              {data.pipeline.isPreset ? "Preset système" : "Pipeline cabinet"}
+              {data.pipeline.isPreset
+                ? t("editorPage.presetEyebrow")
+                : t("editorPage.pipelineCabinet")}
             </div>
             <div className="mt-2">
               <InlineRename
@@ -114,12 +118,10 @@ export default async function PipelineEditorPage({
           </div>
           <div className="text-sm">
             <p className="font-medium">
-              Cette pipeline est un preset système — lecture seule.
+              {t("editorPage.presetTitle")}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Pour personnaliser ses agents (modèle, prompt, outils),
-              clonez-la d&apos;un clic. Votre copie sera modifiable et
-              utilisable immédiatement dans le chat.
+              {t("editorPage.presetBody")}
             </p>
           </div>
         </div>
@@ -130,7 +132,7 @@ export default async function PipelineEditorPage({
       {!data.pipeline.isPreset && (
         <div className="mt-6 flex items-center justify-between gap-2">
           <span className="text-[11px] uppercase tracking-wider text-foreground/70">
-            Organigramme
+            {t("editorPage.orgChart")}
           </span>
           <AddAgentDialog
             pipelineId={data.pipeline.id}
@@ -171,24 +173,21 @@ export default async function PipelineEditorPage({
       <div className="mt-5 text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
         <span className="inline-flex items-center gap-1">
           <IconBulb className="size-3.5" />
-          Cliquez un agent pour l&apos;éditer
+          {t("editorPage.hintClickAgent")}
         </span>
         {!data.pipeline.isPreset && data.agents.length > 1 && (
           data.pipeline.mode === "sequential" ? (
-            <span>· Glissez les cartes pour réordonner</span>
+            <span>{t("editorPage.hintDrag")}</span>
           ) : (
-            <span>
-              · L&apos;ordre se règle dans « Ordre d&apos;exécution » ci-dessous
-            </span>
+            <span>{t("editorPage.hintOrder")}</span>
           )
         )}
         {data.pipeline.mode === "council" && (
           <span>
-            · {data.pipeline.rounds} tour
-            {data.pipeline.rounds > 1 ? "s" : ""} de débat
+            {t("editorPage.hintRounds", { count: data.pipeline.rounds })}
           </span>
         )}
-        <span>· Chaque exécution est tracée dans l&apos;audit</span>
+        <span>{t("editorPage.hintAudit")}</span>
       </div>
 
       <ExecutionOrderPanel

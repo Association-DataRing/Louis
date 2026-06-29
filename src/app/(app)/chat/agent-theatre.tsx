@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -137,6 +138,7 @@ export function AgentTheatre({
   pipelineName,
   turns,
 }: AgentTheatreProps) {
+  const t = useTranslations("chat");
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -153,7 +155,7 @@ export function AgentTheatre({
         <DialogHeader className="px-6 py-4 border-b border-border flex-row items-center justify-between space-y-0 pr-4">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-foreground/70">
-              Salle de délibération
+              {t("theatre.room")}
             </p>
             <DialogTitle className="font-heading text-xl tracking-tight">
               {pipelineName}
@@ -164,7 +166,7 @@ export function AgentTheatre({
               variant="ghost"
               size="icon-sm"
               className="size-9"
-              aria-label="Fermer"
+              aria-label={t("theatre.close")}
             >
               <IconX className="size-4" />
             </Button>
@@ -182,7 +184,7 @@ export function AgentTheatre({
             <EmptyState />
           ) : (
             <>
-              {groupByRound(turns).map((round) => (
+              {groupByRound(turns, t).map((round) => (
                 <RoundBlock key={round.key} round={round} />
               ))}
               <div ref={endRef} />
@@ -195,14 +197,18 @@ export function AgentTheatre({
 }
 
 function EmptyState() {
+  const t = useTranslations("chat");
   return (
     <div className="text-center py-16 text-sm text-muted-foreground">
-      <p>Le conseil n&apos;a pas encore commencé à délibérer.</p>
+      <p>{t("theatre.emptyDeliberation")}</p>
     </div>
   );
 }
 
-function groupByRound(turns: AgentTurn[]): {
+function groupByRound(
+  turns: AgentTurn[],
+  t: ReturnType<typeof useTranslations>
+): {
   key: string;
   label: string | null;
   turns: AgentTurn[];
@@ -218,9 +224,9 @@ function groupByRound(turns: AgentTurn[]): {
       groups.set(key, {
         label:
           key === "final"
-            ? "Synthèse finale"
+            ? t("theatre.finalSynthesis")
             : turn.round !== undefined
-              ? `Tour ${turn.round}`
+              ? t("theatre.round", { round: turn.round })
               : null,
         turns: [],
       });
@@ -256,6 +262,8 @@ function RoundBlock({
 }
 
 function TurnCard({ turn }: { turn: AgentTurn }) {
+  const t = useTranslations("chat");
+  const tBoard = useTranslations("board");
   const meta = roleMeta(turn.role);
   const Icon = meta.icon;
   const isFinal = turn.key.endsWith("-final");
@@ -264,7 +272,7 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
   return (
     <motion.article
       role="article"
-      aria-label={`${meta.label} : ${turn.label}${turn.round !== undefined ? ` — tour ${turn.round}` : ""}`}
+      aria-label={`${tBoard(meta.labelKey)} : ${turn.label}${turn.round !== undefined ? ` — ${t("theatre.roundLower", { round: turn.round })}` : ""}`}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={
@@ -288,7 +296,7 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-[11px] uppercase tracking-wider text-foreground/70">
-            {meta.label}
+            {tBoard(meta.labelKey)}
           </div>
           <h3 className="font-heading text-sm tracking-tight font-medium">
             {turn.label}
@@ -297,7 +305,7 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
         {turn.streaming ? (
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
             <IconLoader2 className="size-3 animate-spin" />
-            en cours
+            {t("theatre.inProgress")}
           </span>
         ) : (
           <IconCheck className="size-3.5 text-success" />
@@ -320,6 +328,7 @@ function TurnCard({ turn }: { turn: AgentTurn }) {
  * pour les pipelines multi-agents.
  */
 export function OpenTheatreButton({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("chat");
   return (
     <button
       type="button"
@@ -327,7 +336,7 @@ export function OpenTheatreButton({ onClick }: { onClick: () => void }) {
       className="inline-flex items-center gap-1.5 h-9 text-xs text-foreground/70 hover:text-foreground transition-colors px-3 rounded-md hover:bg-accent"
     >
       <IconArrowsMaximize className="size-3.5" />
-      Voir le débat
+      {t("theatre.viewDebate")}
     </button>
   );
 }

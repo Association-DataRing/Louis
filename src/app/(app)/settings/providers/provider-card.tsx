@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconCheck,
   IconAlertTriangle,
@@ -69,6 +70,8 @@ type Props = {
 };
 
 export function ProviderCard({ type, keys }: Props) {
+  const t = useTranslations("settings.providers");
+  const tCatalog = useTranslations("providersCatalog");
   const meta = PROVIDER_CATALOG[type];
   const primary = keys.find((k) => k.isDefault) ?? keys[0] ?? null;
   const isConfigured = !!primary;
@@ -122,7 +125,9 @@ export function ProviderCard({ type, keys }: Props) {
             openDialog();
           }
         }}
-        aria-label={`${isConfigured ? "Modifier" : "Configurer"} ${meta.label}`}
+        aria-label={t(isConfigured ? "card.editLabel" : "card.configureLabel", {
+          label: meta.label,
+        })}
       >
         <CutoutCardMedia
           className="relative h-44 w-full"
@@ -160,7 +165,7 @@ export function ProviderCard({ type, keys }: Props) {
               onClick={(e) => e.stopPropagation()}
             >
               <span className="text-[10px] font-medium text-card-foreground/80">
-                {primary.isActive ? "Activé" : "Inactif"}
+                {primary.isActive ? t("status.active") : t("status.inactive")}
               </span>
               <Switch
                 checked={primary.isActive}
@@ -171,7 +176,7 @@ export function ProviderCard({ type, keys }: Props) {
                     if (!result.ok) toast.error(result.error);
                   });
                 }}
-                aria-label="Activer ce provider"
+                aria-label={t("card.toggleAria")}
               />
             </CutoutCardPin>
           )}
@@ -182,7 +187,7 @@ export function ProviderCard({ type, keys }: Props) {
               <>
                 <IconCheck className="size-3.5 text-success" />
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-card-foreground">
-                  Configuré
+                  {t("status.configured")}
                 </span>
                 <TestBadge status={primary.lastTestStatus} />
                 {keys.length > 1 && (
@@ -195,7 +200,7 @@ export function ProviderCard({ type, keys }: Props) {
               <>
                 <IconCircleDashed className="size-3.5 text-muted-foreground" />
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Non configuré
+                  {t("status.notConfigured")}
                 </span>
               </>
             )}
@@ -216,7 +221,7 @@ export function ProviderCard({ type, keys }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Documentation"
+                aria-label={t("card.docsAria")}
                 onClick={(e) => e.stopPropagation()}
               >
                 <IconExternalLink className="size-3.5" />
@@ -226,7 +231,7 @@ export function ProviderCard({ type, keys }: Props) {
               <DropdownMenu>
                 <DropdownMenuTrigger
                   className="-mt-1 -mr-1 size-7 inline-flex shrink-0 items-center justify-center rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-50"
-                  aria-label="Actions"
+                  aria-label={t("card.actionsAria")}
                   disabled={pending}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -236,8 +241,8 @@ export function ProviderCard({ type, keys }: Props) {
                   <DropdownMenuItem onSelect={() => openCreateDialog()}>
                     <IconPlus className="size-4" />
                     {type === "openai_compatible"
-                      ? "Ajouter un endpoint"
-                      : "Ajouter une autre clé"}
+                      ? t("menu.addEndpoint")
+                      : t("menu.addKey")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -251,7 +256,7 @@ export function ProviderCard({ type, keys }: Props) {
                     }}
                   >
                     <IconPlayerPlay className="size-4" />
-                    Tester la connexion
+                    {t("menu.test")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     disabled={pending || primary.isDefault || keys.length === 1}
@@ -260,7 +265,7 @@ export function ProviderCard({ type, keys }: Props) {
                     }}
                   >
                     <IconStar className="size-4" />
-                    Définir par défaut
+                    {t("menu.setDefault")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -269,7 +274,7 @@ export function ProviderCard({ type, keys }: Props) {
                     onSelect={() => setDeleteOpen(true)}
                   >
                     <IconTrash className="size-4" />
-                    Supprimer
+                    {t("menu.delete")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -277,7 +282,7 @@ export function ProviderCard({ type, keys }: Props) {
           </div>
 
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {meta.description}
+            {tCatalog(type)}
           </p>
 
           {isConfigured && (
@@ -295,7 +300,7 @@ export function ProviderCard({ type, keys }: Props) {
         <CutoutCardAction className="right-5 bottom-5">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-primary-foreground shadow-sm">
             <IconKey className="size-3" />
-            {isConfigured ? "Modifier" : "Configurer"}
+            {isConfigured ? t("card.edit") : t("card.configure")}
           </span>
         </CutoutCardAction>
       </CutoutCard>
@@ -306,20 +311,14 @@ export function ProviderCard({ type, keys }: Props) {
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               <Icon className="size-5" />
-              {dialogMode === "create" ? "Configurer" : "Modifier"} · {meta.label}
+              {dialogMode === "create"
+                ? t("dialog.titleCreate", { label: meta.label })
+                : t("dialog.titleEdit", { label: meta.label })}
             </DialogTitle>
             <DialogDescription>
-              {dialogMode === "create" ? (
-                <>
-                  Votre clé est chiffrée avant d&apos;être stockée (AES-256-GCM).
-                  Personne ne peut la voir, pas même l&apos;équipe Louis.
-                </>
-              ) : (
-                <>
-                  Vous pouvez changer le libellé ou remplacer la clé. Laisser
-                  un champ vide pour le conserver tel quel.
-                </>
-              )}
+              {dialogMode === "create"
+                ? t("dialog.descCreate")
+                : t("dialog.descEdit")}
             </DialogDescription>
           </DialogHeader>
 
@@ -331,23 +330,23 @@ export function ProviderCard({ type, keys }: Props) {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor={`label-${meta.type}`}>Libellé</Label>
+              <Label htmlFor={`label-${meta.type}`}>{t("dialog.labelField")}</Label>
               <Input
                 id={`label-${meta.type}`}
                 name="label"
                 required={dialogMode === "create"}
                 maxLength={80}
                 defaultValue={dialogMode === "edit" ? primary?.label ?? "" : ""}
-                placeholder={`ex. Compte cabinet ${meta.label}`}
+                placeholder={t("dialog.labelPlaceholder", { label: meta.label })}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor={`apiKey-${meta.type}`}>
-                Clé API
+                {t("dialog.apiKeyField")}
                 {dialogMode === "edit" && (
                   <span className="ml-1 text-[10px] text-muted-foreground font-normal">
-                    (laisser vide pour conserver)
+                    {t("dialog.keepEmpty")}
                   </span>
                 )}
               </Label>
@@ -357,7 +356,7 @@ export function ProviderCard({ type, keys }: Props) {
                 type="password"
                 required={dialogMode === "create"}
                 autoComplete="off"
-                placeholder="sk-…"
+                placeholder={t("dialog.apiKeyPlaceholder")}
               />
               <a
                 href={meta.docsUrl}
@@ -365,14 +364,16 @@ export function ProviderCard({ type, keys }: Props) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2"
               >
-                Obtenir une clé
+                {t("dialog.getKey")}
                 <IconExternalLink className="size-3" />
               </a>
             </div>
 
             {meta.requiresBaseUrl && (
               <div className="space-y-2">
-                <Label htmlFor={`baseUrl-${meta.type}`}>URL de base</Label>
+                <Label htmlFor={`baseUrl-${meta.type}`}>
+                  {t("dialog.baseUrlField")}
+                </Label>
                 <Input
                   id={`baseUrl-${meta.type}`}
                   name="baseUrl"
@@ -381,7 +382,9 @@ export function ProviderCard({ type, keys }: Props) {
                   defaultValue={
                     dialogMode === "edit" ? primary?.baseUrl ?? "" : ""
                   }
-                  placeholder={meta.baseUrlPlaceholder ?? "https://…"}
+                  placeholder={
+                    meta.baseUrlPlaceholder ?? t("dialog.baseUrlPlaceholder")
+                  }
                 />
                 {meta.baseUrlHelp && (
                   <p className="text-xs text-muted-foreground">
@@ -403,14 +406,14 @@ export function ProviderCard({ type, keys }: Props) {
                 variant="ghost"
                 onClick={() => setDialogOpen(false)}
               >
-                Annuler
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={pending}>
                 {pending
-                  ? "Enregistrement…"
+                  ? t("dialog.saving")
                   : dialogMode === "create"
-                    ? "Configurer"
-                    : "Modifier"}
+                    ? t("card.configure")
+                    : t("card.edit")}
               </Button>
             </DialogFooter>
           </form>
@@ -421,14 +424,8 @@ export function ProviderCard({ type, keys }: Props) {
         <ConfirmDeleteDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          title="Supprimer cette clé ?"
-          description={
-            <>
-              « {primary.label} » sera supprimée. La clé chiffrée est retirée
-              de votre instance — les conversations utilisant ce provider
-              échoueront tant qu&apos;une nouvelle clé n&apos;est pas saisie.
-            </>
-          }
+          title={t("delete.title")}
+          description={t("delete.description", { label: primary.label })}
           pending={pending}
           onConfirm={() => {
             startTransition(async () => {
@@ -443,18 +440,19 @@ export function ProviderCard({ type, keys }: Props) {
 }
 
 function TestBadge({ status }: { status: string | null }) {
+  const t = useTranslations("settings.providers");
   if (!status || status === "skipped") return null;
   if (status === "ok") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success px-2 py-0.5 text-[10px]">
-        connecté
+        {t("test.connected")}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-[10px]">
       <IconAlertTriangle className="size-2.5" />
-      {status === "auth_error" ? "auth invalide" : "erreur"}
+      {status === "auth_error" ? t("test.authError") : t("test.error")}
     </span>
   );
 }

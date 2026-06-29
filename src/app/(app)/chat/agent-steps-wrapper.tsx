@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { IconChevronDown } from "@tabler/icons-react";
 
 type Props = {
@@ -34,6 +35,7 @@ export function AgentStepsWrapper({
   shouldMinimize,
   isStreaming,
 }: Props) {
+  const t = useTranslations("chat");
   const [userToggled, setUserToggled] = useState(false);
   const [isOpen, setIsOpen] = useState(!shouldMinimize);
   const hasMinimizedRef = useRef(shouldMinimize);
@@ -44,10 +46,9 @@ export function AgentStepsWrapper({
     setIsOpen(!shouldMinimize && !hasMinimizedRef.current);
   }, [shouldMinimize, userToggled]);
 
-  const stepWord = `étape${stepCount > 1 ? "s" : ""}`;
   const label = isStreaming
-    ? "Travail en cours"
-    : `Terminé en ${stepCount} ${stepWord}`;
+    ? t("agentSteps.working")
+    : t("agentSteps.doneInSteps", { count: stepCount });
 
   return (
     <div className="rounded-lg border border-border bg-card/40 px-3 py-2">

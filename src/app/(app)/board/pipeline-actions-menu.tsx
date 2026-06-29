@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   IconCopy,
@@ -51,6 +52,7 @@ interface PipelineActionsMenuProps {
 
 export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
   const router = useRouter();
+  const t = useTranslations("board");
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -64,10 +66,10 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
       const result = await clonePipeline(pipeline.id);
       if (result.ok) {
         router.refresh();
-        toast.success("Pipeline clonée");
+        toast.success(t("pipelineActions.cloned"));
       } else {
         setError(result.error);
-        toast.error("Clonage impossible", { description: result.error });
+        toast.error(t("pipelineActions.cloneError"), { description: result.error });
       }
     });
   }
@@ -78,10 +80,10 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
       if (result.ok) {
         setDeleteOpen(false);
         router.refresh();
-        toast.success("Pipeline supprimée");
+        toast.success(t("pipelineActions.deleted"));
       } else {
         setError(result.error);
-        toast.error("Suppression impossible", { description: result.error });
+        toast.error(t("pipelineActions.deleteError"), { description: result.error });
       }
     });
   }
@@ -96,10 +98,10 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
       if (result.ok) {
         setRenameOpen(false);
         router.refresh();
-        toast.success("Pipeline mise à jour");
+        toast.success(t("pipelineActions.updated"));
       } else {
         setError(result.error);
-        toast.error("Mise à jour impossible", { description: result.error });
+        toast.error(t("pipelineActions.updateError"), { description: result.error });
       }
     });
   }
@@ -111,7 +113,7 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger
           className="size-9 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors disabled:opacity-50"
-          aria-label="Actions sur la pipeline"
+          aria-label={t("pipelineActions.menuAria")}
           disabled={pending}
           onClick={(e) => {
             // Empêche la propagation au <Link> parent quand ce menu est
@@ -125,12 +127,12 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={handleClone}>
             <IconCopy className="size-4" />
-            Cloner
+            {t("pipelineActions.clone")}
           </DropdownMenuItem>
           {!isPreset && (
             <DropdownMenuItem onSelect={() => setRenameOpen(true)}>
               <IconPencil className="size-4" />
-              Renommer
+              {t("pipelineActions.rename")}
             </DropdownMenuItem>
           )}
           {!isPreset && (
@@ -141,7 +143,7 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
                 onSelect={() => setDeleteOpen(true)}
               >
                 <IconTrash className="size-4" />
-                Supprimer
+                {t("pipelineActions.delete")}
               </DropdownMenuItem>
             </>
           )}
@@ -152,22 +154,22 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Supprimer « {pipeline.name} » ?
+              {t("pipelineActions.deleteTitle", { name: pipeline.name })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. Les conversations qui ont utilisé
-              cette pipeline conservent leur historique mais ne pourront plus
-              l&apos;invoquer.
+              {t("pipelineActions.deleteDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirmed}
               disabled={pending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {pending ? "Suppression…" : "Supprimer"}
+              {pending ? t("pipelineActions.deleting") : t("pipelineActions.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -177,16 +179,17 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-heading">
-              Renommer la pipeline
+              {t("pipelineActions.renameTitle")}
             </DialogTitle>
             <DialogDescription>
-              Changement de nom et de description visibles dans le sélecteur
-              de pipeline du chat.
+              {t("pipelineActions.renameDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor={`pname-${pipeline.id}`}>Nom</Label>
+              <Label htmlFor={`pname-${pipeline.id}`}>
+                {t("pipelineActions.nameLabel")}
+              </Label>
               <Input
                 id={`pname-${pipeline.id}`}
                 value={name}
@@ -195,7 +198,9 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`pdesc-${pipeline.id}`}>Description</Label>
+              <Label htmlFor={`pdesc-${pipeline.id}`}>
+                {t("pipelineActions.descriptionLabel")}
+              </Label>
               <Input
                 id={`pdesc-${pipeline.id}`}
                 value={description}
@@ -215,10 +220,10 @@ export function PipelineActionsMenu({ pipeline }: PipelineActionsMenuProps) {
               onClick={() => setRenameOpen(false)}
               disabled={pending}
             >
-              Annuler
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleRenameSubmit} disabled={pending}>
-              {pending ? "Enregistrement…" : "Enregistrer"}
+              {pending ? t("common.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

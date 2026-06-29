@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconPlayerPlay,
   IconDots,
@@ -29,6 +30,7 @@ type Props = {
 
 export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
   const router = useRouter();
+  const t = useTranslations("tabularReviews");
   const [pending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [rerunOpen, setRerunOpen] = useState(false);
@@ -59,15 +61,15 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
           <IconPlayerPlay className="size-4" />
         )}
         {pending
-          ? "Démarrage…"
+          ? t("actions.starting")
           : pendingCount > 0
-            ? `Lancer (${pendingCount})`
-            : "Tout est traité"}
+            ? t("actions.runCount", { count: pendingCount })
+            : t("actions.allProcessed")}
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger
           className="size-9 inline-flex items-center justify-center rounded-md border border-border hover:bg-accent transition-colors"
-          aria-label="Actions"
+          aria-label={t("actions.actionsAria")}
           disabled={pending}
         >
           <IconDots className="size-4" />
@@ -82,7 +84,7 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
             }}
           >
             <IconFileSpreadsheet className="size-4" />
-            Exporter en CSV
+            {t("actions.exportCsv")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -90,7 +92,7 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
             onSelect={() => setRerunOpen(true)}
           >
             <IconRefresh className="size-4" />
-            Relancer l&apos;extraction
+            {t("actions.rerunExtraction")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -98,7 +100,7 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
             onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
-            Supprimer l&apos;analyse
+            {t("actions.deleteReview")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -107,15 +109,10 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
         open={rerunOpen}
         onOpenChange={setRerunOpen}
         variant="default"
-        title="Relancer l'extraction ?"
-        description={
-          <>
-            Les lignes en attente ou en erreur seront re-soumises au modèle.
-            Les lignes déjà extraites avec succès ne sont pas affectées.
-          </>
-        }
-        actionLabel="Relancer"
-        pendingLabel="Démarrage…"
+        title={t("actions.rerunTitle")}
+        description={t("actions.rerunDescription")}
+        actionLabel={t("actions.rerunAction")}
+        pendingLabel={t("actions.rerunPending")}
         pending={pending}
         onConfirm={() => {
           setRerunOpen(false);
@@ -126,13 +123,8 @@ export function ReviewActions({ reviewId, pendingCount, totalRows }: Props) {
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer cette analyse ?"
-        description={
-          <>
-            Le tableau et toutes les valeurs extraites seront définitivement
-            supprimés. Les documents originaux restent dans votre bibliothèque.
-          </>
-        }
+        title={t("actions.deleteTitle")}
+        description={t("actions.deleteDescription")}
         pending={pending}
         onConfirm={handleDelete}
       />

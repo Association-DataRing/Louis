@@ -1,0 +1,18 @@
+{
+  "criticalError": {
+    "title": "Critical error",
+    "body": "The application encountered an unexpected error. Reload the page; if the problem persists, contact your administrator.",
+    "reload": "Reload"
+  },
+  "appError": {
+    "title": "Something went wrong",
+    "body": "Something went wrong on our end. You can try again; if the problem persists, contact your firm administrator.",
+    "retry": "Try again",
+    "dashboard": "Dashboard"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This page doesn't exist, has been moved, or isn't accessible to you.",
+    "backToDashboard": "Back to dashboard"
+  }
+}

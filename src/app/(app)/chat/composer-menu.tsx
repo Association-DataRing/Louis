@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   IconPlus,
   IconSparkles,
@@ -57,13 +58,14 @@ export function ComposerMenu({
   onPipelineChange,
   onPickWorkflowItem,
 }: ComposerMenuProps) {
+  const t = useTranslations("chat");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
         className="inline-flex items-center justify-center size-10 rounded-md hover:bg-accent transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-        aria-label="Insérer ou configurer"
-        title="Insérer ou configurer"
+        aria-label={t("composerMenu.trigger")}
+        title={t("composerMenu.trigger")}
       >
         <IconPlus className="size-4" />
       </DropdownMenuTrigger>
@@ -75,14 +77,14 @@ export function ComposerMenu({
         className="w-64"
       >
         <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          Insérer
+          {t("composerMenu.insert")}
         </DropdownMenuLabel>
 
         {workflows.length > 0 ? (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <IconSparkles className="size-4" />
-              Trames
+              {t("composerMenu.templates")}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-72">
               {workflows.slice(0, 12).map((w) => (
@@ -97,14 +99,14 @@ export function ComposerMenu({
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onPickWorkflow}>
                 <IconSparkles className="size-4" />
-                Voir toutes les trames
+                {t("composerMenu.allTemplates")}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         ) : (
           <DropdownMenuItem onSelect={onPickWorkflow}>
             <IconSparkles className="size-4" />
-            Trames
+            {t("composerMenu.templates")}
           </DropdownMenuItem>
         )}
 
@@ -112,12 +114,12 @@ export function ComposerMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-              Board
+              {t("composerMenu.board")}
             </DropdownMenuLabel>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <IconBriefcase className="size-4" />
-                Pipeline
+                {t("composerMenu.pipeline")}
                 <span className="ml-auto text-[10px] text-muted-foreground truncate max-w-[120px]">
                   {pipelines.find((p) => p.id === currentPipelineId)?.name ??
                     "—"}
@@ -137,7 +139,7 @@ export function ComposerMenu({
                     <IconBriefcase className="size-3.5 text-muted-foreground" />
                     <span className="truncate">{p.name}</span>
                     <span className="ml-auto text-[10px] text-muted-foreground">
-                      {p.agentCount} agent{p.agentCount > 1 ? "s" : ""}
+                      {t("composerMenu.agents", { count: p.agentCount })}
                     </span>
                   </DropdownMenuItem>
                 ))}
@@ -145,7 +147,7 @@ export function ComposerMenu({
                 <DropdownMenuItem asChild>
                   <Link href="/board">
                     <IconBriefcase className="size-4" />
-                    Gérer le board
+                    {t("composerMenu.manageBoard")}
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
@@ -155,49 +157,49 @@ export function ComposerMenu({
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          Réglages
+          {t("composerMenu.settings")}
         </DropdownMenuLabel>
 
         <DropdownMenuItem asChild>
           <Link href="/settings/providers">
             <IconKey className="size-4" />
-            Clés providers
+            {t("composerMenu.providerKeys")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings/models">
             <IconCpu className="size-4" />
-            Modèles
+            {t("composerMenu.models")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings/skills">
             <IconSparkles className="size-4" />
-            Skills
+            {t("composerMenu.skills")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings/connectors">
             <IconPlugConnected className="size-4" />
-            Connecteurs
+            {t("composerMenu.connectors")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings/mcp">
             <IconBolt className="size-4" />
-            Serveurs MCP
+            {t("composerMenu.mcpServers")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/workflows">
             <IconFileText className="size-4" />
-            Tous les workflows
+            {t("composerMenu.allWorkflows")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings/general">
             <IconSettings className="size-4" />
-            Tous les réglages
+            {t("composerMenu.allSettings")}
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

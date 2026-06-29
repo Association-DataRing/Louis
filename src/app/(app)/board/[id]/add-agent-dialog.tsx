@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { IconPlus, IconSparkles } from "@tabler/icons-react";
 import { PERSONAS, type Persona } from "../personas";
@@ -75,6 +76,7 @@ export function AddAgentDialog({
   enabledModels,
 }: AddAgentDialogProps) {
   const router = useRouter();
+  const t = useTranslations("board");
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function AddAgentDialog({
 
   function applyPersona(p: Persona) {
     setRole(p.role);
-    setLabel(p.label);
+    setLabel(t(p.labelKey));
     setSystemPromptFromPersona(p.systemPrompt);
     setPickedPersona(p.slug);
   }
@@ -125,7 +127,7 @@ export function AddAgentDialog({
   function handleAdd() {
     setError(null);
     if (!label.trim()) {
-      setError("Donnez un nom à l'agent (ex: « Avocat des entreprises »).");
+      setError(t("addAgent.nameRequired"));
       return;
     }
     startTransition(async () => {
@@ -141,12 +143,12 @@ export function AddAgentDialog({
         setOpen(false);
         reset();
         router.refresh();
-        toast.success("Agent ajouté", {
-          description: `${label.trim()} fait désormais partie de la pipeline.`,
+        toast.success(t("addAgent.added"), {
+          description: t("addAgent.addedDesc", { name: label.trim() }),
         });
       } else {
         setError(result.error);
-        toast.error("Impossible d'ajouter l'agent", {
+        toast.error(t("addAgent.addError"), {
           description: result.error,
         });
       }
@@ -168,15 +170,16 @@ export function AddAgentDialog({
           className="shadow-sm pl-3 pr-4 h-10"
         >
           <IconPlus className="size-4" />
-          Ajouter un agent
+          {t("addAgent.heading")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-heading">Ajouter un agent</DialogTitle>
+          <DialogTitle className="font-heading">
+            {t("addAgent.heading")}
+          </DialogTitle>
           <DialogDescription>
-            Vous pourrez affiner son prompt système et ses outils après
-            ajout en cliquant sur sa carte.
+            {t("addAgent.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -186,7 +189,7 @@ export function AddAgentDialog({
             <div className="flex items-center gap-1.5">
               <IconSparkles className="size-3.5 text-foreground/60" />
               <Label className="text-xs text-foreground/70 uppercase tracking-wider">
-                Démarrer avec une persona
+                {t("addAgent.personaLabel")}
               </Label>
             </div>
             <div className="grid grid-cols-4 gap-1.5">
@@ -195,7 +198,7 @@ export function AddAgentDialog({
                   key={p.slug}
                   type="button"
                   onClick={() => applyPersona(p)}
-                  title={p.pitch}
+                  title={t(p.pitchKey)}
                   className={`group flex flex-col items-center gap-0.5 rounded-lg border px-1.5 py-2 text-[10px] transition-all ${
                     pickedPersona === p.slug
                       ? "border-foreground/40 bg-foreground/5"
@@ -204,20 +207,20 @@ export function AddAgentDialog({
                 >
                   <span className="text-base leading-none">{p.emoji}</span>
                   <span className="font-medium text-foreground line-clamp-1 leading-tight">
-                    {p.label}
+                    {t(p.labelKey)}
                   </span>
                 </button>
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Ou configurez manuellement ci-dessous.
+              {t("addAgent.manualHint")}
             </p>
           </div>
 
           <div className="border-t border-border pt-4 space-y-4">
 
           <div className="space-y-2">
-            <Label htmlFor="agent-role">Rôle</Label>
+            <Label htmlFor="agent-role">{t("addAgent.roleLabel")}</Label>
             <Select value={role} onValueChange={(v) => setRole(v as Role)}>
               <SelectTrigger id="agent-role">
                 <SelectValue />
@@ -229,28 +232,28 @@ export function AddAgentDialog({
                   return (
                     <SelectItem key={r} value={r}>
                       <Icon className="size-3.5" />
-                      {m.label}
+                      {t(m.labelKey)}
                     </SelectItem>
                   );
                 })}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">{roleM.pitch}</p>
+            <p className="text-xs text-muted-foreground">{t(roleM.pitchKey)}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="agent-label">Nom affiché</Label>
+            <Label htmlFor="agent-label">{t("addAgent.nameLabel")}</Label>
             <Input
               id="agent-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder='ex. "Avocat des entreprises", "Contradicteur"'
+              placeholder={t("addAgent.namePlaceholder")}
               maxLength={80}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="agent-provider">Clé provider</Label>
+            <Label htmlFor="agent-provider">{t("addAgent.providerLabel")}</Label>
             <Select
               value={providerKeyId}
               onValueChange={(v) => {
@@ -259,11 +262,11 @@ export function AddAgentDialog({
               }}
             >
               <SelectTrigger id="agent-provider">
-                <SelectValue placeholder="Hériter du chat" />
+                <SelectValue placeholder={t("addAgent.inheritPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE_VALUE}>
-                  Hériter du chat (clé du moment de l&apos;envoi)
+                  {t("addAgent.inheritOption")}
                 </SelectItem>
                 {providerKeys.map((k) => (
                   <SelectItem key={k.id} value={k.id}>
@@ -279,15 +282,13 @@ export function AddAgentDialog({
 
           {modelOptions.length === 0 && (
             <p className="text-[11px] text-muted-foreground">
-              Choisissez une clé provider ci-dessus pour sélectionner un
-              modèle. Sans clé, l&apos;agent hérite du modèle du chat au moment
-              de l&apos;envoi.
+              {t("addAgent.noKeyHint")}
             </p>
           )}
 
           {modelOptions.length > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="agent-model">Modèle</Label>
+              <Label htmlFor="agent-model">{t("addAgent.modelLabel")}</Label>
               <Select
                 value={modelOverride || NONE_VALUE}
                 onValueChange={(v) =>
@@ -295,11 +296,11 @@ export function AddAgentDialog({
                 }
               >
                 <SelectTrigger id="agent-model">
-                  <SelectValue placeholder="Par défaut du provider" />
+                  <SelectValue placeholder={t("addAgent.modelDefaultPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE_VALUE}>
-                    Par défaut du provider
+                    {t("addAgent.modelDefaultOption")}
                   </SelectItem>
                   {modelOptions.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
@@ -331,10 +332,10 @@ export function AddAgentDialog({
             onClick={() => setOpen(false)}
             disabled={pending}
           >
-            Annuler
+            {t("common.cancel")}
           </Button>
           <Button type="button" onClick={handleAdd} disabled={pending}>
-            {pending ? "Ajout…" : "Ajouter"}
+            {pending ? t("addAgent.adding") : t("addAgent.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -23,50 +23,48 @@ export const MODE_META: Record<
   PipelineModeKey,
   {
     icon: Icon;
-    label: string;
-    short: string;
-    pitch: string;
+    /** Clé i18n (namespace `board`) du libellé — résolue chez le consommateur. */
+    labelKey: string;
+    /** Clé i18n (namespace `board`) du libellé court — résolue chez le consommateur. */
+    shortKey: string;
+    /** Clé i18n (namespace `board`) du pitch — résolue chez le consommateur. */
+    pitchKey: string;
     accent: string;
   }
 > = {
   sequential: {
     icon: IconCircleArrowRight,
-    label: "Séquentiel",
-    short: "Chaîne",
-    pitch:
-      "Chaque agent voit la sortie des précédents et l'enrichit. A → B → C.",
+    labelKey: "meta.modes.sequential.label",
+    shortKey: "meta.modes.sequential.short",
+    pitchKey: "meta.modes.sequential.pitch",
     accent: "text-foreground/70 border-border",
   },
   council: {
     icon: IconUsersGroup,
-    label: "Conseil",
-    short: "Débat",
-    pitch:
-      "N tours où chaque membre voit les positions des autres et révise la sienne.",
+    labelKey: "meta.modes.council.label",
+    shortKey: "meta.modes.council.short",
+    pitchKey: "meta.modes.council.pitch",
     accent: "text-foreground/70 border-foreground/30",
   },
   parallel: {
     icon: IconLayoutGrid,
-    label: "Parallèle",
-    short: "Fan-out",
-    pitch:
-      "Tous les agents travaillent en parallèle, le dernier synthétise.",
+    labelKey: "meta.modes.parallel.label",
+    shortKey: "meta.modes.parallel.short",
+    pitchKey: "meta.modes.parallel.pitch",
     accent: "text-foreground/70 border-border",
   },
   iterative: {
     icon: IconRefresh,
-    label: "Itératif",
-    short: "Approfondi",
-    pitch:
-      "Le chercheur reprend ses notes à chaque tour pour creuser les lacunes, puis le dernier synthétise.",
+    labelKey: "meta.modes.iterative.label",
+    shortKey: "meta.modes.iterative.short",
+    pitchKey: "meta.modes.iterative.pitch",
     accent: "text-foreground/70 border-border",
   },
   maestro: {
     icon: IconWand,
-    label: "Maestro",
-    short: "Routeur",
-    pitch:
-      "Le dernier agent dirige : il choisit qui consulter, avec quelle consigne, et peut re-déléguer avant de répondre.",
+    labelKey: "meta.modes.maestro.label",
+    shortKey: "meta.modes.maestro.short",
+    pitchKey: "meta.modes.maestro.pitch",
     accent: "text-foreground/70 border-primary/40",
   },
 };

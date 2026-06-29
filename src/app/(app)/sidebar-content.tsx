@@ -3,6 +3,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconLogout,
   IconShieldLock,
@@ -18,12 +19,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { PRIMARY_NAV } from "@/lib/navigation";
 import { ConversationItem } from "./chat/conversation-item";
 import { GettingStarted, type OnboardingState } from "./getting-started";
-
-const settingsNav = {
-  href: "/settings",
-  label: "Paramètres",
-  icon: IconSettings,
-};
 
 type Conversation = {
   id: string;
@@ -73,6 +68,8 @@ export function SidebarContent({
 }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const t = useTranslations("sidebar");
+  const tNav = useTranslations("nav");
   const persisted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const open = forceOpen ? true : persisted !== "false";
   const [convQuery, setConvQuery] = useState("");
@@ -120,8 +117,8 @@ export function SidebarContent({
           <button
             onClick={toggle}
             className="size-9 inline-flex items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors"
-            title={open ? "Réduire" : "Ouvrir"}
-            aria-label={open ? "Réduire la barre latérale" : "Ouvrir la barre latérale"}
+            title={open ? t("collapse") : t("expand")}
+            aria-label={open ? t("collapseAria") : t("expandAria")}
           >
             {open ? (
               <IconLayoutSidebarLeftCollapse className="size-4" />
@@ -137,6 +134,7 @@ export function SidebarContent({
         <nav aria-label="Navigation principale" className="space-y-0.5">
           {PRIMARY_NAV.map((item) => {
             const Icon = item.icon;
+            const label = tNav(item.labelKey);
             const isActive =
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -145,8 +143,8 @@ export function SidebarContent({
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
-                title={!open ? item.label : undefined}
-                aria-label={!open ? item.label : undefined}
+                title={!open ? label : undefined}
+                aria-label={!open ? label : undefined}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors ${
                   isActive
@@ -155,16 +153,16 @@ export function SidebarContent({
                 }`}
               >
                 <Icon className="size-4 shrink-0" />
-                {open && <span className="truncate">{item.label}</span>}
+                {open && <span className="truncate">{label}</span>}
               </Link>
             );
           })}
 
           <Link
-            href={settingsNav.href}
+            href="/settings"
             onClick={onNavigate}
-            title={!open ? settingsNav.label : undefined}
-            aria-label={!open ? settingsNav.label : undefined}
+            title={!open ? tNav("settings") : undefined}
+            aria-label={!open ? tNav("settings") : undefined}
             aria-current={pathname.startsWith("/settings") ? "page" : undefined}
             className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors mt-3 ${
               pathname.startsWith("/settings")
@@ -173,15 +171,15 @@ export function SidebarContent({
             }`}
           >
             <IconSettings className="size-4 shrink-0" />
-            {open && <span className="truncate">{settingsNav.label}</span>}
+            {open && <span className="truncate">{tNav("settings")}</span>}
           </Link>
 
           {user.role === "admin" && (
             <Link
               href="/admin/users"
               onClick={onNavigate}
-              title={!open ? "Administration" : undefined}
-              aria-label={!open ? "Administration" : undefined}
+              title={!open ? tNav("admin") : undefined}
+              aria-label={!open ? tNav("admin") : undefined}
               aria-current={pathname.startsWith("/admin") ? "page" : undefined}
               className={`flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors ${
                 pathname.startsWith("/admin")
@@ -190,7 +188,7 @@ export function SidebarContent({
               }`}
             >
               <IconShieldLock className="size-4 shrink-0 text-primary" />
-              {open && <span className="truncate">Administration</span>}
+              {open && <span className="truncate">{tNav("admin")}</span>}
             </Link>
           )}
         </nav>
@@ -200,14 +198,14 @@ export function SidebarContent({
           <section className="mt-5">
             <div className="flex items-center justify-between px-2.5 pb-1.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Conversations
+                {t("conversationsHeading")}
               </span>
               <Link
                 href="/chat"
                 onClick={onNavigate}
-                title="Nouvelle conversation"
+                title={t("newConversation")}
                 className="size-8 inline-flex items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors"
-                aria-label="Nouvelle conversation"
+                aria-label={t("newConversation")}
               >
                 <IconPlus className="size-4" />
               </Link>
@@ -221,8 +219,8 @@ export function SidebarContent({
                     type="search"
                     value={convQuery}
                     onChange={(e) => setConvQuery(e.target.value)}
-                    placeholder="Rechercher…"
-                    aria-label="Rechercher une conversation"
+                    placeholder={t("searchPlaceholder")}
+                    aria-label={t("searchAria")}
                     className="w-full rounded-md border border-input bg-background pl-7 pr-2 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                   />
                 </div>
@@ -232,11 +230,11 @@ export function SidebarContent({
             <div className="space-y-0.5 px-1">
               {conversations.length === 0 ? (
                 <p className="text-xs text-muted-foreground px-2 py-2">
-                  Aucune conversation pour l&apos;instant.
+                  {t("empty")}
                 </p>
               ) : filteredConversations.length === 0 ? (
                 <p className="text-xs text-muted-foreground px-2 py-2 text-center">
-                  Aucun résultat.
+                  {t("noResults")}
                 </p>
               ) : (
                 filteredConversations.map((c) => (
@@ -274,7 +272,7 @@ export function SidebarContent({
                   ? "bg-sidebar-accent"
                   : "hover:bg-sidebar-accent"
               }`}
-              title="Mon profil"
+              title={t("myProfile")}
             >
               <div className="size-7 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
                 {initials}
@@ -290,8 +288,8 @@ export function SidebarContent({
             <form action={signOutAction}>
               <button
                 type="submit"
-                title="Se déconnecter"
-                aria-label="Se déconnecter"
+                title={t("signOut")}
+                aria-label={t("signOut")}
                 className="size-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
               >
                 <IconLogout className="size-4" />
@@ -303,7 +301,7 @@ export function SidebarContent({
             <Link
               href="/settings/profile"
               onClick={onNavigate}
-              title="Mon profil"
+              title={t("myProfile")}
               className="size-9 inline-flex items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors"
             >
               <div className="size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
@@ -314,8 +312,8 @@ export function SidebarContent({
             <form action={signOutAction}>
               <button
                 type="submit"
-                title="Se déconnecter"
-                aria-label="Se déconnecter"
+                title={t("signOut")}
+                aria-label={t("signOut")}
                 className="size-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
               >
                 <IconLogout className="size-4" />

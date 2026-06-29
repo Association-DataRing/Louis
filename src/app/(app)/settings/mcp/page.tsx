@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -8,6 +9,7 @@ import { AddMcpDialog } from "./add-mcp-dialog";
 import { McpRow } from "./mcp-row";
 
 export default async function McpPage() {
+  const t = await getTranslations("settings.mcp");
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
@@ -29,11 +31,9 @@ export default async function McpPage() {
     <main className="mx-auto w-full max-w-5xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl tracking-tight">Serveurs MCP</h1>
+          <h1 className="font-heading text-3xl tracking-tight">{t("title")}</h1>
           <p className="mt-2 text-muted-foreground max-w-2xl">
-            Branchez vos propres serveurs Model Context Protocol pour
-            étendre Louis avec vos outils maison ou ceux de la
-            communauté — sans modifier le code source.
+            {t("subtitle")}
           </p>
         </div>
         <AddMcpDialog />
@@ -42,14 +42,14 @@ export default async function McpPage() {
       {totalCount > 0 && (
         <div className="mb-6 flex items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="outline">
-            {totalCount} serveur{totalCount > 1 ? "s" : ""}
+            {t("badge.servers", { count: totalCount })}
           </Badge>
           <Badge variant="outline">
-            {activeCount} actif{activeCount > 1 ? "s" : ""}
+            {t("badge.active", { count: activeCount })}
           </Badge>
           {totalTools > 0 && (
             <Badge variant="default">
-              {totalTools} outil{totalTools > 1 ? "s" : ""} en cache
+              {t("badge.toolsCached", { count: totalTools })}
             </Badge>
           )}
         </div>
@@ -69,38 +69,38 @@ export default async function McpPage() {
   );
 }
 
-function EmptyState() {
+async function EmptyState() {
+  const t = await getTranslations("settings.mcp");
   return (
     <div className="border border-dashed border-border rounded-lg p-10 text-center">
-      <h2 className="font-heading text-lg">Aucun serveur MCP</h2>
+      <h2 className="font-heading text-lg">{t("empty.title")}</h2>
       <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-        Connectez un serveur Model Context Protocol pour offrir à
-        Louis des outils supplémentaires (recherche interne,
-        documents intranet, base CRM, n&apos;importe quoi).
+        {t("empty.description")}
       </p>
     </div>
   );
 }
 
-function McpExplanation() {
+async function McpExplanation() {
+  const t = await getTranslations("settings.mcp");
   return (
     <aside className="mt-10 border-l-2 border-primary/50 pl-4 text-sm text-muted-foreground">
       <p className="font-medium text-foreground">
-        Qu&apos;est-ce qu&apos;un serveur MCP ?
+        {t("explanation.title")}
       </p>
       <p className="mt-1 max-w-3xl">
-        Le <a
-          href="https://modelcontextprotocol.io/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary underline-offset-2 hover:underline"
-        >
-          Model Context Protocol
-        </a>{" "}
-        est un standard ouvert permettant aux LLM d&apos;appeler des outils
-        externes. Vous pouvez écrire un serveur MCP qui expose vos APIs
-        internes, votre wiki, votre CRM, et le brancher ici sans
-        modifier Louis. Transport supporté en v0.1 : SSE et HTTP streamable.
+        {t.rich("explanation.body", {
+          link: (chunks) => (
+            <a
+              href="https://modelcontextprotocol.io/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline-offset-2 hover:underline"
+            >
+              {chunks}
+            </a>
+          ),
+        })}
       </p>
     </aside>
   );

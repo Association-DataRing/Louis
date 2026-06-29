@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { IconPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createMcpServer } from "./actions";
 
 export function AddMcpDialog() {
+  const t = useTranslations("settings.mcp");
   const [open, setOpen] = useState(false);
   const [transport, setTransport] = useState<"sse" | "http">("sse");
   const [error, setError] = useState<string | null>(null);
@@ -44,33 +46,31 @@ export function AddMcpDialog() {
       <DialogTrigger asChild>
         <Button>
           <IconPlus className="size-4" />
-          Ajouter un serveur MCP
+          {t("addDialog.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-heading">Ajouter un serveur MCP</DialogTitle>
+          <DialogTitle className="font-heading">{t("addDialog.title")}</DialogTitle>
           <DialogDescription>
-            Une fois ajouté, Louis se connecte au serveur pour récupérer
-            la liste de ses outils. Les headers (Bearer token, etc.) sont
-            chiffrés avant stockage.
+            {t("addDialog.description")}
           </DialogDescription>
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="label">Libellé</Label>
+            <Label htmlFor="label">{t("addDialog.labelField")}</Label>
             <Input
               id="label"
               name="label"
               required
               maxLength={80}
-              placeholder="ex. CRM interne"
+              placeholder={t("addDialog.labelPlaceholder")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="transport">Transport</Label>
+            <Label htmlFor="transport">{t("addDialog.transport")}</Label>
             <Select
               name="transport"
               value={transport}
@@ -81,17 +81,17 @@ export function AddMcpDialog() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="sse">
-                  SSE (Server-Sent Events)
+                  {t("addDialog.transportSse")}
                 </SelectItem>
                 <SelectItem value="http">
-                  HTTP Streamable
+                  {t("addDialog.transportHttp")}
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="url">URL du serveur</Label>
+            <Label htmlFor="url">{t("addDialog.urlField")}</Label>
             <Input
               id="url"
               name="url"
@@ -106,7 +106,7 @@ export function AddMcpDialog() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="headers">Headers (optionnel)</Label>
+            <Label htmlFor="headers">{t("addDialog.headersField")}</Label>
             <Input
               id="headers"
               name="headers"
@@ -115,7 +115,7 @@ export function AddMcpDialog() {
               aria-describedby="headers-help"
             />
             <p id="headers-help" className="text-xs text-muted-foreground">
-              Format JSON. Laisser vide si aucune authentification.
+              {t("addDialog.headersHelp")}
             </p>
           </div>
 
@@ -127,10 +127,10 @@ export function AddMcpDialog() {
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Annuler
+              {t("addDialog.cancel")}
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? "Ajout…" : "Ajouter"}
+              {pending ? t("addDialog.submitting") : t("addDialog.submit")}
             </Button>
           </DialogFooter>
         </form>

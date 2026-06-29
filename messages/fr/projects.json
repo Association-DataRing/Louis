@@ -1,0 +1,82 @@
+{
+  "actions": {
+    "actionsAria": "Actions",
+    "edit": "Modifier",
+    "deleteProject": "Supprimer le projet",
+    "editTitle": "Modifier le projet",
+    "editDescription": "Le nom est visible partout (sidebar, liste des projets, etc.).",
+    "nameLabel": "Nom",
+    "descriptionLabel": "Description",
+    "optional": "(optionnel)",
+    "descriptionPlaceholder": "Note interne, n° dossier, partie adverse…",
+    "cancel": "Annuler",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer",
+    "deleteTitle": "Supprimer ce projet ?",
+    "deleteDescription": "« {name} » sera supprimé. Les conversations et documents seront détachés mais conservés — vous les retrouverez dans leur emplacement d'origine."
+  },
+  "documentsPanel": {
+    "heading": "Documents",
+    "sending": "Envoi…",
+    "importDocument": "Importer un document",
+    "dismissError": "Ignorer l'erreur",
+    "overlayLabel": "Déposez pour ajouter à ce projet",
+    "overlayHint": "PDF, DOCX ou texte — 25 Mo max par fichier",
+    "empty": "Glissez vos pièces ici, ou importez-les — elles seront rattachées à ce dossier.",
+    "uploading": "{count, plural, one {Téléversement de # fichier…} other {Téléversement de # fichiers…}}"
+  },
+  "addDialog": {
+    "chooseFolderError": "Choisissez un dossier existant ou créez-en un nouveau.",
+    "trigger": "Nouveau projet",
+    "title": "Nouveau projet",
+    "description": "Un projet regroupe les conversations et documents d'un dossier. Choisissez où ses pièces seront stockées.",
+    "nameLabel": "Nom du projet",
+    "namePlaceholder": "ex. Dossier Dupont · Litige bail commercial",
+    "descriptionLabel": "Description",
+    "optional": "(optionnel)",
+    "descriptionPlaceholder": "Note interne, n° dossier, partie adverse…",
+    "storageLabel": "Emplacement de stockage",
+    "storageHint": "Les documents du projet — et ce que Louis prendra en compte en RAG — sont ceux rangés dans ce dossier et ses sous-dossiers.",
+    "newFolder": "Nouveau dossier",
+    "existingFolder": "Dossier existant",
+    "folderNamePlaceholder": "Nom du dossier (par défaut : le nom du projet)",
+    "cancel": "Annuler",
+    "creating": "Création…",
+    "create": "Créer"
+  },
+  "detail": {
+    "backToProjects": "Tous les projets",
+    "conversations": "Conversations",
+    "newConversation": "Nouvelle conversation",
+    "emptyConversations": "Démarrez une conversation rattachée à ce dossier pour en garder l'historique au même endroit.",
+    "sharedBadge": "Partagé",
+    "sharedBadgeTitle": "Projet partagé",
+    "dossierOf": "Dossier de {name}",
+    "sharedWithYouSuffix": " · partagé avec vous",
+    "adminAccessSuffix": " · accès administrateur"
+  },
+  "collaborators": {
+    "heading": "Collaborateurs",
+    "addCollaborator": "Ajouter un collaborateur",
+    "firmAccounts": "Comptes du cabinet",
+    "owner": "Propriétaire",
+    "removeTitle": "Retirer du projet",
+    "removeAria": "Retirer {name} du projet",
+    "emptyManage": "Ajoutez des collègues du cabinet pour travailler à plusieurs sur ce dossier.",
+    "emptyReadonly": "Aucun collaborateur pour l'instant."
+  },
+  "list": {
+    "eyebrow": "Dossiers clients · matières · affaires",
+    "title": "Projets.",
+    "helpTitle": "Travailler par projet",
+    "helpBody": "Un projet regroupe les conversations et documents d'un dossier client, et restreint le raisonnement de l'IA à ce seul périmètre.",
+    "intro": "Regroupez conversations et documents autour d'un dossier client, d'une affaire, d'une thématique.",
+    "srConversations": "conversations",
+    "srDocuments": "documents",
+    "sharedBadge": "Partagé",
+    "sharedByTitle": "Partagé par {name}",
+    "aside": "Un projet est un conteneur partagé : conversations, documents et, bientôt, connecteurs activés y sont regroupés. Particulièrement adapté pour suivre un dossier client de bout en bout.",
+    "emptyTitle": "Pas encore de projet.",
+    "emptyBody": "Un projet groupe les conversations et documents liés à un même dossier client. Vous gardez la trace de l'affaire complète plutôt qu'une suite de conversations isolées."
+  }
+}
