@@ -14,7 +14,6 @@ const nextConfig: NextConfig = {
     "pdfjs-dist",
     "@napi-rs/canvas",
     "tesseract.js",
-    "pdf-parse",
     "libsodium-wrappers-sumo",
   ],
 };

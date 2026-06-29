@@ -17,7 +17,7 @@
  * Ne juge PAS le succès — préserve `ok:false` (à la différence de
  * `unwrapToolResult`). Retourne null si la valeur n'est pas un objet exploitable.
  */
-export function peelToolEnvelope(o: unknown): Record<string, unknown> | null {
+function peelToolEnvelope(o: unknown): Record<string, unknown> | null {
   let candidate: unknown = o;
   if (candidate == null) return null;
 

@@ -1,4 +1,4 @@
-import { pisteGet } from "./piste";
+import { pisteFetch } from "./piste";
 import { runTool, toolOk, type ToolResult } from "@/lib/tools/result";
 
 const JUDILIBRE_BASE = "/cassation/judilibre/v1.0";
@@ -84,10 +84,11 @@ export async function judilibreSearch(
 ): Promise<ToolResult<{ query: string; hits: JudilibreHit[]; total: number }>> {
   return runTool(async () => {
     const qs = buildSearchParams({ query, ...opts, page_size: 5 });
-    const r = await pisteGet<JudilibreSearchRaw>(
+    const r = await pisteFetch<JudilibreSearchRaw>(
       userId,
+      "GET",
       `${JUDILIBRE_BASE}/search?${qs}`,
-      "Judilibre"
+      { serviceName: "Judilibre" }
     );
     if (!r.ok) return r;
 
@@ -112,10 +113,11 @@ export async function judilibreGetDecision(
   decisionId: string
 ): Promise<ToolResult<{ decision: JudilibreHit & { text: string } }>> {
   return runTool(async () => {
-    const r = await pisteGet<JudilibreDecision>(
+    const r = await pisteFetch<JudilibreDecision>(
       userId,
+      "GET",
       `${JUDILIBRE_BASE}/decision?id=${encodeURIComponent(decisionId)}`,
-      "Judilibre"
+      { serviceName: "Judilibre" }
     );
     if (!r.ok) return r;
 

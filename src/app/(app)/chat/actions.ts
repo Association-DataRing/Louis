@@ -263,9 +263,9 @@ export type AuditRunView = {
  * assistant (agent_runs.messageId, rattaché côté route — P1/H9). Vérifie la
  * propriété de la conversation. Sert à l'affichage et à l'export (H5).
  */
-export async function getConversationAuditTrail(
+async function getConversationAuditTrail(
   conversationId: string
-): Promise<{ ok: true; runs: AuditRunView[] } | { ok: false }> {
+): Promise<AuditRunView[] | null> {
   const userId = await requireUserId();
   const [conv] = await db
     .select({ id: conversations.id })
@@ -277,7 +277,7 @@ export async function getConversationAuditTrail(
       )
     )
     .limit(1);
-  if (!conv) return { ok: false };
+  if (!conv) return null;
 
   const runs = await db
     .select({
@@ -298,7 +298,7 @@ export async function getConversationAuditTrail(
     .where(eq(agentRuns.conversationId, conversationId))
     .orderBy(asc(agentRuns.startedAt));
 
-  return { ok: true, runs };
+  return runs;
 }
 
 /**
@@ -326,11 +326,11 @@ export async function exportConversationAuditJson(
     .limit(1);
   if (!conv) return { ok: false };
 
-  const trail = await getConversationAuditTrail(conversationId);
-  if (!trail.ok) return { ok: false };
+  const runs = await getConversationAuditTrail(conversationId);
+  if (!runs) return { ok: false };
 
   const byMessage = new Map<string, AuditRunView[]>();
-  for (const r of trail.runs) {
+  for (const r of runs) {
     const key = r.messageId ?? "(non rattaché)";
     const list = byMessage.get(key) ?? [];
     list.push(r);

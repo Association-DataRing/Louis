@@ -44,8 +44,6 @@ export type ApplyResult = {
   errors: EditError[];
 };
 
-const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
@@ -553,8 +551,6 @@ export async function applyTrackedEdits(
     : newXml;
   // Note pour le namespace : on n'altère pas l'élément racine, juste son
   // contenu — donc xmlns:w est conservé.
-  void WORD_NS;
-
   const path = zip.file("word/document.xml") ? "word/document.xml" : "word\\document.xml";
   zip.file(path, finalXml);
 

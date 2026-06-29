@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PIPELINE_PRESETS, findPreset } from "./presets";
-import { AGENT_REGISTRY } from "./agents";
+import { AGENT_DEFAULTS } from "./agents";
 import type { AgentRole } from "./types";
 
 describe("Presets: structure", () => {
@@ -28,9 +28,12 @@ describe("Presets: structure", () => {
   });
 });
 
-describe("Presets: cohérence avec le registry d'agents", () => {
-  it("tous les rôles cités sont enregistrés dans AGENT_REGISTRY", () => {
-    const knownRoles = Object.keys(AGENT_REGISTRY) as AgentRole[];
+describe("Presets: cohérence avec la table d'agents", () => {
+  it("tous les rôles cités sont connus (AGENT_DEFAULTS + default-chat)", () => {
+    const knownRoles = [
+      "default-chat",
+      ...Object.keys(AGENT_DEFAULTS),
+    ] as AgentRole[];
     for (const preset of PIPELINE_PRESETS) {
       for (const agent of preset.agents) {
         expect(knownRoles).toContain(agent.role);
@@ -56,7 +59,7 @@ describe("Presets: cohérence avec le registry d'agents", () => {
 });
 
 describe("Presets: allowlist d'outils", () => {
-  it("CitatorAgent dans recherche-juridique limite ses outils à legifrance_search", () => {
+  it("le citateur dans recherche-juridique limite ses outils à legifrance_search", () => {
     const preset = findPreset("recherche-juridique")!;
     const citator = preset.agents.find((a) => a.role === "citator");
     expect(citator).toBeDefined();
