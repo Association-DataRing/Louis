@@ -7,6 +7,7 @@ import {
   type DragEvent,
   type ReactNode,
 } from "react";
+import { useTranslations } from "next-intl";
 import { IconUpload } from "@tabler/icons-react";
 
 const PDF_MIME = "application/pdf";
@@ -96,10 +97,11 @@ export function Dropzone({
   accept = DEFAULT_ACCEPTED_TYPES,
   maxBytes = DEFAULT_MAX_BYTES,
   disabled = false,
-  overlayLabel = "Déposez vos fichiers",
-  overlayHint = "PDF, DOCX ou texte — 25 Mo max par fichier",
+  overlayLabel,
+  overlayHint,
   className,
 }: DropzoneProps) {
+  const t = useTranslations("components");
   const [active, setActive] = useState(false);
   // `enterCount` suit les dragenter/dragleave nettement plus stablement que
   // l'event `dragleave` lui-même, qui se déclenche à chaque passage entre
@@ -166,7 +168,7 @@ export function Dropzone({
       className={`relative ${className ?? ""}`}
     >
       <span className="sr-only" aria-live="polite">
-        {active ? "Déposez les fichiers pour les téléverser" : ""}
+        {active ? t("dropzone.announce") : ""}
       </span>
       {children}
       {active && (
@@ -177,10 +179,10 @@ export function Dropzone({
           <div className="flex flex-col items-center gap-2 text-center">
             <IconUpload className="size-7 text-primary" />
             <p className="font-heading text-base text-foreground">
-              {overlayLabel}
+              {overlayLabel ?? t("dropzone.overlayLabel")}
             </p>
             <p className="text-xs text-muted-foreground max-w-xs">
-              {overlayHint}
+              {overlayHint ?? t("dropzone.overlayHint")}
             </p>
           </div>
         </div>

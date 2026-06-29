@@ -1,0 +1,319 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…"
+  },
+  "home": {
+    "eyebrow": "Board",
+    "title": "Your AI firm.",
+    "subtitle": "Each pipeline is a team of agents. Open it to see its org chart, edit each role, and choose the model and system prompt.",
+    "openPipeline": "Open {name}",
+    "preset": "Preset",
+    "pipelineCabinet": "Firm pipeline",
+    "roundsCount": "{count, plural, one {# round} other {# rounds}}",
+    "slugTitle": "slug: {slug}",
+    "agentsCount": "{count, plural, one {# agent} other {# agents}}",
+    "open": "Open",
+    "emptyTitle": "No pipeline yet.",
+    "emptyBody": "Preset pipelines are seeded on first load. If nothing appears, reload to restart generation.",
+    "emptyKeysTitle": "Configure a provider key first.",
+    "emptyKeysBody": "The board orchestrates agents that call models with your keys. Head to {link}Settings › Providers{/link} to add one."
+  },
+  "reload": {
+    "label": "Reload"
+  },
+  "tryButton": {
+    "label": "Try it",
+    "labelWithCalls": "Try it · ~{calls} calls",
+    "callsTitle": "{count, plural, one {~# LLM call per question} other {~# LLM calls per question}}",
+    "samplePrompts": {
+      "chat-simple": "Summarize the main duties of a company officer in a French SAS.",
+      "recherche-juridique": "What are the conditions for the validity of a post-contractual non-compete clause under employment law?",
+      "redaction-actes": "Draft a formal notice for non-payment of a 30-day services invoice.",
+      "revue-contractuelle": "Analyze the following clause: \"The Client expressly waives any claim against the Provider beyond the amount invoiced over the last 3 months.\"",
+      "comite-strategique": "My client wants to unilaterally terminate a 5-year exclusive distribution contract after 18 months. What are the risks?",
+      "audit-conformite": "Assess the compliance of an automated candidate scoring tool used for recruitment.",
+      "le-bureau": "A protected employee was dismissed without authorization from the labor inspectorate. What remedies, what deadlines, and prepare a draft letter to the client."
+    }
+  },
+  "agentCard": {
+    "noToolAllowed": "No tool allowed",
+    "toolsCount": "{count, plural, one {# tool} other {# tools}}",
+    "edit": "Edit {label}"
+  },
+  "pipelineBoard": {
+    "noAgents": "This pipeline has no configured agent.",
+    "reliesOn": "relies on",
+    "step": "Step {n}"
+  },
+  "editSheet": {
+    "toastSaved": "Agent saved",
+    "toastSavedDesc": "{name} has been updated.",
+    "toastSaveError": "Could not save",
+    "title": "Edit agent",
+    "optional": "(optional)",
+    "roleLabel": "Role",
+    "roleChangeWarning": "Changing the role updates the agent's \"factory\" prompt and default tools. Your custom system prompt is preserved.",
+    "nameLabel": "Display name",
+    "providerLabel": "Provider key",
+    "inheritPlaceholder": "Inherit from chat",
+    "inheritOption": "Inherit from chat (key chosen at send time)",
+    "providerHelp": "Lets you assign a different provider/model per agent — for example Mistral-small for the Reviewer, Claude for the Maestro.",
+    "modelLabel": "Model",
+    "modelDefaultPlaceholder": "Provider default",
+    "modelDefaultOption": "Provider default",
+    "modelInputPlaceholder": "e.g. mistral-small-latest",
+    "temperatureLabel": "Temperature",
+    "tempDefault": "Default",
+    "tempCustom": "Custom",
+    "tempLow": "0 · precise / factual",
+    "tempHigh": "creative · 2",
+    "tempHelp": "Provider default temperature — suits most uses. Switch to \"Custom\" for a very factual Reviewer (low) or a more creative Drafter (high).",
+    "systemPromptLabel": "System prompt",
+    "charCount": "{count} / 8000",
+    "promptPlaceholder": "Empty = \"factory\" prompt for the \"{role}\" role.",
+    "promptWarning": "This prompt is repeated on every call to this agent — a long prompt multiplies costs in council/parallel mode.",
+    "promptHelp": "Empty = the role's \"factory\" prompt. The longer the prompt, the more each call costs.",
+    "toolsLabel": "Allowed tools",
+    "toolsAll": "All tools",
+    "toolsCustom": "Selection",
+    "noToolsAvailable": "No tool available — configure a connector or an MCP server.",
+    "unavailable": "unavailable",
+    "toolsHelpAll": "The agent can use all available tools.",
+    "toolsHelpNone": "No tool — the agent works on text only.",
+    "toolsHelpSelected": "{count, plural, one {# tool selected} other {# tools selected}}.",
+    "ragLabel": "Document sources",
+    "ragTag": "(RAG)",
+    "ragInherit": "Conversation scope",
+    "ragNone": "No document",
+    "ragFolders": "Chosen folders",
+    "ragDocuments": "Chosen documents",
+    "noFolders": "No folder — create one in the Documents tab.",
+    "noDocuments": "No imported document.",
+    "notIndexed": "not indexed",
+    "ragHelpInherit": "The agent reads the documents of the conversation's project (default).",
+    "ragHelpNone": "The agent reads no document — it works without document retrieval.",
+    "ragHelpFolders": "{count, plural, one {# folder selected} other {# folders selected}} — intersected with the conversation's project scope.",
+    "ragHelpDocuments": "{count, plural, one {# document selected} other {# documents selected}} — intersected with the conversation's project scope."
+  },
+  "pipelineActions": {
+    "cloned": "Pipeline cloned",
+    "cloneError": "Could not clone",
+    "deleted": "Pipeline deleted",
+    "deleteError": "Could not delete",
+    "updated": "Pipeline updated",
+    "updateError": "Could not update",
+    "menuAria": "Pipeline actions",
+    "clone": "Clone",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteTitle": "Delete \"{name}\"?",
+    "deleteDescription": "This action is irreversible. Conversations that used this pipeline keep their history but will no longer be able to invoke it.",
+    "deleting": "Deleting…",
+    "renameTitle": "Rename pipeline",
+    "renameDescription": "Name and description changes are visible in the chat's pipeline selector.",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description"
+  },
+  "cloneToEdit": {
+    "cloned": "Pipeline cloned",
+    "clonedDesc": "You can now edit each agent.",
+    "cloneError": "Could not clone",
+    "creating": "Creating the copy…",
+    "label": "Clone to edit"
+  },
+  "inlineRename": {
+    "renamed": "Pipeline renamed",
+    "renameError": "Could not rename",
+    "renameAria": "Rename pipeline",
+    "renameNamed": "Rename {name}"
+  },
+  "executionOrder": {
+    "title": "Execution order",
+    "respondsLast": "responds last",
+    "moveUp": "Move {label} up",
+    "moveDown": "Move {label} down",
+    "modeHint": {
+      "sequential": "Chain: each agent sees the previous agents' output. The last agent returns the final answer.",
+      "council": "Council: all agents deliberate (N rounds). The last agent — the terminal one — synthesizes and returns the answer.",
+      "parallel": "Parallel: agents work on the question at the same time. The last agent — the terminal one — aggregates and returns the answer.",
+      "iterative": "Iterative: the first agent revisits its notes each round to dig into the gaps. The last agent — the terminal one — synthesizes and returns the answer.",
+      "maestro": "Maestro: the last agent leads the team — it chooses who to consult, with which instructions, in the order it sees fit, then returns the answer. The order below is only indicative."
+    }
+  },
+  "modeBar": {
+    "orchestrationMode": "Orchestration mode",
+    "roundsOption": "{count, plural, one {# debate round} other {# debate rounds}}",
+    "modeAria": "{label} — {pitch}",
+    "active": "Active",
+    "costEstimate": "{count, plural, one {Estimated cost: # LLM call per question} other {Estimated cost: # LLM calls per question}} — {breakdown}",
+    "breakdownCouncil": "{debaters, plural, one {# debater} other {# debaters}} over {rounds, plural, one {# round} other {# rounds}}, plus 1 final synthesis.",
+    "breakdownIterative": "{rounds, plural, one {# round} other {# rounds}} of deepening{multi, select, yes {, plus 1 final synthesis.} other {.}}",
+    "breakdownParallel": "{debaters, plural, one {# agent} other {# agents}} in parallel, plus 1 final synthesis.",
+    "breakdownMaestro": "estimate — the Maestro decides on the fly who to consult ({debaters, plural, one {# agent available} other {# agents available}}, recalls possible).",
+    "breakdownSequential": "1 call per agent ({count} chained).",
+    "presetLocked": "Mode locked on presets — clone the pipeline to change it."
+  },
+  "flowNode": {
+    "agentActive": "Agent active",
+    "done": "Done",
+    "agentDone": "Agent done",
+    "error": "Error",
+    "agentError": "Agent in error",
+    "step": "Step {n}",
+    "terminalSuffix": "· terminal",
+    "edit": "Edit {label}",
+    "delete": "Delete {label}",
+    "defaultModel": "default model",
+    "ragDisabled": "RAG disabled",
+    "ragFolders": "{count, plural, one {reads: # folder} other {reads: # folders}}",
+    "ragDocs": "{count, plural, one {reads: # doc} other {reads: # docs}}",
+    "allTools": "All tools",
+    "noTools": "No tool",
+    "toolsCount": "{count, plural, one {# tool} other {# tools}}"
+  },
+  "editorPage": {
+    "back": "Board",
+    "presetEyebrow": "System preset",
+    "pipelineCabinet": "Firm pipeline",
+    "presetTitle": "This pipeline is a system preset — read-only.",
+    "presetBody": "To customize its agents (model, prompt, tools), clone it in one click. Your copy will be editable and immediately usable in chat.",
+    "orgChart": "Org chart",
+    "hintClickAgent": "Click an agent to edit it",
+    "hintDrag": "· Drag the cards to reorder",
+    "hintOrder": "· The order is set in \"Execution order\" below",
+    "hintRounds": "{count, plural, one {· # debate round} other {· # debate rounds}}",
+    "hintAudit": "· Every run is recorded in the audit"
+  },
+  "addAgent": {
+    "nameRequired": "Give the agent a name (e.g. \"Business lawyer\").",
+    "added": "Agent added",
+    "addedDesc": "{name} is now part of the pipeline.",
+    "addError": "Could not add the agent",
+    "heading": "Add an agent",
+    "description": "You can refine its system prompt and tools after adding by clicking its card.",
+    "personaLabel": "Start with a persona",
+    "manualHint": "Or configure manually below.",
+    "roleLabel": "Role",
+    "nameLabel": "Display name",
+    "namePlaceholder": "e.g. \"Business lawyer\", \"Devil's advocate\"",
+    "providerLabel": "Provider key",
+    "inheritPlaceholder": "Inherit from chat",
+    "inheritOption": "Inherit from chat (key at send time)",
+    "noKeyHint": "Choose a provider key above to select a model. Without a key, the agent inherits the chat's model at send time.",
+    "modelLabel": "Model",
+    "modelDefaultPlaceholder": "Provider default",
+    "modelDefaultOption": "Provider default",
+    "adding": "Adding…",
+    "submit": "Add"
+  },
+  "workflow": {
+    "agentRemoved": "Agent removed",
+    "agentRemovedDesc": "{name} has been removed from the pipeline.",
+    "removeError": "Could not delete",
+    "reorderError": "Could not reorder",
+    "layoutReset": "Layout reset",
+    "resetError": "Could not reset",
+    "updating": "Updating…",
+    "resetLayoutTitle": "Resets the nodes to their automatic position based on the mode",
+    "resetLayout": "Reset layout",
+    "removeTitle": "Remove \"{name}\" from the pipeline?",
+    "removeDescription": "This agent will no longer take part in future runs. You can always add it again. Past runs keep their trace in the audit.",
+    "removing": "Removing…",
+    "remove": "Remove"
+  },
+  "meta": {
+    "roles": {
+      "orchestrator": {
+        "label": "Maestro",
+        "pitch": "Coordinates and synthesizes — delivers the final answer to the user."
+      },
+      "research": {
+        "label": "Research",
+        "pitch": "Searches, sources, and organizes references."
+      },
+      "citator": {
+        "label": "Citator",
+        "pitch": "Verifies every legal reference cited."
+      },
+      "reviewer": {
+        "label": "Reviewer",
+        "pitch": "Ethics, hallucinations, tone."
+      },
+      "drafting": {
+        "label": "Drafter",
+        "pitch": "Drafts pleadings, briefs, and synthesis notes."
+      },
+      "legifrance": {
+        "label": "Légifrance",
+        "pitch": "Verbatim FR/EU lookup."
+      },
+      "default-chat": {
+        "label": "Assistant",
+        "pitch": "Generalist model — research, reasoning, drafting."
+      }
+    },
+    "modes": {
+      "sequential": {
+        "label": "Sequential",
+        "short": "Chain",
+        "pitch": "Each agent sees the previous agents' output and builds on it. A → B → C."
+      },
+      "council": {
+        "label": "Council",
+        "short": "Debate",
+        "pitch": "N rounds in which each member sees the others' positions and revises their own."
+      },
+      "parallel": {
+        "label": "Parallel",
+        "short": "Fan-out",
+        "pitch": "All agents work in parallel; the last one synthesizes."
+      },
+      "iterative": {
+        "label": "Iterative",
+        "short": "In-depth",
+        "pitch": "The researcher revisits its notes each round to dig into the gaps, then the last agent synthesizes."
+      },
+      "maestro": {
+        "label": "Maestro",
+        "short": "Router",
+        "pitch": "The last agent leads: it chooses who to consult, with which instructions, and can re-delegate before answering."
+      }
+    },
+    "personas": {
+      "avocat-affaires": {
+        "label": "Business lawyer",
+        "pitch": "Defends the company's interests — protecting margins, controlling risk."
+      },
+      "avocat-consommateur": {
+        "label": "Consumer lawyer",
+        "pitch": "Defends the weaker party — significant imbalance, unfair terms."
+      },
+      "dpo": {
+        "label": "Senior DPO",
+        "pitch": "GDPR compliance — legal basis, purposes, retention, DPIA."
+      },
+      "compliance": {
+        "label": "Compliance officer",
+        "pitch": "Cross-cutting regulatory compliance — Sapin II, AML-CFT, sanctions."
+      },
+      "contradicteur": {
+        "label": "Devil's advocate",
+        "pitch": "Devil's advocate — systematic counter-argument."
+      },
+      "pragmatique": {
+        "label": "Pragmatist",
+        "pitch": "Seeks the compromise that holds up in practice."
+      },
+      "fiscaliste": {
+        "label": "Tax lawyer",
+        "pitch": "Tax optimization and risk — corporate tax, VAT, transfer pricing."
+      },
+      "procedure": {
+        "label": "Procedure expert",
+        "pitch": "Enforceability, jurisdiction, compulsory enforcement."
+      }
+    }
+  }
+}

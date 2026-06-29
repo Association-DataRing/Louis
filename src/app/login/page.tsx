@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { LouisLogo } from "@/components/louis-logo";
 import { instanceIsFresh } from "@/lib/setup/status";
@@ -26,6 +27,8 @@ export default async function LoginPage() {
   // Instance fraîche (zéro utilisateur) → assistant de premier lancement.
   if (await instanceIsFresh()) redirect("/setup");
 
+  const t = await getTranslations("login.page");
+
   return (
     <main className="grid min-h-dvh flex-1 lg:grid-cols-[1fr_1.15fr]">
       <div className="flex flex-col px-6 py-8 sm:px-10 lg:px-16">
@@ -44,7 +47,7 @@ export default async function LoginPage() {
         </div>
 
         <footer className="text-center text-xs text-muted-foreground lg:text-left">
-          Plateforme privée — accès réservé aux membres du cabinet.
+          {t("footer")}
         </footer>
       </div>
 

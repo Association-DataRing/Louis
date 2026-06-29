@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconArrowRight,
   IconExternalLink,
@@ -39,6 +40,7 @@ export function ProviderKeyForm({
   /** Préfixe des ids de champs — évite les collisions si deux formulaires coexistent. */
   idPrefix?: string;
 }) {
+  const t = useTranslations("components");
   const [selected, setSelected] = useState<ProviderType>("mistral");
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<TestedCreateResult | null>(null);
@@ -56,10 +58,14 @@ export function ProviderKeyForm({
   return (
     <form action={handleSubmit} className="space-y-5">
       <input type="hidden" name="type" value={selected} />
-      <input type="hidden" name="label" value={`Clé ${meta.label}`} />
+      <input
+        type="hidden"
+        name="label"
+        value={t("providerKeyForm.keyLabel", { provider: meta.label })}
+      />
 
       <fieldset>
-        <legend className="sr-only">Provider IA</legend>
+        <legend className="sr-only">{t("providerKeyForm.legend")}</legend>
         <div className="grid grid-cols-2 gap-2">
           {PROVIDER_TYPES.map((type) => {
             const m = PROVIDER_CATALOG[type];
@@ -111,7 +117,7 @@ export function ProviderKeyForm({
                     {type === "mistral" && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary">
                         <IconSparkles className="size-2.5" />
-                        Conseillé
+                        {t("providerKeyForm.recommended")}
                       </span>
                     )}
                   </span>
@@ -122,14 +128,15 @@ export function ProviderKeyForm({
         </div>
         {selected === "mistral" && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Mistral (🇫🇷) alimente aussi la recherche dans vos documents —
-            c&apos;est le meilleur point de départ.
+            {t("providerKeyForm.mistralHint")}
           </p>
         )}
       </fieldset>
 
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-apikey`}>Clé API {meta.label}</Label>
+        <Label htmlFor={`${idPrefix}-apikey`}>
+          {t("providerKeyForm.apiKeyLabel", { provider: meta.label })}
+        </Label>
         <Input
           id={`${idPrefix}-apikey`}
           name="apiKey"
@@ -137,7 +144,7 @@ export function ProviderKeyForm({
           required
           autoComplete="off"
           className="h-11 font-mono"
-          placeholder="Collez votre clé ici"
+          placeholder={t("providerKeyForm.apiKeyPlaceholder")}
         />
         <a
           href={meta.docsUrl}
@@ -145,14 +152,16 @@ export function ProviderKeyForm({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
         >
-          Obtenir ma clé {meta.label}
+          {t("providerKeyForm.getKey", { provider: meta.label })}
           <IconExternalLink className="size-3" />
         </a>
       </div>
 
       {meta.requiresBaseUrl && (
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-baseurl`}>URL de base</Label>
+          <Label htmlFor={`${idPrefix}-baseurl`}>
+            {t("providerKeyForm.baseUrlLabel")}
+          </Label>
           <Input
             id={`${idPrefix}-baseurl`}
             name="baseUrl"
@@ -179,7 +188,7 @@ export function ProviderKeyForm({
                 disabled={pending}
                 className="ml-1 font-medium underline underline-offset-2"
               >
-                Enregistrer sans test
+                {t("providerKeyForm.saveWithoutTest")}
               </button>
             )}
           </AlertDescription>
@@ -188,7 +197,9 @@ export function ProviderKeyForm({
 
       <div className="flex items-center gap-3 pt-1">
         <Button type="submit" disabled={pending} className="h-11 flex-1 text-sm">
-          {pending ? "Test de la clé…" : "Tester et enregistrer"}
+          {pending
+            ? t("providerKeyForm.testing")
+            : t("providerKeyForm.testAndSave")}
           {!pending && <IconArrowRight className="size-4" />}
         </Button>
         {secondary}
@@ -196,9 +207,7 @@ export function ProviderKeyForm({
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">
         <IconShieldLock className="mt-px size-3.5 shrink-0 text-primary" />
-        Chiffrée en AES-256-GCM avant stockage, déchiffrée uniquement à
-        l&apos;instant de l&apos;appel, côté serveur. Elle ne quitte jamais
-        votre instance.
+        {t("providerKeyForm.encryptionNote")}
       </p>
     </form>
   );

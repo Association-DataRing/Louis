@@ -1,0 +1,11 @@
+{
+  "sectionLabel": "Prise en main",
+  "heading": "Prise en main",
+  "hideAria": "Masquer la prise en main",
+  "hideTitle": "Masquer",
+  "stepProvider": "Connecter une clé IA",
+  "stepModel": "Activer un modèle",
+  "stepDocument": "Importer un document",
+  "stepConversation": "Première conversation",
+  "loading": "Chargement…"
+}

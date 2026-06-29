@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconPlus, IconEdit } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ export function SkillFormDialog({
   open: controlledOpen,
   onOpenChange,
 }: Props) {
+  const t = useTranslations("settings.skills");
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -61,14 +63,14 @@ export function SkillFormDialog({
         <DialogTrigger asChild>
           <Button>
             <IconPlus className="size-4" />
-            Nouvelle compétence
+            {t("formDialog.createTrigger")}
           </Button>
         </DialogTrigger>
       ) : (
         <DialogTrigger asChild>
           <Button variant="outline" size="sm">
             <IconEdit className="size-4" />
-            Éditer
+            {t("formDialog.editTrigger")}
           </Button>
         </DialogTrigger>
       )}
@@ -85,6 +87,7 @@ export function SkillFormDialog({
 
 function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
   const router = useRouter();
+  const t = useTranslations("settings.skills");
   const initial = mode.kind === "edit" ? mode.initial : null;
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -106,7 +109,9 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
         onClose();
         router.refresh();
         toast.success(
-          mode.kind === "create" ? "Compétence créée" : "Compétence mise à jour",
+          mode.kind === "create"
+            ? t("toast.created")
+            : t("toast.updated"),
           { description: name }
         );
       } else {
@@ -119,18 +124,18 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
     <>
       <DialogHeader>
         <DialogTitle className="font-heading">
-          {mode.kind === "create" ? "Nouvelle compétence" : "Éditer la compétence"}
+          {mode.kind === "create"
+            ? t("formDialog.createTitle")
+            : t("formDialog.editTitle")}
         </DialogTitle>
         <DialogDescription>
-          Une compétence est une mini-instruction que Louis injecte
-          automatiquement dans le prompt système quand le détecteur identifie
-          qu&apos;elle est pertinente à votre demande.
+          {t("formDialog.description")}
         </DialogDescription>
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="skill-name">Nom</Label>
+          <Label htmlFor="skill-name">{t("formDialog.nameLabel")}</Label>
           <Input
             id="skill-name"
             required
@@ -138,27 +143,27 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="ex. Vérification de citations"
+            placeholder={t("formDialog.namePlaceholder")}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="skill-desc">Description courte</Label>
+          <Label htmlFor="skill-desc">{t("formDialog.descLabel")}</Label>
           <Input
             id="skill-desc"
             required
             maxLength={500}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="À quoi sert cette compétence ?"
+            placeholder={t("formDialog.descPlaceholder")}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="skill-hint">
-            Quand l&apos;activer{" "}
+            {t("formDialog.hintLabel")}{" "}
             <span className="text-[10px] text-muted-foreground font-normal">
-              (sert au détecteur)
+              {t("formDialog.hintLabelHint")}
             </span>
           </Label>
           <Input
@@ -167,17 +172,16 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
             maxLength={500}
             value={triggerHint}
             onChange={(e) => setTriggerHint(e.target.value)}
-            placeholder="ex. Quand l'utilisateur cite une jurisprudence ou un article de loi"
+            placeholder={t("formDialog.hintPlaceholder")}
             aria-describedby="skill-hint-help"
           />
           <p id="skill-hint-help" className="text-[11px] text-muted-foreground">
-            Phrase descriptive lue par un petit modèle qui décide d&apos;activer
-            ou non la compétence selon la demande.
+            {t("formDialog.hintHelp")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="skill-prompt">Instruction système</Label>
+          <Label htmlFor="skill-prompt">{t("formDialog.promptLabel")}</Label>
           <textarea
             id="skill-prompt"
             required
@@ -185,13 +189,12 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
             rows={8}
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
-            placeholder="Le texte qui sera injecté dans le prompt système quand la compétence est activée…"
+            placeholder={t("formDialog.promptPlaceholder")}
             className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm font-mono leading-relaxed shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             aria-describedby="skill-prompt-help"
           />
           <p id="skill-prompt-help" className="text-[11px] text-muted-foreground">
-            Soyez explicite, donnez des exemples si nécessaire. Cette
-            instruction prend le pas sur le comportement par défaut.
+            {t("formDialog.promptHelp")}
           </p>
         </div>
 
@@ -208,16 +211,16 @@ function SkillForm({ mode, onClose }: { mode: Mode; onClose: () => void }) {
             onClick={onClose}
             disabled={pending}
           >
-            Annuler
+            {t("formDialog.cancel")}
           </Button>
           <Button type="submit" disabled={pending}>
             {pending
               ? mode.kind === "create"
-                ? "Création…"
-                : "Enregistrement…"
+                ? t("formDialog.creating")
+                : t("formDialog.saving")
               : mode.kind === "create"
-              ? "Créer"
-              : "Enregistrer"}
+              ? t("formDialog.create")
+              : t("formDialog.save")}
           </Button>
         </DialogFooter>
       </form>

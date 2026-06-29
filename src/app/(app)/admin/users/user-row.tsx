@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   IconDots,
   IconKey,
@@ -88,6 +89,7 @@ export function UserRow({
   entry: UserEntryWithStats;
   currentUserId: string;
 }) {
+  const t = useTranslations("admin.users");
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -131,7 +133,7 @@ export function UserRow({
     }
     const parsed = Number(trimmed.replace(",", "."));
     if (!Number.isFinite(parsed) || parsed < 0) {
-      setQuotaError("Saisissez un montant positif en euros.");
+      setQuotaError(t("quotaInvalid"));
       return;
     }
     const cents = Math.round(parsed * 100);
@@ -149,14 +151,14 @@ export function UserRow({
     setResetError(null);
     const next = (formData.get("password") as string)?.trim() ?? "";
     if (next.length < 10) {
-      setResetError("Trop court — 10 caractères minimum.");
+      setResetError(t("passwordTooShort"));
       return;
     }
     startTransition(async () => {
       const result = await resetUserPassword(entry.id, next);
       if (result.ok) {
         setResetOpen(false);
-        setFeedback(`Mot de passe réinitialisé pour ${entry.email}`);
+        setFeedback(t("passwordResetFor", { email: entry.email }));
         window.setTimeout(() => setFeedback(null), 4000);
       } else {
         setResetError(result.error);
@@ -181,17 +183,17 @@ export function UserRow({
           {entry.role === "admin" && (
             <Badge variant="default" className="text-[10px] gap-1">
               <IconShield className="size-2.5" />
-              Admin
+              {t("badgeAdmin")}
             </Badge>
           )}
           {!entry.isActive && (
             <Badge variant="outline" className="text-[10px]">
-              désactivé
+              {t("badgeDisabled")}
             </Badge>
           )}
           {isSelf && (
             <Badge variant="secondary" className="text-[10px]">
-              vous
+              {t("badgeYou")}
             </Badge>
           )}
         </div>
@@ -199,10 +201,14 @@ export function UserRow({
           {entry.email}
           {" · "}
           {entry.stats.lastActivity
-            ? `actif ${formatRelativeFr(entry.stats.lastActivity)}`
+            ? t("lastActive", {
+                time: formatRelativeFr(entry.stats.lastActivity),
+              })
             : entry.lastLogin
-              ? `connecté ${formatRelativeFr(entry.lastLogin)}`
-              : "jamais utilisé"}
+              ? t("lastConnected", {
+                  time: formatRelativeFr(entry.lastLogin),
+                })
+              : t("neverUsed")}
         </div>
         {feedback && (
           <div
@@ -219,25 +225,25 @@ export function UserRow({
             les chiffres ici pour ne pas les perdre sur petit écran. */}
         <div className="md:hidden mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] tabular-nums text-muted-foreground">
           <span>
-            <span className="opacity-70">Conv. </span>
+            <span className="opacity-70">{t("statConv")} </span>
             <span className="font-medium text-foreground">
               {entry.stats.convCount}
             </span>
           </span>
           <span>
-            <span className="opacity-70">Docs </span>
+            <span className="opacity-70">{t("statDocs")} </span>
             <span className="font-medium text-foreground">
               {entry.stats.docCount}
             </span>
           </span>
           <span>
-            <span className="opacity-70">Projets </span>
+            <span className="opacity-70">{t("statProjects")} </span>
             <span className="font-medium text-foreground">
               {entry.stats.projectCount}
             </span>
           </span>
           <span>
-            <span className="opacity-70">Ce mois </span>
+            <span className="opacity-70">{t("statMonth")} </span>
             <span
               className={`font-medium ${
                 quotaCents != null &&
@@ -262,12 +268,12 @@ export function UserRow({
       {/* Stats compactes : 4 chiffres en tabular-nums. Cabinet-friendly :
           on voit d'un coup d'œil le volume et le coût. */}
       <div className="hidden md:flex shrink-0 items-center gap-5 text-xs tabular-nums text-muted-foreground">
-        <StatCell label="Conv." value={entry.stats.convCount} />
-        <StatCell label="Docs" value={entry.stats.docCount} />
-        <StatCell label="Projets" value={entry.stats.projectCount} />
+        <StatCell label={t("statConv")} value={entry.stats.convCount} />
+        <StatCell label={t("statDocs")} value={entry.stats.docCount} />
+        <StatCell label={t("statProjects")} value={entry.stats.projectCount} />
         <div className="text-right">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Ce mois
+            {t("statMonth")}
           </div>
           <div
             className={`mt-0.5 font-medium ${
@@ -290,7 +296,7 @@ export function UserRow({
             <div
               className="mt-1 h-1 w-20 rounded-full bg-muted overflow-hidden"
               role="progressbar"
-              aria-label="Consommation du quota"
+              aria-label={t("quotaAria")}
               aria-valuenow={monthSpentCents}
               aria-valuemin={0}
               aria-valuemax={quotaCents ?? undefined}
@@ -318,7 +324,7 @@ export function UserRow({
       <DropdownMenu>
         <DropdownMenuTrigger
           className="size-8 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors disabled:opacity-50"
-          aria-label="Actions"
+          aria-label={t("actionsAria")}
           disabled={pending}
         >
           <IconDots className="size-4" />
@@ -331,7 +337,7 @@ export function UserRow({
             }}
           >
             <IconKey className="size-4" />
-            Réinitialiser le mot de passe
+            {t("actionResetPassword")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
@@ -345,7 +351,7 @@ export function UserRow({
             }}
           >
             <IconCoin className="size-4" />
-            Quota mensuel
+            {t("actionQuota")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
@@ -363,12 +369,12 @@ export function UserRow({
             {entry.role === "admin" ? (
               <>
                 <IconShieldOff className="size-4" />
-                Rétrograder en membre
+                {t("actionDemote")}
               </>
             ) : (
               <>
                 <IconShield className="size-4" />
-                Promouvoir administrateur
+                {t("actionPromote")}
               </>
             )}
           </DropdownMenuItem>
@@ -380,12 +386,12 @@ export function UserRow({
             {entry.isActive ? (
               <>
                 <IconUserOff className="size-4" />
-                Désactiver
+                {t("actionDeactivate")}
               </>
             ) : (
               <>
                 <IconUserCheck className="size-4" />
-                Activer
+                {t("actionActivate")}
               </>
             )}
           </DropdownMenuItem>
@@ -395,7 +401,7 @@ export function UserRow({
             onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
-            Supprimer
+            {t("actionDelete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -404,14 +410,8 @@ export function UserRow({
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer cet utilisateur ?"
-        description={
-          <>
-            « {entry.email} » sera supprimé. Toutes ses données — clés
-            providers, connecteurs, conversations, documents, workflows — seront
-            définitivement perdues.
-          </>
-        }
+        title={t("deleteTitle")}
+        description={t("deleteDescription", { email: entry.email })}
         pending={pending}
         onConfirm={() => {
           startTransition(async () => {
@@ -425,17 +425,20 @@ export function UserRow({
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-heading">
-              Réinitialiser le mot de passe
+              {t("resetTitle")}
             </DialogTitle>
             <DialogDescription>
-              Nouveau mot de passe pour <strong>{entry.email}</strong>.
-              L&apos;utilisateur devra l&apos;utiliser à sa prochaine connexion
-              — communiquez-le-lui par un canal sûr.
+              {t.rich("resetDescription", {
+                email: entry.email,
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </DialogDescription>
           </DialogHeader>
           <form action={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor={`reset-pwd-${entry.id}`}>Mot de passe</Label>
+              <Label htmlFor={`reset-pwd-${entry.id}`}>
+                {t("resetPasswordLabel")}
+              </Label>
               <Input
                 id={`reset-pwd-${entry.id}`}
                 name="password"
@@ -443,7 +446,7 @@ export function UserRow({
                 autoComplete="new-password"
                 required
                 minLength={10}
-                placeholder="10 caractères minimum"
+                placeholder={t("resetPasswordPlaceholder")}
                 autoFocus
               />
             </div>
@@ -459,10 +462,10 @@ export function UserRow({
                 onClick={() => setResetOpen(false)}
                 disabled={pending}
               >
-                Annuler
+                {t("cancel")}
               </Button>
               <Button type="submit" disabled={pending}>
-                {pending ? "Réinitialisation…" : "Réinitialiser"}
+                {pending ? t("resetSubmitting") : t("resetSubmit")}
               </Button>
             </DialogFooter>
           </form>
@@ -472,17 +475,19 @@ export function UserRow({
       <Dialog open={quotaOpen} onOpenChange={setQuotaOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-heading">Quota mensuel</DialogTitle>
+            <DialogTitle className="font-heading">{t("quotaTitle")}</DialogTitle>
             <DialogDescription>
-              Plafond de dépense IA en euros pour <strong>{entry.email}</strong>{" "}
-              chaque mois calendaire. Au-delà, les nouvelles requêtes sont
-              refusées par Louis jusqu&apos;au mois suivant. Laissez vide
-              pour aucune limite.
+              {t.rich("quotaDescription", {
+                email: entry.email,
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor={`quota-${entry.id}`}>Montant en euros</Label>
+              <Label htmlFor={`quota-${entry.id}`}>
+                {t("quotaAmountLabel")}
+              </Label>
               <div className="relative">
                 <Input
                   id={`quota-${entry.id}`}
@@ -492,7 +497,7 @@ export function UserRow({
                   step="0.01"
                   value={quotaDraftEuros}
                   onChange={(e) => setQuotaDraftEuros(e.target.value)}
-                  placeholder="Aucune limite"
+                  placeholder={t("quotaNoLimitPlaceholder")}
                   autoFocus
                   className="pr-8"
                 />
@@ -501,7 +506,7 @@ export function UserRow({
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Consommé ce mois :{" "}
+                {t("quotaConsumed")}{" "}
                 <span className="tabular-nums font-medium text-foreground">
                   {formatEurFromCents(monthSpentCents)}
                 </span>
@@ -523,7 +528,7 @@ export function UserRow({
                 disabled={pending}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
               >
-                Retirer la limite
+                {t("quotaRemoveLimit")}
               </button>
             )}
             <div className="flex items-center gap-2 ml-auto">
@@ -533,14 +538,14 @@ export function UserRow({
                 onClick={() => setQuotaOpen(false)}
                 disabled={pending}
               >
-                Annuler
+                {t("cancel")}
               </Button>
               <Button
                 type="button"
                 onClick={handleSaveQuota}
                 disabled={pending}
               >
-                {pending ? "Enregistrement…" : "Enregistrer"}
+                {pending ? t("saving") : t("save")}
               </Button>
             </div>
           </DialogFooter>

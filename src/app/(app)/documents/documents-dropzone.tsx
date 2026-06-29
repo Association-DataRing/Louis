@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { Dropzone, uploadDocument } from "@/components/dropzone";
 import { Spinner } from "@/components/ui/spinner";
@@ -20,6 +21,7 @@ export function DocumentsDropzone({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const t = useTranslations("documents.dropzone");
   const [uploadingCount, setUploadingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,14 +52,17 @@ export function DocumentsDropzone({
         const types = rejected.filter((r) => r.reason === "type").length;
         const sizes = rejected.filter((r) => r.reason === "size").length;
         const parts: string[] = [];
-        if (types) parts.push(`${types} de type non supporté`);
-        if (sizes) parts.push(`${sizes} > 25 Mo`);
+        if (types) parts.push(t("rejectedTypes", { count: types }));
+        if (sizes) parts.push(t("rejectedSizes", { count: sizes }));
         setError(
-          `${rejected.length} fichier(s) ignoré(s) : ${parts.join(" · ")}.`
+          t("rejectedSummary", {
+            count: rejected.length,
+            detail: parts.join(" · "),
+          })
         );
       }}
-      overlayLabel="Déposez pour importer dans ce dossier"
-      overlayHint="PDF, DOCX ou texte — 25 Mo max par fichier"
+      overlayLabel={t("overlayLabel")}
+      overlayHint={t("overlayHint")}
     >
       {(uploadingCount > 0 || error) && (
         <div
@@ -68,8 +73,7 @@ export function DocumentsDropzone({
           {uploadingCount > 0 && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
               <Spinner className="size-3" />
-              Téléversement de {uploadingCount} fichier
-              {uploadingCount > 1 ? "s" : ""}…
+              {t("uploading", { count: uploadingCount })}
             </span>
           )}
           {error && (
@@ -80,7 +84,7 @@ export function DocumentsDropzone({
                 type="button"
                 onClick={() => setError(null)}
                 className="ml-1 rounded-sm hover:bg-destructive/10 p-0.5"
-                aria-label="Ignorer l'erreur"
+                aria-label={t("dismissError")}
               >
                 <IconX className="size-3" />
               </button>

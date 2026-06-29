@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { IconMenu2 } from "@tabler/icons-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { LouisLogo } from "@/components/louis-logo";
@@ -21,18 +22,19 @@ type Props = {
 
 export function MobileNav({ user, conversations, projects, onboarding }: Props) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("mobileNav");
 
   return (
     <div className="md:hidden sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/95 backdrop-blur px-4 py-2">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
           className="inline-flex items-center justify-center size-9 rounded-md hover:bg-accent transition-colors"
-          aria-label="Ouvrir la navigation"
+          aria-label={t("openNav")}
         >
           <IconMenu2 className="size-5" />
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0">
-          <SheetTitle className="sr-only">Navigation Louis</SheetTitle>
+          <SheetTitle className="sr-only">{t("navTitle")}</SheetTitle>
           <SidebarContent
             user={user}
             conversations={conversations}
@@ -45,7 +47,7 @@ export function MobileNav({ user, conversations, projects, onboarding }: Props) 
       </Sheet>
       <Link
         href="/dashboard"
-        aria-label="Accueil"
+        aria-label={t("home")}
         className="flex items-center gap-2 font-heading text-base tracking-tight"
       >
         <LouisLogo className="size-5 text-primary" />

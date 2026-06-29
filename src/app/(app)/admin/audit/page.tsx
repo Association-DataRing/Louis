@@ -1,5 +1,6 @@
 import { and, count, desc, eq, gte, lte } from "drizzle-orm";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { IconDownload } from "@tabler/icons-react";
 import { db } from "@/db";
 import { auditLog, users } from "@/db/schema";
@@ -17,6 +18,7 @@ export default async function AdminAuditPage({
   searchParams: Promise<SP>;
 }) {
   await requireAdmin();
+  const t = await getTranslations("admin.audit");
   const sp = await searchParams;
 
   const page = Math.max(0, Number.parseInt(sp.page ?? "0", 10) || 0);
@@ -71,12 +73,10 @@ export default async function AdminAuditPage({
       <header className="mb-8 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-heading text-3xl tracking-tight">
-            Journal d&apos;audit
+            {t("title")}
           </h1>
           <p className="mt-2 text-muted-foreground max-w-2xl">
-            {total} action{total > 1 ? "s" : ""} enregistrée{total > 1 ? "s" : ""}.
-            Append-only — créations/modifications de comptes, providers,
-            connecteurs, suppressions, authentification.
+            {t("subtitle", { count: total })}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -103,13 +103,13 @@ export default async function AdminAuditPage({
         className="mb-6 flex flex-wrap items-end gap-3 border-y border-border py-4"
       >
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Action
+          {t("filterAction")}
           <select
             name="action"
             defaultValue={action ?? "all"}
             className="h-9 rounded-md border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
           >
-            <option value="all">Toutes</option>
+            <option value="all">{t("filterAll")}</option>
             {AUDIT_ACTION_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -118,7 +118,7 @@ export default async function AdminAuditPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Du
+          {t("filterFrom")}
           <input
             type="date"
             name="from"
@@ -127,7 +127,7 @@ export default async function AdminAuditPage({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Au
+          {t("filterTo")}
           <input
             type="date"
             name="to"
@@ -139,27 +139,23 @@ export default async function AdminAuditPage({
           type="submit"
           className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm text-primary-foreground transition-opacity hover:opacity-90"
         >
-          Filtrer
+          {t("filterSubmit")}
         </button>
         {(action || sp.from || sp.to) && (
           <Link
             href="/admin/audit"
             className="inline-flex h-9 items-center px-2 text-sm text-muted-foreground hover:text-foreground"
           >
-            Réinitialiser
+            {t("filterReset")}
           </Link>
         )}
       </form>
 
       {rows.length === 0 ? (
         <EmptyState
-          title={
-            total === 0 ? "Journal vide." : "Aucun résultat pour ces filtres."
-          }
+          title={total === 0 ? t("emptyTitle") : t("emptyFilteredTitle")}
         >
-          {total === 0
-            ? "Les actions admin et les événements de sécurité seront enregistrés ici dès qu'ils auront lieu."
-            : "Élargissez la période ou changez l'action filtrée."}
+          {total === 0 ? t("emptyBody") : t("emptyFilteredBody")}
         </EmptyState>
       ) : (
         <ul className="divide-y divide-border border-y border-border">
@@ -170,7 +166,7 @@ export default async function AdminAuditPage({
                   {labelForAction(r.action)}
                 </span>
                 <span className="text-sm text-muted-foreground truncate min-w-0">
-                  {r.actorName ?? r.actorEmail ?? <em>système</em>}
+                  {r.actorName ?? r.actorEmail ?? <em>{t("systemActor")}</em>}
                   {r.target && <span className="text-xs"> → {r.target}</span>}
                 </span>
                 <time className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
@@ -196,20 +192,20 @@ export default async function AdminAuditPage({
               href={pageQs(page - 1)}
               className="inline-flex h-9 items-center rounded-md border border-border px-3 hover:bg-accent transition-colors"
             >
-              ← Précédent
+              ← {t("prev")}
             </Link>
           ) : (
             <span />
           )}
           <span className="text-xs text-muted-foreground tabular-nums">
-            Page {page + 1} / {totalPages}
+            {t("pageOf", { current: page + 1, total: totalPages })}
           </span>
           {page + 1 < totalPages ? (
             <Link
               href={pageQs(page + 1)}
               className="inline-flex h-9 items-center rounded-md border border-border px-3 hover:bg-accent transition-colors"
             >
-              Suivant →
+              {t("next")} →
             </Link>
           ) : (
             <span />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconDots,
   IconPencil,
@@ -34,6 +35,7 @@ type Props = {
 };
 
 export function ProjectActions({ id, name, description }: Props) {
+  const t = useTranslations("projects.actions");
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState(name);
@@ -59,7 +61,7 @@ export function ProjectActions({ id, name, description }: Props) {
       <DropdownMenu>
         <DropdownMenuTrigger
           className="size-9 inline-flex items-center justify-center rounded-md border border-border hover:bg-accent transition-colors"
-          aria-label="Actions"
+          aria-label={t("actionsAria")}
           disabled={pending}
         >
           <IconDots className="size-4" />
@@ -73,7 +75,7 @@ export function ProjectActions({ id, name, description }: Props) {
             }}
           >
             <IconPencil className="size-4" />
-            Modifier
+            {t("edit")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -81,7 +83,7 @@ export function ProjectActions({ id, name, description }: Props) {
             onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
-            Supprimer le projet
+            {t("deleteProject")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -90,15 +92,13 @@ export function ProjectActions({ id, name, description }: Props) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-heading">
-              Modifier le projet
+              {t("editTitle")}
             </DialogTitle>
-            <DialogDescription>
-              Le nom est visible partout (sidebar, liste des projets, etc.).
-            </DialogDescription>
+            <DialogDescription>{t("editDescription")}</DialogDescription>
           </DialogHeader>
           <form action={handleEdit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Nom</Label>
+              <Label htmlFor="edit-name">{t("nameLabel")}</Label>
               <Input
                 id="edit-name"
                 name="name"
@@ -111,9 +111,9 @@ export function ProjectActions({ id, name, description }: Props) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-description">
-                Description{" "}
+                {t("descriptionLabel")}{" "}
                 <span className="text-[10px] text-muted-foreground font-normal">
-                  (optionnel)
+                  {t("optional")}
                 </span>
               </Label>
               <Input
@@ -122,7 +122,7 @@ export function ProjectActions({ id, name, description }: Props) {
                 value={descDraft}
                 onChange={(e) => setDescDraft(e.target.value)}
                 maxLength={500}
-                placeholder="Note interne, n° dossier, partie adverse…"
+                placeholder={t("descriptionPlaceholder")}
               />
             </div>
             <DialogFooter>
@@ -131,10 +131,10 @@ export function ProjectActions({ id, name, description }: Props) {
                 variant="ghost"
                 onClick={() => setEditOpen(false)}
               >
-                Annuler
+                {t("cancel")}
               </Button>
               <Button type="submit" disabled={pending}>
-                {pending ? "Enregistrement…" : "Enregistrer"}
+                {pending ? t("saving") : t("save")}
               </Button>
             </DialogFooter>
           </form>
@@ -144,14 +144,8 @@ export function ProjectActions({ id, name, description }: Props) {
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer ce projet ?"
-        description={
-          <>
-            « {name} » sera supprimé. Les conversations et documents seront
-            détachés mais conservés — vous les retrouverez dans leur emplacement
-            d&apos;origine.
-          </>
-        }
+        title={t("deleteTitle")}
+        description={t("deleteDescription", { name })}
         pending={pending}
         onConfirm={handleDelete}
       />

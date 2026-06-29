@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { SettingsNav } from "./settings-nav";
 
@@ -8,6 +9,7 @@ export default async function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = await getTranslations("settings.layout");
   const session = await auth();
   if (!session?.user) redirect("/login");
   const isAdmin = session.user.role === "admin";
@@ -19,10 +21,10 @@ export default async function SettingsLayout({
           href="/dashboard"
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          ← Retour
+          ← {t("back")}
         </Link>
         <span className="text-xs text-muted-foreground">·</span>
-        <span className="text-sm font-medium">Paramètres</span>
+        <span className="text-sm font-medium">{t("title")}</span>
       </header>
 
       <div className="flex-1 min-h-0 flex">

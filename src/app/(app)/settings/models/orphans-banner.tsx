@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { IconAlertTriangle, IconBrush } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface OrphansBannerProps {
  */
 export function OrphansBanner({ count }: OrphansBannerProps) {
   const router = useRouter();
+  const t = useTranslations("settings.models");
   const [pending, startTransition] = useTransition();
 
   function handleClean() {
@@ -26,11 +28,9 @@ export function OrphansBanner({ count }: OrphansBannerProps) {
       const result = await pruneOrphanModels();
       if (result.ok) {
         router.refresh();
-        toast.success(
-          `${count} modèle${count > 1 ? "s" : ""} orphelin${count > 1 ? "s" : ""} retiré${count > 1 ? "s" : ""}`
-        );
+        toast.success(t("toast.orphansPruned", { count }));
       } else {
-        toast.error("Nettoyage impossible", { description: result.error });
+        toast.error(t("toast.pruneFailed"), { description: result.error });
       }
     });
   }
@@ -40,12 +40,10 @@ export function OrphansBanner({ count }: OrphansBannerProps) {
       <IconAlertTriangle className="size-4 text-foreground/60 shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1 text-sm">
         <p className="font-medium">
-          {count} modèle{count > 1 ? "s" : ""} sans provider actif
+          {t("orphans.title", { count })}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Ils restent dans votre bibliothèque mais ne sont pas utilisables
-          tant que vous n&apos;avez pas de clé configurée pour leur
-          provider d&apos;origine.
+          {t("orphans.body")}
         </p>
       </div>
       <Button
@@ -56,7 +54,7 @@ export function OrphansBanner({ count }: OrphansBannerProps) {
         disabled={pending}
       >
         <IconBrush className="size-3.5" />
-        {pending ? "Nettoyage…" : "Nettoyer"}
+        {pending ? t("orphans.cleaning") : t("orphans.clean")}
       </Button>
     </div>
   );

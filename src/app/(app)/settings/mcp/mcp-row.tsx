@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconBolt,
   IconCheck,
@@ -29,6 +30,7 @@ import {
 } from "./actions";
 
 export function McpRow({ entry }: { entry: McpServer }) {
+  const t = useTranslations("settings.mcp");
   const [pending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const toolCount = entry.toolsJson?.length ?? 0;
@@ -47,24 +49,24 @@ export function McpRow({ entry }: { entry: McpServer }) {
           </Badge>
           {toolCount > 0 ? (
             <Badge variant="default" className="shrink-0 text-[10px]">
-              {toolCount} outil{toolCount > 1 ? "s" : ""}
+              {t("row.toolCount", { count: toolCount })}
             </Badge>
           ) : (
             <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
               <IconCircleDashed className="size-3" />
-              non synchronisé
+              {t("row.notSynced")}
             </span>
           )}
           {entry.lastSyncError && (
             <span className="inline-flex items-center gap-1 text-[10px] text-destructive">
               <IconAlertTriangle className="size-3" />
-              erreur de sync
+              {t("row.syncError")}
             </span>
           )}
           {!entry.lastSyncError && entry.lastSyncedAt && toolCount > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] text-success">
               <IconCheck className="size-3" />
-              synchronisé
+              {t("row.synced")}
             </span>
           )}
         </div>
@@ -100,13 +102,13 @@ export function McpRow({ entry }: { entry: McpServer }) {
             if (!result.ok) toast.error(result.error);
           });
         }}
-        aria-label="Activer ce serveur"
+        aria-label={t("row.toggleAria")}
       />
 
       <DropdownMenu>
         <DropdownMenuTrigger
           className="size-8 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors"
-          aria-label="Actions"
+          aria-label={t("row.actionsAria")}
         >
           <IconDots className="size-4" />
         </DropdownMenuTrigger>
@@ -118,7 +120,7 @@ export function McpRow({ entry }: { entry: McpServer }) {
             }}
           >
             <IconRefresh className="size-4" />
-            Synchroniser les outils
+            {t("row.syncTools")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -127,7 +129,7 @@ export function McpRow({ entry }: { entry: McpServer }) {
             onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
-            Supprimer
+            {t("row.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -135,14 +137,8 @@ export function McpRow({ entry }: { entry: McpServer }) {
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer ce serveur MCP ?"
-        description={
-          <>
-            « {entry.label} » sera supprimé. Les outils qu&apos;il expose ne
-            seront plus disponibles dans les conversations. La configuration
-            (URL, secrets) est définitivement perdue.
-          </>
-        }
+        title={t("row.deleteConfirmTitle")}
+        description={t("row.deleteConfirmDescription", { label: entry.label })}
         pending={pending}
         onConfirm={() => {
           startTransition(async () => {

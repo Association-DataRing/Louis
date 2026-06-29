@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { and, eq, isNotNull, or } from "drizzle-orm";
 import {
   IconArrowLeft,
@@ -31,6 +32,7 @@ export default async function TabularReviewDetailPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("tabularReviews");
 
   const { id } = await params;
 
@@ -94,7 +96,7 @@ export default async function TabularReviewDetailPage({
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
       >
         <IconArrowLeft className="size-3.5" />
-        Toutes les analyses
+        {t("detail.backToAll")}
       </Link>
 
       <header className="mb-8 flex items-start justify-between gap-4 flex-wrap">
@@ -107,18 +109,18 @@ export default async function TabularReviewDetailPage({
               {review.name}
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
-              {columns.length} colonne{columns.length > 1 ? "s" : ""} ·{" "}
-              {rows.length} document{rows.length > 1 ? "s" : ""}
+              {t("detail.columnsCount", { count: columns.length })} ·{" "}
+              {t("detail.documentsCount", { count: rows.length })}
               {pendingCount > 0 && (
                 <>
                   {" "}
-                  · <span className="text-foreground">{pendingCount} à traiter</span>
+                  · <span className="text-foreground">{t("detail.pendingCount", { count: pendingCount })}</span>
                 </>
               )}
               {runningCount > 0 && (
                 <>
                   {" "}
-                  · <span className="text-primary">{runningCount} en cours</span>
+                  · <span className="text-primary">{t("detail.runningCount", { count: runningCount })}</span>
                 </>
               )}
             </p>

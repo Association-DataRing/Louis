@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { IconChevronDown, IconAlertCircle, IconCheck } from "@tabler/icons-react";
 import {
   Popover,
@@ -44,6 +45,7 @@ export function ModelPicker({
   activeProviderTypes,
   disabled = false,
 }: Props) {
+  const t = useTranslations("chat");
   const [open, setOpen] = useState(false);
 
   // Trouve le modèle sélectionné pour l'afficher dans le trigger.
@@ -79,7 +81,7 @@ export function ModelPicker({
       <PopoverTrigger
         disabled={disabled}
         className="inline-flex items-center gap-2 h-8 rounded-full border border-border/60 bg-background/60 hover:bg-accent px-3 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed max-w-[320px]"
-        aria-label="Modèle"
+        aria-label={t("modelPicker.aria")}
       >
         {selectedMeta && (
           <span
@@ -90,7 +92,7 @@ export function ModelPicker({
           </span>
         )}
         <span className="truncate font-medium">
-          {selected?.label ?? "Choisir un modèle"}
+          {selected?.label ?? t("modelPicker.choose")}
         </span>
         {selectedMeta && (
           <span className="text-[10px] text-muted-foreground shrink-0">
@@ -165,9 +167,9 @@ export function ModelPicker({
                   className="mt-0.5 mx-1 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-destructive hover:bg-destructive/5 transition-colors"
                 >
                   <IconAlertCircle className="size-3 shrink-0" />
-                  Aucune clé active —{" "}
+                  {t("modelPicker.noActiveKey")}{" "}
                   <span className="underline underline-offset-2">
-                    configurer
+                    {t("modelPicker.configure")}
                   </span>
                 </Link>
               )}

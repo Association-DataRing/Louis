@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { desc, eq, inArray } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   IconArrowLeft,
   IconMessageCircle,
@@ -30,6 +31,7 @@ export default async function ProjectDetailPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("projects.detail");
 
   const { id } = await params;
 
@@ -96,7 +98,7 @@ export default async function ProjectDetailPage({
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
       >
         <IconArrowLeft className="size-3.5" />
-        Tous les projets
+        {t("backToProjects")}
       </Link>
 
       <header className="mb-8 flex items-start justify-between gap-4 flex-wrap">
@@ -144,7 +146,7 @@ export default async function ProjectDetailPage({
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading text-lg tracking-tight inline-flex items-center gap-2">
               <IconMessageCircle className="size-4 text-muted-foreground" />
-              Conversations
+              {t("conversations")}
               <span className="text-xs text-muted-foreground font-normal">
                 ({convList.length})
               </span>
@@ -154,13 +156,12 @@ export default async function ProjectDetailPage({
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2"
             >
               <IconPlus className="size-3" />
-              Nouvelle conversation
+              {t("newConversation")}
             </Link>
           </div>
           {convList.length === 0 ? (
             <div className="border border-dashed border-border rounded-lg p-6 text-sm text-muted-foreground">
-              Démarrez une conversation rattachée à ce dossier pour en garder
-              l&apos;historique au même endroit.
+              {t("emptyConversations")}
             </div>
           ) : (
             <div className="border border-border rounded-lg bg-card divide-y divide-border">

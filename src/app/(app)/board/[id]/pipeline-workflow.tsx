@@ -32,6 +32,7 @@ import {
   updateAgentCanvasPosition,
 } from "../actions";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -214,6 +215,7 @@ function PipelineWorkflowInner({
   availableDocuments,
 }: PipelineWorkflowProps) {
   const router = useRouter();
+  const t = useTranslations("board");
   const [editingAgent, setEditingAgent] = useState<PipelineAgent | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PipelineAgent | null>(null);
   const [pending, startTransition] = useTransition();
@@ -236,11 +238,11 @@ function PipelineWorkflowInner({
       router.refresh();
       setPendingDelete(null);
       if (result.ok) {
-        toast.success("Agent retiré", {
-          description: `${agent.label} a été retiré de la pipeline.`,
+        toast.success(t("workflow.agentRemoved"), {
+          description: t("workflow.agentRemovedDesc", { name: agent.label }),
         });
       } else {
-        toast.error("Suppression impossible", { description: result.error });
+        toast.error(t("workflow.removeError"), { description: result.error });
       }
     });
   }
@@ -325,13 +327,13 @@ function PipelineWorkflowInner({
         const result = await reorderPipelineAgents(pipeline.id, newOrder);
         router.refresh();
         if (!result.ok) {
-          toast.error("Réordonnancement impossible", {
+          toast.error(t("workflow.reorderError"), {
             description: result.error,
           });
         }
       });
     },
-    [agents, dragEnabled, mode, pipeline.id, router]
+    [agents, dragEnabled, mode, pipeline.id, router, t]
   );
 
   const hasCustomLayout = agents.some(
@@ -342,14 +344,14 @@ function PipelineWorkflowInner({
       const result = await resetPipelineLayout(pipeline.id);
       router.refresh();
       if (result.ok) {
-        toast.success("Disposition réinitialisée");
+        toast.success(t("workflow.layoutReset"));
       } else {
-        toast.error("Réinitialisation impossible", {
+        toast.error(t("workflow.resetError"), {
           description: result.error,
         });
       }
     });
-  }, [pipeline.id, router]);
+  }, [pipeline.id, router, t]);
 
   const fitViewOptions = useMemo(
     () => ({ padding: 0.12, duration: 400 }),
@@ -393,7 +395,7 @@ function PipelineWorkflowInner({
           <div className="absolute inset-0 z-20 grid place-items-center bg-background/40 backdrop-blur-[1px]">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
               <IconLoader2 className="size-3.5 animate-spin" />
-              Mise à jour…
+              {t("workflow.updating")}
             </span>
           </div>
         )}
@@ -409,9 +411,9 @@ function PipelineWorkflowInner({
               onClick={handleResetLayout}
               disabled={pending}
               className="gap-1.5 bg-card/95 backdrop-blur-sm shadow-sm"
-              title="Remet les nodes à leur position automatique selon le mode"
+              title={t("workflow.resetLayoutTitle")}
             >
-              Réinitialiser la disposition
+              {t("workflow.resetLayout")}
             </Button>
           </div>
         )}
@@ -486,22 +488,22 @@ function PipelineWorkflowInner({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Retirer « {pendingDelete?.label} » de la pipeline ?
+              {t("workflow.removeTitle", { name: pendingDelete?.label ?? "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Cet agent ne participera plus aux exécutions futures. Vous
-              pourrez toujours l&apos;ajouter à nouveau. Les exécutions
-              passées conservent leur trace dans l&apos;audit.
+              {t("workflow.removeDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={pending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {pending ? "Suppression…" : "Retirer"}
+              {pending ? t("workflow.removing") : t("workflow.remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

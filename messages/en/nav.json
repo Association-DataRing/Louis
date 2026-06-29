@@ -1,0 +1,11 @@
+{
+  "dashboard": "Dashboard",
+  "chat": "Conversations",
+  "projects": "Projects",
+  "documents": "Documents",
+  "tabularReviews": "Tabular reviews",
+  "workflows": "Templates",
+  "board": "Board",
+  "settings": "Settings",
+  "admin": "Administration"
+}

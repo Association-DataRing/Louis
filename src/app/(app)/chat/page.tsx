@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { and, asc, desc, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -295,17 +296,16 @@ export default async function ChatPage({
   );
 }
 
-function NoProviderState() {
+async function NoProviderState() {
+  const t = await getTranslations("chat");
   return (
     <main className="grid min-h-full place-items-center px-6 py-12">
       <div className="w-full max-w-md text-center motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300">
         <h1 className="font-heading text-3xl tracking-tight">
-          Une clé, et Louis s&apos;éveille.
+          {t("noProvider.title")}
         </h1>
         <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
-          Louis fonctionne avec vos propres clés API — elles restent chiffrées
-          sur votre instance. Connectez-en une pour lancer votre première
-          conversation.
+          {t("noProvider.description")}
         </p>
         <div className="mt-8 flex flex-col items-center gap-3">
           <ProviderQuickAdd />
@@ -313,7 +313,7 @@ function NoProviderState() {
             href="/settings/providers"
             className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
-            Voir tous les providers dans les réglages
+            {t("noProvider.allProvidersLink")}
           </Link>
         </div>
       </div>

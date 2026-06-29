@@ -2,6 +2,7 @@
 
 import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import {
   Select,
@@ -23,6 +24,7 @@ interface PipelineModeBarProps {
 
 export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) {
   const router = useRouter();
+  const t = useTranslations("board");
   const [pending, startTransition] = useTransition();
   const isPreset = pipeline.isPreset;
   const mode = (pipeline.mode as PipelineModeKey) ?? "sequential";
@@ -71,7 +73,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-wider text-foreground/70">
-            Mode d&apos;orchestration
+            {t("modeBar.orchestrationMode")}
           </div>
         </div>
 
@@ -87,7 +89,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
             <SelectContent>
               {[1, 2, 3, 4].map((n) => (
                 <SelectItem key={n} value={String(n)}>
-                  {n} tour{n > 1 ? "s" : ""} de débat
+                  {t("modeBar.roundsOption", { count: n })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -97,7 +99,7 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
 
       <div
         role="radiogroup"
-        aria-label="Mode d'orchestration"
+        aria-label={t("modeBar.orchestrationMode")}
         className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2"
       >
         {modes.map((m, i) => {
@@ -114,7 +116,10 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
               type="button"
               role="radio"
               aria-checked={selected}
-              aria-label={`${meta.label} — ${meta.pitch}`}
+              aria-label={t("modeBar.modeAria", {
+                label: t(meta.labelKey),
+                pitch: t(meta.pitchKey),
+              })}
               tabIndex={selected ? 0 : -1}
               disabled={disabled}
               onClick={() => !selected && update({ mode: m })}
@@ -138,15 +143,15 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{meta.label}</span>
+                  <span className="text-sm font-medium">{t(meta.labelKey)}</span>
                   {selected && (
                     <span className="inline-flex items-center text-[10px] uppercase tracking-wider text-foreground/70 font-medium">
-                      Actif
+                      {t("modeBar.active")}
                     </span>
                   )}
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-                  {meta.pitch}
+                  {t(meta.pitchKey)}
                 </p>
               </div>
             </button>
@@ -162,29 +167,28 @@ export function PipelineModeBar({ pipeline, agentCount }: PipelineModeBarProps) 
         const debaters = Math.max(0, agentCount - 1);
         const breakdown: string =
           mode === "council"
-            ? `${debaters} débatteur${debaters > 1 ? "s" : ""} sur ${rounds} tour${rounds > 1 ? "s" : ""}, plus 1 synthèse finale.`
+            ? t("modeBar.breakdownCouncil", { debaters, rounds })
             : mode === "iterative"
-              ? `${rounds} tour${rounds > 1 ? "s" : ""} d'approfondissement${agentCount > 1 ? ", plus 1 synthèse finale." : "."}`
+              ? t("modeBar.breakdownIterative", {
+                  rounds,
+                  multi: agentCount > 1 ? "yes" : "no",
+                })
               : mode === "parallel"
-                ? `${debaters} agent${debaters > 1 ? "s" : ""} en parallèle, plus 1 synthèse finale.`
+                ? t("modeBar.breakdownParallel", { debaters })
                 : mode === "maestro"
-                  ? `estimation — le Maestro décide en direct qui consulter (${debaters} agent${debaters > 1 ? "s" : ""} disponibles, rappels possibles).`
-                  : `1 appel par agent (${agentCount} en chaîne).`;
+                  ? t("modeBar.breakdownMaestro", { debaters })
+                  : t("modeBar.breakdownSequential", { count: agentCount });
         return (
           <p className="mt-3 flex items-start gap-1 text-[11px] text-muted-foreground border-t border-border/40 pt-2">
             <IconAlertTriangle className="size-3.5 shrink-0 mt-px text-warning" />
-            <span>
-              Coût estimé : {calls} appel{calls > 1 ? "s" : ""} LLM par
-              question — {breakdown}
-            </span>
+            <span>{t("modeBar.costEstimate", { count: calls, breakdown })}</span>
           </p>
         );
       })()}
 
       {isPreset && (
         <p className="mt-3 text-[11px] text-muted-foreground border-t border-border/40 pt-2">
-          Mode verrouillé sur les presets — clonez la pipeline pour le
-          modifier.
+          {t("modeBar.presetLocked")}
         </p>
       )}
     </div>

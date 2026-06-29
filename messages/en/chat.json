@@ -1,0 +1,347 @@
+{
+  "noProvider": {
+    "title": "One key, and Louis awakens.",
+    "description": "Louis runs on your own API keys — they stay encrypted on your instance. Connect one to start your first conversation.",
+    "allProvidersLink": "See all providers in settings"
+  },
+  "emptyState": {
+    "title": "A new conversation.",
+    "helpTitle": "Using the chat",
+    "helpBody": "Ask a question, attach a file (paperclip), or let Louis search the law (Légifrance, Pappers) and your documents. It can also draft documents as .docx. Every tool call is inspectable.",
+    "subtitle": "Ask a legal question, attach a file, or start from an example.",
+    "suggestion1": "Draft a formal notice for unpaid rent.",
+    "suggestion2": "Find recent case law on non-compete clauses.",
+    "suggestion3": "Summarise the key points of a court decision.",
+    "suggestion4": "Explain the regime of civil liability (art. 1240 French Civil Code).",
+    "footerAttach": "attach a file or a Louis document",
+    "footerMenu": "templates, multi-agent board and settings",
+    "footerSovereignty": "FR / EU / US badge = model sovereignty"
+  },
+  "composer": {
+    "placeholder": "Ask your question…",
+    "ariaLabel": "Your message to Louis",
+    "conversationAria": "Conversation with Louis",
+    "you": "You",
+    "assistant": "Louis",
+    "send": "Send",
+    "stop": "Stop",
+    "backToBottom": "Back to bottom",
+    "backToBottomAria": "Back to bottom of the conversation",
+    "attachDocument": "Attach a document",
+    "uploadFromComputer": "Upload from your computer",
+    "uploading": "{count, plural, one {Uploading # file…} other {Uploading # files…}}",
+    "dismissError": "Dismiss the error",
+    "removeAttachment": "Remove {filename}",
+    "attachmentFallback": "Document {id}",
+    "appliedSkills": "Applied skills",
+    "statusDone": "Louis's response is complete.",
+    "noConversation": "No active conversation.",
+    "dropOverlayLabel": "Drop to attach to the conversation",
+    "dropOverlayHint": "PDF, DOCX or text — 25 MB max per file",
+    "disclaimer": "Louis is not a lawyer. Check the sovereignty badge before sending sensitive data.",
+    "estimateBase": "{name}: ~{calls} AI calls per question",
+    "estimateEstimated": " · ~{cost} estimated",
+    "estimateUnpriced": " · no pricing available for this model",
+    "editHint": "Enter to send · Esc to cancel",
+    "cancel": "Cancel",
+    "editQuestion": "Edit this question",
+    "viewProject": "View the project",
+    "workflowsHeading": "Templates",
+    "manage": "Manage",
+    "noWorkflow": "No workflows yet.",
+    "createWorkflow": "Create a workflow →",
+    "noDocWithText": "No document with extracted text.",
+    "importFile": "Import a file →",
+    "attachToPrompt": "Attach to prompt",
+    "attachToPromptHint": "The extracted text will be inserted into the system prompt."
+  },
+  "usage": {
+    "detailsAria": "Conversation usage details",
+    "tokens": "{value} tokens",
+    "title": "Conversation usage",
+    "inputTokens": "Input tokens",
+    "outputTokens": "Output tokens",
+    "estimatedCost": "Estimated cost",
+    "pricingNote": "Public provider rates — actual billing may vary.",
+    "sovereigntyTitle": "Model sovereignty"
+  },
+  "docCards": {
+    "generated": "Generated document",
+    "edited": "Edited document",
+    "documentFallback": "Document",
+    "preview": "Preview",
+    "pdfType": "PDF document",
+    "docxType": "Word document (.docx)",
+    "view": "View",
+    "download": "Download",
+    "editsApplied": "{count, plural, one {# edit applied} other {# edits applied}}",
+    "editsFailed": "{count} failed",
+    "clickToPreview": "click to preview",
+    "before": "Before",
+    "after": "After",
+    "deletion": "(deletion)",
+    "moreEdits": "+ {count, plural, one {# more edit} other {# more edits}} in the document.",
+    "editsNotApplied": "Edits not applied",
+    "wordRevisionFooter": "Native Word revision marks — open the file in Word / Pages / LibreOffice and use the Review tab to Accept or Reject each change."
+  },
+  "tools": {
+    "labels": {
+      "pappers_search": "Pappers · search",
+      "pappers_get": "Pappers · company profile",
+      "legifrance_search": "Légifrance · search",
+      "search_documents": "Search in your documents",
+      "list_documents": "Document inventory",
+      "read_document": "Reading a document",
+      "find_in_document": "Exact search in a document",
+      "generate_document": "Document generation",
+      "edit_document": "Tracked-changes editing"
+    },
+    "pending": {
+      "pappers_search": "Searching Pappers…",
+      "pappers_get": "Fetching the company profile…",
+      "legifrance_search": "Searching Légifrance…",
+      "search_documents": "Searching your documents…",
+      "list_documents": "Listing your documents…",
+      "read_document": "Reading the document…",
+      "find_in_document": "Searching the document…",
+      "generate_document": "Creating the document…",
+      "edit_document": "Applying tracked changes…"
+    },
+    "editsSummary": "{count, plural, one {# edit} other {# edits}}",
+    "extractsCount": "{count, plural, one {# extract} other {# extracts}}",
+    "done": "Done",
+    "copyJson": "Copy JSON"
+  },
+  "citations": {
+    "pappersCompanySource": "Pappers — company profile",
+    "sourcesCount": "{count, plural, one {# source} other {# sources}}",
+    "companiesCount": "{count, plural, one {# company} other {# companies}}"
+  },
+  "composerMenu": {
+    "trigger": "Insert or configure",
+    "insert": "Insert",
+    "templates": "Templates",
+    "allTemplates": "See all templates",
+    "board": "Board",
+    "pipeline": "Pipeline",
+    "agents": "{count, plural, one {# agent} other {# agents}}",
+    "manageBoard": "Manage the board",
+    "settings": "Settings",
+    "providerKeys": "Provider keys",
+    "models": "Models",
+    "skills": "Skills",
+    "connectors": "Connectors",
+    "mcpServers": "MCP servers",
+    "allWorkflows": "All workflows",
+    "allSettings": "All settings"
+  },
+  "modelPicker": {
+    "aria": "Model",
+    "choose": "Choose a model",
+    "noActiveKey": "No active key —",
+    "configure": "configure"
+  },
+  "messageActions": {
+    "copied": "Copied",
+    "copy": "Copy response",
+    "regenerate": "Regenerate this response",
+    "fork": "Fork the conversation from here",
+    "regenerateWith": "Regenerate with another model",
+    "regenerateWithLabel": "Regenerate with",
+    "moreModels": "{count, plural, one {# more model — switch model in the composer} other {# more models — switch model in the composer}}"
+  },
+  "conversationItem": {
+    "unpin": "Unpin",
+    "pin": "Pin",
+    "rename": "Rename",
+    "fork": "Fork",
+    "exportMarkdown": "Export as Markdown",
+    "exportAudit": "Export audit (JSON)",
+    "print": "Print / PDF",
+    "moveTo": "Move to",
+    "removeFromProject": "Remove from project",
+    "actions": "Actions",
+    "delete": "Delete",
+    "deleteTitle": "Delete this conversation?",
+    "deleteDescription": "“{title}” will be permanently deleted. The messages cannot be recovered."
+  },
+  "agentSteps": {
+    "working": "Working",
+    "doneInSteps": "{count, plural, one {Done in # step} other {Done in # steps}}",
+    "interrupted": "Interrupted",
+    "retrying": "Retry {attempt}",
+    "verbWorking": "Working",
+    "verbDone": "Done",
+    "verbFailed": "Failed"
+  },
+  "theatre": {
+    "room": "Deliberation room",
+    "close": "Close",
+    "emptyDeliberation": "The council has not started deliberating yet.",
+    "finalSynthesis": "Final synthesis",
+    "round": "Round {round}",
+    "roundLower": "round {round}",
+    "inProgress": "in progress",
+    "viewDebate": "View the debate"
+  },
+  "livePanel": {
+    "boardInAction": "Board in action",
+    "roundSuffix": " · Round {round}/{total}",
+    "close": "Close",
+    "retrying": "retry {attempt}…",
+    "doneIn": "done in {latency}",
+    "verbs": {
+      "orchestrator": "synthesizing",
+      "research": "searching",
+      "citator": "checking citations",
+      "reviewer": "reviewing",
+      "drafting": "drafting",
+      "legifrance": "consulting Légifrance",
+      "default-chat": "thinking",
+      "default": "working"
+    }
+  },
+  "errors": {
+    "retry": "Retry",
+    "saturated": {
+      "title": "The model is saturated",
+      "description": "The provider (Mistral, OpenAI…) is temporarily refusing requests — its service capacity is exceeded. This is common at peak times on free/standard tiers.",
+      "hint": "Try again in 20-30 seconds, or switch model/provider (an agent on Claude/GPT instead of Mistral, for example).",
+      "hintLabel": "See my providers"
+    },
+    "rateLimit": {
+      "title": "Too many requests",
+      "description": "You have reached your provider's limit. Wait a few seconds before trying again.",
+      "hint": "If it persists, check your provider plan or add an alternative key.",
+      "hintLabel": "My providers"
+    },
+    "invalidKey": {
+      "title": "Invalid provider key",
+      "description": "The provider is rejecting your access key. Check that it is still valid and active.",
+      "hintLabel": "Check my key"
+    },
+    "modelNotFound": {
+      "title": "Model not found",
+      "description": "The selected model is not available with this provider. Choose another model in the picker."
+    },
+    "overload": {
+      "title": "The provider is overloaded",
+      "description": "Anthropic or OpenAI is reporting a global overload. Try again in a minute."
+    },
+    "noOutput": {
+      "title": "The model produced nothing",
+      "description": "The stream ended without generating a response. Often due to a provider timeout or a prompt that saturates the context. Try again, or shorten your question."
+    },
+    "incoherentHistory": {
+      "title": "Inconsistent conversation history",
+      "description": "The provider expects each tool result to be preceded by its call — a previous turn was probably interrupted during a tool call. Retrying restarts the request with a clean history. If the error persists, start a new conversation.",
+      "hintLabel": "New conversation"
+    },
+    "providerRefused": {
+      "title": "The provider refused the request",
+      "description": "The model or its aggregator (OpenRouter, OVH, Scaleway…) returned a generic error. Switching model in the composer picker often unblocks it.",
+      "hintLabel": "My models"
+    },
+    "network": {
+      "title": "Network problem",
+      "description": "The connection to the provider failed — check your Internet access or the provider's status. Try again in a few seconds."
+    },
+    "generic": {
+      "title": "An error occurred",
+      "description": "Unknown error while communicating with the provider."
+    }
+  },
+  "approval": {
+    "approved": "Action approved",
+    "denied": "Action denied",
+    "request": "Louis is requesting your approval",
+    "sensitiveTool": "Sensitive tool:",
+    "expired": " — request expired or resolved.",
+    "viewDetail": "View action details",
+    "approve": "Approve",
+    "deny": "Deny",
+    "timeout": "Without a response within 5 min, the action is denied."
+  },
+  "reasoning": {
+    "thinking": "Thinking",
+    "label": "Reasoning",
+    "preparingAria": "Louis is preparing his response",
+    "phrases": {
+      "thinking": "Thinking",
+      "analysis": "Analysis",
+      "examination": "Examination",
+      "reasoning": "Reasoning",
+      "deliberation": "Deliberation"
+    }
+  },
+  "editCard": {
+    "ignored": "Suggestion dismissed.",
+    "title": "Edit suggestion",
+    "kept": "Kept",
+    "before": "Before",
+    "after": "After",
+    "empty": "(empty)",
+    "reason": "Reason:",
+    "dismiss": "Dismiss",
+    "copied": "Copied",
+    "copy": "Copy",
+    "acceptCopy": "Accept and copy"
+  },
+  "docPanel": {
+    "regionAria": "Document preview",
+    "loading": "Loading…",
+    "loadError": "Loading error",
+    "saveError": "Save failed",
+    "renderError": "Render error",
+    "loadPdfError": "Unable to load the PDF.",
+    "previewTitle": "Faithful preview (PDF)",
+    "editTitle": "Edit the document",
+    "preview": "Preview",
+    "edit": "Edit",
+    "viewMarkdownTitle": "View the Markdown (what the AI reads)",
+    "backToPdfTitle": "Back to the faithful PDF preview",
+    "markdown": "Markdown",
+    "pdfPreview": "PDF preview",
+    "saveAsVersion": "Save as a new version",
+    "save": "Save",
+    "download": "Download",
+    "closeDoc": "Close the document",
+    "noExtractedText": "*No extracted text.*",
+    "footerEditing": "WYSIWYG editing — “Save” creates a new .docx version.",
+    "footerMarkdown": "Canonical Markdown — the exact text read by the AI (RAG, prompt, reviews).",
+    "footerPdf": "Faithful PDF preview. Switch to “Markdown” to see what the AI reads.",
+    "footerLibreOffice": "Paginated preview via LibreOffice — identical to the downloaded Word document.",
+    "footerDocx": "DOCX rendering via docx-preview — faithful to opening in Word/Pages.",
+    "toolbar": {
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "bold": "Bold",
+      "italic": "Italic",
+      "bulletList": "Bullet list",
+      "orderedList": "Numbered list",
+      "quote": "Quote"
+    }
+  },
+  "toolMeta": {
+    "chips": {
+      "document": "document",
+      "edit": "edit",
+      "search": "search",
+      "read": "read",
+      "legifrance": "Légifrance",
+      "judilibre": "Judilibre",
+      "bofip": "BOFIP",
+      "bodacc": "BODACC",
+      "pappers": "Pappers",
+      "history": "history",
+      "mcp": "MCP"
+    },
+    "summary": {
+      "tools": "{count, plural, one {# tool} other {# tools}}",
+      "documents": "{count, plural, one {# document} other {# documents}}",
+      "searches": "{count, plural, one {# search} other {# searches}}",
+      "reads": "{count, plural, one {# read} other {# reads}}"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconCheck, IconShieldQuestion, IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { toolMeta } from "./tool-meta";
@@ -28,6 +29,7 @@ export function ApprovalCard({
   data: ApprovalRequestData;
   isLive: boolean;
 }) {
+  const t = useTranslations("chat");
   const [state, setState] = useState<
     "pending" | "sending" | "approved" | "denied"
   >("pending");
@@ -73,23 +75,23 @@ export function ApprovalCard({
         <div className="min-w-0 flex-1">
           <p className="font-medium">
             {state === "approved"
-              ? "Action approuvée"
+              ? t("approval.approved")
               : state === "denied"
-                ? "Action refusée"
-                : "Louis demande votre accord"}
+                ? t("approval.denied")
+                : t("approval.request")}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Outil sensible :{" "}
-            <span className="font-medium text-foreground/80">{meta.chip}</span>{" "}
+            {t("approval.sensitiveTool")}{" "}
+            <span className="font-medium text-foreground/80">{t(`toolMeta.chips.${meta.chipKey}`)}</span>{" "}
             <code className="rounded bg-muted px-1 py-px text-[11px]">
               {data.toolName}
             </code>
-            {state === "pending" && !isLive && " — demande expirée ou résolue."}
+            {state === "pending" && !isLive && t("approval.expired")}
           </p>
           {inputPreview && (
             <details className="mt-1.5">
               <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                Voir le détail de l&apos;action
+                {t("approval.viewDetail")}
               </summary>
               <pre className="mt-1 max-h-40 overflow-auto rounded-md bg-muted/60 p-2 text-[11px] leading-relaxed">
                 {inputPreview}
@@ -105,7 +107,7 @@ export function ApprovalCard({
                 className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 <IconCheck className="size-3.5" />
-                Approuver
+                {t("approval.approve")}
               </button>
               <button
                 type="button"
@@ -114,10 +116,10 @@ export function ApprovalCard({
                 className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
               >
                 <IconX className="size-3.5" />
-                Refuser
+                {t("approval.deny")}
               </button>
               <span className="text-[11px] text-muted-foreground">
-                Sans réponse sous 5 min, l&apos;action est refusée.
+                {t("approval.timeout")}
               </span>
             </div>
           )}

@@ -1,0 +1,41 @@
+{
+  "eyebrow": "Dashboard",
+  "greeting": "Hello.",
+  "greetingNamed": "Hello, {name}.",
+  "gettingStartedTitle": "Getting started",
+  "gettingStartedBody": "New to Louis? The 5-step onboarding path: connect a provider key, your legal sources, then start your first conversation.",
+  "stats": {
+    "thisMonth": "This month",
+    "projects": "Projects",
+    "documents": "Documents",
+    "activeProviders": "Active providers"
+  },
+  "month": {
+    "costEstimated": "estimated cost",
+    "capReached": "cap reached",
+    "percent": "{pct}%"
+  },
+  "recent": {
+    "title": "Resume.",
+    "subtitle": "Your last five conversations. Click to pick up where you left off.",
+    "inProject": "in a project",
+    "newConversation": "New conversation"
+  },
+  "readiness": {
+    "heading": "Getting started",
+    "subtitle": "A few steps to get Louis up and running on your instance.",
+    "stepProvider": "Add an AI provider key",
+    "stepProviderHint": "Mistral, Scaleway, OVH, Albert, Anthropic, or a compatible endpoint.",
+    "stepModel": "Enable at least one model",
+    "stepModelHint": "Without an enabled model, the chat stays empty.",
+    "stepConnector": "Connect a legal source",
+    "stepConnectorHint": "Légifrance (PISTE), Pappers.",
+    "optional": "optional",
+    "startConversation": "Start a first conversation"
+  },
+  "firstSteps": {
+    "importDocument": "Import a first document",
+    "createProject": "Create a project for a client matter",
+    "startConversation": "Start a first conversation"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "mistral": "Modèles français de référence — Le Chat, Mistral Large, Codestral.",
+  "scaleway": "Modèles open-source hébergés en France par Scaleway.",
+  "ovh": "Endpoints IA hébergés en France par OVHcloud.",
+  "albert": "Plateforme IA souveraine de l'État français.",
+  "anthropic": "Claude Opus, Sonnet, Haiku — modèles US.",
+  "openai": "GPT-4, GPT-5, o-séries — modèles US.",
+  "openai_compatible": "Ollama, vLLM, llama.cpp, LiteLLM ou tout serveur OpenAI-compatible.",
+  "openrouter": "Agrégateur multi-providers (Claude, GPT, Mistral, Llama, Gemini…) avec une clé unique."
+}

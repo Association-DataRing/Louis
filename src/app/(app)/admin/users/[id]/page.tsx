@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import {
   IconArrowLeft,
@@ -30,6 +31,7 @@ export default async function AdminUserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   await requireAdmin();
+  const t = await getTranslations("admin.users");
   const session = await auth();
   if (!session?.user) redirect("/login");
   const { id } = await params;
@@ -115,7 +117,7 @@ export default async function AdminUserDetailPage({
         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6"
       >
         <IconArrowLeft className="size-3.5" />
-        Tous les utilisateurs
+        {t("backToUsers")}
       </Link>
 
       <header className="mb-8 flex items-start gap-4">
@@ -130,24 +132,28 @@ export default async function AdminUserDetailPage({
             {user.role === "admin" && (
               <Badge variant="default" className="gap-1">
                 <IconShield className="size-3" />
-                Admin
+                {t("badgeAdmin")}
               </Badge>
             )}
-            {!user.isActive && <Badge variant="outline">désactivé</Badge>}
+            {!user.isActive && (
+              <Badge variant="outline">{t("badgeDisabled")}</Badge>
+            )}
           </div>
           <p className="mt-1 text-muted-foreground">{user.email}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Créé le{" "}
-            {new Date(user.createdAt).toLocaleDateString("fr-FR", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
+            {t("createdOn", {
+              date: new Date(user.createdAt).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              }),
             })}
             {user.lastLogin && (
               <>
                 {" · "}
-                Dernière connexion{" "}
-                {new Date(user.lastLogin).toLocaleDateString("fr-FR")}
+                {t("lastLoginOn", {
+                  date: new Date(user.lastLogin).toLocaleDateString("fr-FR"),
+                })}
               </>
             )}
           </p>
@@ -158,22 +164,22 @@ export default async function AdminUserDetailPage({
       <section className="mb-12 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 border-y border-border py-6">
         <StatBlock
           icon={IconMessageCircle}
-          label="Conversations"
+          label={t("detailStatConversations")}
           value={convCount.toString()}
         />
         <StatBlock
           icon={IconFolder}
-          label="Documents"
+          label={t("detailStatDocuments")}
           value={docCount.toString()}
         />
         <StatBlock
           icon={IconFolders}
-          label="Projets"
+          label={t("detailStatProjects")}
           value={projectCount.toString()}
         />
         <StatBlock
           icon={IconCoin}
-          label="Coût ce mois"
+          label={t("detailStatMonthCost")}
           value={formatTotals(monthCost)}
         />
       </section>
@@ -183,7 +189,7 @@ export default async function AdminUserDetailPage({
         <section className="mb-10">
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-heading text-lg tracking-tight">
-              Plafond mensuel
+              {t("monthlyQuota")}
             </h2>
             <p className="text-sm tabular-nums">
               {(monthCostCents / 100).toFixed(2).replace(".", ",")} €{" "}
@@ -195,7 +201,7 @@ export default async function AdminUserDetailPage({
           <div
             className="h-2 w-full rounded-full bg-muted overflow-hidden"
             role="progressbar"
-            aria-label="Consommation du quota"
+            aria-label={t("quotaAria")}
             aria-valuenow={monthCostCents}
             aria-valuemin={0}
             aria-valuemax={quotaCents ?? undefined}
@@ -213,8 +219,7 @@ export default async function AdminUserDetailPage({
           </div>
           {quotaPercent! >= 100 && (
             <p className="mt-2 text-xs text-destructive">
-              Quota dépassé — les nouvelles requêtes IA sont refusées
-              jusqu&apos;au mois prochain.
+              {t("quotaExceeded")}
             </p>
           )}
         </section>
@@ -223,11 +228,11 @@ export default async function AdminUserDetailPage({
       <section className="grid lg:grid-cols-2 gap-10 mb-10">
         <div>
           <h2 className="font-heading text-lg tracking-tight mb-3">
-            Conversations récentes
+            {t("recentConversations")}
           </h2>
           {recentConvs.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Aucune conversation.
+              {t("noConversations")}
             </p>
           ) : (
             <ul className="divide-y divide-border border-y border-border">
@@ -248,11 +253,11 @@ export default async function AdminUserDetailPage({
 
         <div>
           <h2 className="font-heading text-lg tracking-tight mb-3">
-            Journal d&apos;activité
+            {t("activityLog")}
           </h2>
           {recentAudit.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Aucun événement enregistré.
+              {t("noEvents")}
             </p>
           ) : (
             <ul className="divide-y divide-border border-y border-border">

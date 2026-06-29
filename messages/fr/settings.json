@@ -1,0 +1,494 @@
+{
+  "general": {
+    "title": "Général",
+    "subtitle": "Préférences globales de l'application.",
+    "appearanceHeading": "Apparence",
+    "appearanceHelp": "Thème de l'interface. « Système » suit votre macOS / Windows.",
+    "languageHeading": "Langue",
+    "languageHelp": "Langue de l'interface. Le choix est conservé sur cet appareil.",
+    "sovereigntyHeading": "Souveraineté",
+    "sovereigntyBody": "Louis n'envoie aucune donnée à un serveur tiers Louis. Toutes les requêtes vers les providers IA partent directement de votre serveur avec vos propres clés. Le badge FR / UE / US affiché dans le chat indique d'où sort la donnée à chaque message.",
+    "aboutHeading": "À propos",
+    "aboutBody": "Louis · version alpha · AGPL-3.0 · Auto-hébergé. Vos données ne quittent jamais votre infrastructure sauf via les providers IA que vous configurez explicitement."
+  },
+  "layout": {
+    "back": "Retour",
+    "title": "Paramètres",
+    "nav": {
+      "account": "Compte",
+      "general": "Général",
+      "profile": "Profil",
+      "security": "Sécurité",
+      "usage": "Coûts & usage",
+      "integrations": "Intégrations",
+      "providers": "Providers IA",
+      "models": "Modèles",
+      "ocr": "OCR",
+      "skills": "Skills",
+      "memory": "Mémoire",
+      "connectors": "Connecteurs",
+      "mcp": "Serveurs MCP",
+      "administration": "Administration",
+      "users": "Utilisateurs"
+    }
+  },
+  "profile": {
+    "badge": { "admin": "Administrateur" },
+    "createdAt": "Compte créé le {date}",
+    "lastLogin": "· Dernière connexion {date}",
+    "sections": { "activity": "Activité", "identity": "Identité", "security": "Sécurité" },
+    "stats": { "conversations": "Conversations", "projects": "Projets", "documents": "Documents", "reviews": "Analyses" },
+    "nameForm": { "label": "Nom affiché", "save": "Enregistrer", "saving": "Enregistrement…" },
+    "passwordForm": { "current": "Mot de passe actuel", "new": "Nouveau mot de passe", "hint": "Minimum 10 caractères. Un gestionnaire de mots de passe est recommandé.", "confirm": "Confirmation", "submit": "Changer le mot de passe", "saving": "Enregistrement…" },
+    "toast": { "nameUpdated": "Nom mis à jour.", "passwordUpdated": "Mot de passe mis à jour." }
+  },
+  "security": {
+    "eyebrow": "Compte",
+    "title": "Sécurité",
+    "subtitle": "Protégez l'accès à votre compte.",
+    "enable": "Activer la 2FA",
+    "cancel": "Annuler",
+    "twoFactor": {
+      "title": "Authentification à deux facteurs",
+      "description": "Renforcez la sécurité de votre compte avec un code temporaire (TOTP) en plus de votre mot de passe. Recommandé surtout pour les comptes administrateur.",
+      "enabledTitle": "Authentification à deux facteurs activée",
+      "enabledDescription": "Un code à 6 chiffres vous sera demandé à chaque connexion.",
+      "disableLabel": "Saisissez un code 2FA actuel pour désactiver",
+      "disable": "Désactiver la 2FA"
+    },
+    "enrolling": {
+      "scanInstruction": "Scannez ce QR code avec votre application d'authentification (Google Authenticator, Aegis, 1Password…).",
+      "manualEntry": "Impossible de scanner ? Saisie manuelle",
+      "codeLabel": "Code à 6 chiffres généré par l'app"
+    },
+    "done": {
+      "title": "2FA activée",
+      "backupCodesNotice": "Conservez ces <strong>codes de secours</strong> en lieu sûr : ils permettent de vous connecter si vous perdez votre téléphone. Chacun n'est utilisable qu'une fois. <strong>Ils ne seront plus jamais affichés.</strong>",
+      "acknowledge": "J'ai noté mes codes"
+    },
+    "toast": {
+      "startError": "Impossible de démarrer l'enrôlement.",
+      "enabled": "2FA activée.",
+      "disabled": "2FA désactivée.",
+      "disableError": "Impossible de désactiver la 2FA."
+    }
+  },
+  "models": {
+    "mine": {
+      "eyebrow": "Bibliothèque",
+      "title": "Mes modèles",
+      "subtitle": "Les modèles que vous avez ajoutés à votre plateforme. Seuls ceux listés ici apparaissent dans les pickers du Chat et du Board. Parcourez la bibliothèque pour découvrir et ajouter de nouveaux modèles.",
+      "explore": "Explorer la bibliothèque",
+      "stats": {
+        "added": { "label": "Modèles ajoutés", "hint": "disponibles dans Chat & Board" },
+        "providers": { "label": "Providers actifs", "hint": "clés API configurées" },
+        "orphans": { "label": "Orphelins", "hint": "clé provider retirée — à nettoyer" }
+      },
+      "modelCount": "{count, plural, one {# modèle} other {# modèles}}",
+      "empty": {
+        "title": "Aucun modèle ajouté.",
+        "body": "Allez explorer la bibliothèque pour choisir les modèles que vous voulez rendre disponibles dans le Chat et le Board.",
+        "cta": "Ouvrir la bibliothèque"
+      }
+    },
+    "toast": {
+      "removed": { "title": "Modèle retiré", "description": "{label} ne sera plus disponible dans les pickers." },
+      "removeFailed": "Suppression impossible",
+      "orphansPruned": "{count, plural, one {# modèle orphelin retiré} other {# modèles orphelins retirés}}",
+      "pruneFailed": "Nettoyage impossible",
+      "modelsAdded": "{count, plural, one {# modèle ajouté} other {# modèles ajoutés}}",
+      "addFailed": "Ajout impossible"
+    },
+    "toggle": { "removeAria": "Retirer {label}" },
+    "orphans": {
+      "title": "{count, plural, one {# modèle sans provider actif} other {# modèles sans provider actif}}",
+      "body": "Ils restent dans votre bibliothèque mais ne sont pas utilisables tant que vous n'avez pas de clé configurée pour leur provider d'origine.",
+      "cleaning": "Nettoyage…",
+      "clean": "Nettoyer"
+    },
+    "library": {
+      "back": "Mes modèles",
+      "eyebrow": "Bibliothèque",
+      "title": "Catalogue de modèles",
+      "subtitle": "Choisissez un provider, parcourez son catalogue live, cochez les modèles que vous voulez rendre disponibles dans Louis. Seuls les modèles ajoutés ici apparaîtront dans les pickers du Chat et du Board.",
+      "providerLabel": "Provider",
+      "providerHint": "Choisissez la clé pour interroger son catalogue live.",
+      "keyWord": "clé",
+      "docs": "docs",
+      "searchPlaceholder": "Rechercher par nom, id, vendor…",
+      "refresh": "Rafraîchir",
+      "selectAll": "Tout cocher",
+      "deselect": "Décocher ({count})",
+      "idle": "Sélectionnez un provider pour voir son catalogue.",
+      "loading": "Récupération du catalogue…",
+      "errorTitle": "Impossible de récupérer le catalogue.",
+      "retry": "Réessayer",
+      "httpError": "Erreur HTTP {status}",
+      "networkError": "Erreur réseau",
+      "thisProvider": "ce provider",
+      "returnedSuffix": "{count, plural, one {modèle retourné par l'API de {provider}} other {modèles retournés par l'API de {provider}}}",
+      "afterFilter": "après filtre",
+      "selectedSuffix": "{count, plural, one {sélectionné} other {sélectionnés}}",
+      "noMatch": "Aucun modèle ne correspond à votre recherche.",
+      "alreadyAddedAria": "Déjà ajouté",
+      "selectAria": "Sélectionner {label}",
+      "priceTitle": "Prix par million de tokens (entrée / sortie)",
+      "priceUnknown": "prix inconnu",
+      "alreadyAddedBadge": "déjà ajouté",
+      "modelCount": "{count, plural, one {# modèle} other {# modèles}}",
+      "readyToAdd": "{count, plural, one {prêt à être ajouté.} other {prêts à être ajoutés.}}",
+      "cancel": "Annuler",
+      "adding": "Ajout…",
+      "addToPlatform": "Ajouter à ma plateforme",
+      "noProvider": {
+        "title": "Configurez d'abord un provider.",
+        "body": "La bibliothèque interroge l'API de vos providers pour vous montrer leurs modèles disponibles."
+      }
+    }
+  },
+  "mcp": {
+    "title": "Serveurs MCP",
+    "subtitle": "Branchez vos propres serveurs Model Context Protocol pour étendre Louis avec vos outils maison ou ceux de la communauté — sans modifier le code source.",
+    "badge": {
+      "servers": "{count, plural, one {# serveur} other {# serveurs}}",
+      "active": "{count, plural, one {# actif} other {# actifs}}",
+      "toolsCached": "{count, plural, one {# outil en cache} other {# outils en cache}}"
+    },
+    "empty": {
+      "title": "Aucun serveur MCP",
+      "description": "Connectez un serveur Model Context Protocol pour offrir à Louis des outils supplémentaires (recherche interne, documents intranet, base CRM, n'importe quoi)."
+    },
+    "explanation": {
+      "title": "Qu'est-ce qu'un serveur MCP ?",
+      "body": "Le <link>Model Context Protocol</link> est un standard ouvert permettant aux LLM d'appeler des outils externes. Vous pouvez écrire un serveur MCP qui expose vos APIs internes, votre wiki, votre CRM, et le brancher ici sans modifier Louis. Transport supporté en v0.1 : SSE et HTTP streamable."
+    },
+    "addDialog": {
+      "trigger": "Ajouter un serveur MCP",
+      "title": "Ajouter un serveur MCP",
+      "description": "Une fois ajouté, Louis se connecte au serveur pour récupérer la liste de ses outils. Les headers (Bearer token, etc.) sont chiffrés avant stockage.",
+      "labelField": "Libellé",
+      "labelPlaceholder": "ex. CRM interne",
+      "transport": "Transport",
+      "transportSse": "SSE (Server-Sent Events)",
+      "transportHttp": "HTTP Streamable",
+      "urlField": "URL du serveur",
+      "headersField": "Headers (optionnel)",
+      "headersHelp": "Format JSON. Laisser vide si aucune authentification.",
+      "cancel": "Annuler",
+      "submitting": "Ajout…",
+      "submit": "Ajouter"
+    },
+    "row": {
+      "toolCount": "{count, plural, one {# outil} other {# outils}}",
+      "notSynced": "non synchronisé",
+      "syncError": "erreur de sync",
+      "synced": "synchronisé",
+      "toggleAria": "Activer ce serveur",
+      "actionsAria": "Actions",
+      "syncTools": "Synchroniser les outils",
+      "delete": "Supprimer",
+      "deleteConfirmTitle": "Supprimer ce serveur MCP ?",
+      "deleteConfirmDescription": "« {label} » sera supprimé. Les outils qu'il expose ne seront plus disponibles dans les conversations. La configuration (URL, secrets) est définitivement perdue."
+    }
+  },
+  "memory": {
+    "eyebrow": "Intégrations",
+    "title": "Mémoire des dossiers",
+    "description": "Faits durables extraits de vos conversations, par dossier (parties, échéances, conventions de rédaction…). Un fait n'influence les réponses qu'une fois <strong>validé</strong> par vous — rien n'est utilisé automatiquement. Chaque fait reste rattaché à son dossier (jamais partagé entre clients).",
+    "empty": "Aucun fait mémorisé pour l'instant. L'extraction automatique s'active via <code>LOUIS_MEMORY_EXTRACTION=1</code>.",
+    "pendingHeading": "À valider",
+    "pendingEmpty": "Rien en attente.",
+    "approvedHeading": "Validés",
+    "approvedEmpty": "Aucun fait validé.",
+    "category": {
+      "party": "Partie",
+      "deadline": "Échéance",
+      "convention": "Convention",
+      "fact": "Fait",
+      "preference": "Préférence"
+    },
+    "approveTitle": "Valider ce fait",
+    "unapproveTitle": "Remettre en attente",
+    "deleteTitle": "Supprimer",
+    "toast": {
+      "approved": "Fait validé.",
+      "unapproved": "Fait remis en attente.",
+      "deleted": "Fait supprimé.",
+      "error": "Action impossible."
+    }
+  },
+  "skills": {
+    "eyebrow": "Compétences IA",
+    "title": "Skills",
+    "subtitle": "Mini-instructions que Louis injecte dans le prompt système quand un détecteur identifie qu'elles sont pertinentes à votre demande. Vous créez vos propres compétences — rien n'est livré par défaut, votre cabinet décide.",
+    "countLine": "{count, plural, one {# compétence} other {# compétences}} · {active, plural, one {# active} other {# actives}}",
+    "triggerLabel": "Activée quand :",
+    "aside": "<strong>Comment ça marche.</strong> À chaque message, un petit modèle (~1k tokens) regarde votre demande et la liste des compétences actives. S'il en détecte une de pertinente, son instruction système est ajoutée au modèle principal — sans intervention de votre part. Coût : quelques millièmes par requête.",
+    "emptyState": {
+      "title": "Aucune compétence pour l'instant.",
+      "descNoTemplates": "Créez votre propre compétence depuis zéro.",
+      "descWithTemplates": "Créez votre propre compétence depuis zéro ou parcourez la <strong>bibliothèque d'exemples</strong> (à adapter à la pratique de votre cabinet)."
+    },
+    "formDialog": {
+      "createTrigger": "Nouvelle compétence",
+      "editTrigger": "Éditer",
+      "createTitle": "Nouvelle compétence",
+      "editTitle": "Éditer la compétence",
+      "description": "Une compétence est une mini-instruction que Louis injecte automatiquement dans le prompt système quand le détecteur identifie qu'elle est pertinente à votre demande.",
+      "nameLabel": "Nom",
+      "namePlaceholder": "ex. Vérification de citations",
+      "descLabel": "Description courte",
+      "descPlaceholder": "À quoi sert cette compétence ?",
+      "hintLabel": "Quand l'activer",
+      "hintLabelHint": "(sert au détecteur)",
+      "hintPlaceholder": "ex. Quand l'utilisateur cite une jurisprudence ou un article de loi",
+      "hintHelp": "Phrase descriptive lue par un petit modèle qui décide d'activer ou non la compétence selon la demande.",
+      "promptLabel": "Instruction système",
+      "promptPlaceholder": "Le texte qui sera injecté dans le prompt système quand la compétence est activée…",
+      "promptHelp": "Soyez explicite, donnez des exemples si nécessaire. Cette instruction prend le pas sur le comportement par défaut.",
+      "cancel": "Annuler",
+      "creating": "Création…",
+      "saving": "Enregistrement…",
+      "create": "Créer",
+      "save": "Enregistrer"
+    },
+    "rowActions": { "aria": "Actions pour {name}", "edit": "Éditer", "delete": "Supprimer" },
+    "deleteDialog": {
+      "title": "Supprimer cette compétence ?",
+      "description": "« {name} » sera définitivement supprimée. L'IA ne l'activera plus automatiquement.",
+      "cancel": "Annuler",
+      "deleting": "Suppression…",
+      "confirm": "Supprimer"
+    },
+    "toggle": { "ariaEnable": "Activer {name}", "ariaDisable": "Désactiver {name}" },
+    "templates": {
+      "trigger": "Bibliothèque d'exemples",
+      "heading": "Bibliothèque d'exemples",
+      "description": "Sept exemples de compétences juridiques pour démarrer. Importez ceux qui vous intéressent — vous pourrez ensuite les éditer ou les supprimer librement.",
+      "warning": "Ces exemples sont fournis comme <strong>points de départ</strong>. Relisez-les et adaptez-les à la pratique de votre cabinet — Louis n'impose jamais de prompt préconfiguré.",
+      "triggerLabel": "Activée quand :",
+      "imported": "Importée",
+      "import": "Importer",
+      "importing": "Import…",
+      "viewPrompt": "Voir l'instruction système"
+    },
+    "toast": {
+      "created": "Compétence créée",
+      "updated": "Compétence mise à jour",
+      "deleted": "Compétence supprimée",
+      "deleteError": "Suppression impossible",
+      "enabled": "Compétence activée",
+      "disabled": "Compétence désactivée",
+      "toggleError": "Échec",
+      "imported": "Compétence importée",
+      "importedDescription": "{name} — éditable dans votre liste",
+      "importError": "Import impossible"
+    }
+  },
+  "providers": {
+    "heading": "Gestion des clés API",
+    "moduleHelp": {
+      "title": "Connecter un provider IA",
+      "body": "Louis fonctionne en Bring Your Own Key : ajoutez votre clé, activez-la, testez la connexion. Commencez par <strong>Mistral</strong> (🇫🇷) — c'est lui qui alimente la recherche dans vos documents."
+    },
+    "intro": "Connectez vos propres clés. Une seule règle : <strong>vos clés ne quittent jamais votre instance</strong>.",
+    "security": {
+      "title": "Sécurité des clés API",
+      "body": "Toutes les clés sont chiffrées <strong>AES-256-GCM</strong> avant d'être stockées en base. Le décryptage n'intervient qu'à l'instant de l'appel au provider, côté serveur. Aucun appel API n'est relayé par un service tiers."
+    },
+    "groups": {
+      "souverains": {
+        "title": "Souverains",
+        "subtitle": "Hébergés en France ou par l'État. Privilégiez ces providers pour les dossiers couverts par le secret professionnel."
+      },
+      "international": {
+        "title": "International",
+        "subtitle": "Modèles américains les plus capables. Vérifiez vos engagements contractuels avant d'envoyer des données sensibles."
+      },
+      "agregateurs": {
+        "title": "Agrégateurs",
+        "subtitle": "Une seule clé pour accéder au catalogue multi-providers (Claude, GPT, Mistral, Llama, Gemini…). Pratique comme fallback en cas de saturation d'un fournisseur."
+      },
+      "selfHosted": {
+        "title": "Self-hosted",
+        "subtitle": "Serveurs d'inférence auto-hébergés (Ollama, vLLM, llama.cpp, LiteLLM…) via API OpenAI-compatible."
+      }
+    },
+    "card": {
+      "editLabel": "Modifier {label}",
+      "configureLabel": "Configurer {label}",
+      "toggleAria": "Activer ce provider",
+      "docsAria": "Documentation",
+      "actionsAria": "Actions",
+      "edit": "Modifier",
+      "configure": "Configurer"
+    },
+    "status": { "active": "Activé", "inactive": "Inactif", "configured": "Configuré", "notConfigured": "Non configuré" },
+    "test": { "connected": "connecté", "authError": "auth invalide", "error": "erreur" },
+    "menu": {
+      "addEndpoint": "Ajouter un endpoint",
+      "addKey": "Ajouter une autre clé",
+      "test": "Tester la connexion",
+      "setDefault": "Définir par défaut",
+      "delete": "Supprimer"
+    },
+    "dialog": {
+      "titleCreate": "Configurer · {label}",
+      "titleEdit": "Modifier · {label}",
+      "descCreate": "Votre clé est chiffrée avant d'être stockée (AES-256-GCM). Personne ne peut la voir, pas même l'équipe Louis.",
+      "descEdit": "Vous pouvez changer le libellé ou remplacer la clé. Laisser un champ vide pour le conserver tel quel.",
+      "labelField": "Libellé",
+      "labelPlaceholder": "ex. Compte cabinet {label}",
+      "apiKeyField": "Clé API",
+      "keepEmpty": "(laisser vide pour conserver)",
+      "apiKeyPlaceholder": "sk-…",
+      "getKey": "Obtenir une clé",
+      "baseUrlField": "URL de base",
+      "baseUrlPlaceholder": "https://…",
+      "saving": "Enregistrement…"
+    },
+    "common": { "cancel": "Annuler" },
+    "delete": {
+      "title": "Supprimer cette clé ?",
+      "description": "« {label} » sera supprimée. La clé chiffrée est retirée de votre instance — les conversations utilisant ce provider échoueront tant qu'une nouvelle clé n'est pas saisie."
+    }
+  },
+  "connectors": {
+    "heading": "Connecteurs juridiques",
+    "moduleHelp": {
+      "title": "Brancher vos sources de droit",
+      "body": "PISTE donne accès à Légifrance ; Pappers aux données entreprises. Vos identifiants restent chiffrés sur votre instance. Vous pouvez aussi brancher n'importe quel serveur MCP."
+    },
+    "intro": "Branchez vos accès aux sources de droit français. Vos identifiants, vos quotas, vos contrats — Louis ne s'interpose pas.",
+    "security": {
+      "title": "Sécurité des identifiants",
+      "body": "Les identifiants (client_id, client_secret, tokens API) sont chiffrés <strong>AES-256-GCM</strong> avant d'être stockés en base. L'authentification auprès des APIs externes se fait exclusivement depuis votre serveur Louis."
+    },
+    "sections": {
+      "available": "Disponibles",
+      "openData": "Open data — toujours actif",
+      "comingSoon": "Bientôt"
+    },
+    "category": { "official": "Officiel", "commercial": "Commercial" },
+    "comingSoon": {
+      "badge": "Bientôt",
+      "doctrine": { "description": "Jurisprudence + doctrine enrichie, recherche sémantique." },
+      "lefebvre": { "description": "Encyclopédies, codes commentés, actualité juridique." },
+      "inpi": { "description": "Marques, brevets, RNCS — accès direct sans PISTE." }
+    },
+    "openDataCard": {
+      "bodacc": { "description": "Annonces civiles et commerciales : créations, modifications, radiations, ventes/cessions et procédures collectives. Source DILA en données ouvertes — aucune configuration requise." }
+    },
+    "openData": {
+      "alwaysActive": "Toujours actif",
+      "noConfig": "Données ouvertes — aucune configuration requise.",
+      "learnMore": "En savoir plus"
+    },
+    "card": {
+      "toggleAria": "Activer ce connecteur",
+      "docsAria": "Documentation",
+      "actionsAria": "Actions",
+      "edit": "Modifier",
+      "configure": "Configurer",
+      "editLabel": "Modifier {label}",
+      "configureLabel": "Configurer {label}",
+      "unlocks": "Débloque :",
+      "comingSoon": "à venir :"
+    },
+    "status": { "active": "Activé", "inactive": "Inactif", "configured": "Configuré", "notConfigured": "Non configuré" },
+    "menu": { "test": "Tester la connexion", "delete": "Supprimer" },
+    "toast": {
+      "success": "Connexion réussie",
+      "authError": "Identifiants refusés (401/403)",
+      "configError": "Connecteur non configuré ou désactivé",
+      "networkError": "Connexion impossible (réseau/serveur)"
+    },
+    "test": {
+      "ok": "Connecté",
+      "authError": "Auth refusée",
+      "configError": "Non configuré",
+      "networkError": "Injoignable",
+      "lastTest": "Dernier test : {label}"
+    },
+    "dialog": {
+      "titleCreate": "Configurer · {label}",
+      "titleEdit": "Modifier · {label}",
+      "descCreate": "Vos identifiants sont chiffrés avant stockage (AES-256-GCM). Aucun appel à cette API ne transite par un service tiers.",
+      "descEdit": "Modifier le libellé ou rotater les identifiants. Les champs vides sont conservés à l'identique.",
+      "labelField": "Libellé",
+      "labelPlaceholder": "ex. Compte cabinet {label}",
+      "keepEmpty": "(laisser vide pour conserver)",
+      "getCredentials": "S'inscrire / obtenir les identifiants",
+      "saving": "Enregistrement…"
+    },
+    "common": { "cancel": "Annuler" },
+    "delete": {
+      "title": "Supprimer ce connecteur ?",
+      "description": "« {label} » sera supprimé. La clé chiffrée est retirée — l'intégration ne fonctionnera plus tant qu'une nouvelle clé n'est pas saisie."
+    }
+  },
+  "ocr": {
+    "title": "OCR des PDF scannés",
+    "subtitle": "Les PDF à couche texte sont convertis en Markdown 100 % localement. Les PDF scannés (images) nécessitent de l'OCR : choisissez le moteur, ou laissez Louis décider automatiquement.",
+    "engine": {
+      "mistral": "Mistral OCR (endpoint dédié)",
+      "vision": "Modèle de vision",
+      "tesseract": "Tesseract local (souverain)"
+    },
+    "currentEngine": "Moteur actuellement utilisé : {engine}",
+    "degraded": "Aucune clé OCR/vision configurée : Louis utilise Tesseract local (souverain et gratuit, mais de qualité moindre sur le juridique, les tableaux et le manuscrit). Pour une bien meilleure qualité, ajoutez une clé Mistral (OCR dédié) ou une clé d'un provider vision (OpenRouter, OpenAI, Anthropic…) dans <providers>Providers</providers>.",
+    "legend": "Moteur OCR",
+    "mode": {
+      "auto": {
+        "title": "Automatique (recommandé)",
+        "desc": "Mistral OCR si clé Mistral → sinon un modèle de vision via une clé disponible → sinon Tesseract local."
+      },
+      "mistral": {
+        "title": "Mistral OCR (endpoint dédié)",
+        "desc": "Meilleure qualité/coût sur du document. Nécessite une clé Mistral active."
+      },
+      "vision": {
+        "title": "Modèle de vision (au choix)",
+        "desc": "OCR via un modèle multimodal de votre choix (Pixtral via OpenRouter, GPT-4o, Claude…)."
+      },
+      "tesseract": {
+        "title": "Tesseract local (souverain)",
+        "desc": "100 % local, gratuit, hors-ligne. Qualité moindre sur tableaux et manuscrit."
+      }
+    },
+    "noMistralKey": "Aucune clé Mistral active — repli sur Tesseract tant qu'elle n'est pas ajoutée.",
+    "noProviderKey": "Aucune clé provider active. Ajoutez-en une dans <providers>Providers</providers> pour utiliser un modèle de vision.",
+    "providerKeyLabel": "Clé provider",
+    "modelLabel": "Modèle (vision-capable)",
+    "modelPlaceholder": "ex. mistralai/pixtral-large-2411",
+    "modelHint": "Le modèle doit accepter les images. Suggestions pour ce provider : {suggestions}.",
+    "saved": "Réglage OCR enregistré.",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer"
+  },
+  "usage": {
+    "title": "Coûts & usage.",
+    "subtitle": "Estimation selon les tarifs publics. Les valeurs réelles peuvent varier (remises négociées, changements de tarification).",
+    "estimatedThisMonth": "Coût estimé ce mois",
+    "inputTokens": "Tokens entrée",
+    "outputTokens": "Tokens sortie",
+    "aiMessages": "Messages IA",
+    "monthlyCap": "Plafond mensuel",
+    "capProgressLabel": "Consommation du plafond mensuel",
+    "capReached": "Plafond atteint — vos requêtes IA sont bloquées jusqu'au mois prochain ou jusqu'à un relèvement par l'administrateur de votre cabinet.",
+    "capApproaching": "Vous approchez du plafond ({pct} %).",
+    "capDefined": "Défini par l'administrateur de votre cabinet.",
+    "perModelHeading": "Détail par modèle.",
+    "noMessagesThisMonth": "Aucun message IA ce mois-ci.",
+    "unspecifiedModel": "(non spécifié)",
+    "msgUnit": "{count} msg",
+    "sinceSignupHeading": "Depuis votre inscription.",
+    "totalEstimated": "Total estimé",
+    "messages": "Messages",
+    "toolReliabilityHeading": "Fiabilité des outils.",
+    "toolCallsSummary": "{count, plural, one {# appel} other {# appels}} ce mois · {rate} % de succès",
+    "noToolCalls": "Aucun appel d'outil ce mois-ci (Légifrance, Pappers, recherche documentaire, génération de documents, MCP).",
+    "callsCount": "{count, plural, one {# appel} other {# appels}}",
+    "disclaimer": "Les coûts utilisent les grilles publiques des providers (mai 2026). Pour les modèles auto-hébergés (Ollama, vLLM, Albert d'Etalab), le coût affiché est <strong>0</strong> — vous payez l'infrastructure ailleurs."
+  }
+}

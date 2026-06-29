@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconDots,
   IconPencil,
@@ -32,6 +33,7 @@ import { deleteWorkflow, updateWorkflow } from "./actions";
 
 export function WorkflowCard({ workflow }: { workflow: Workflow }) {
   const router = useRouter();
+  const t = useTranslations("workflows");
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
         <DropdownMenu>
           <DropdownMenuTrigger
             className="size-10 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors disabled:opacity-50"
-            aria-label="Actions"
+            aria-label={t("card.actionsAria")}
             disabled={pending}
           >
             <IconDots className="size-4" />
@@ -85,7 +87,7 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => setEditOpen(true)}>
               <IconPencil className="size-4" />
-              Modifier
+              {t("card.edit")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -93,7 +95,7 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
               onSelect={() => setDeleteOpen(true)}
             >
               <IconTrash className="size-4" />
-              Supprimer
+              {t("card.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -103,16 +105,15 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-heading">
-              Modifier le workflow
+              {t("card.editTitle")}
             </DialogTitle>
             <DialogDescription>
-              Les modifications sont disponibles immédiatement depuis le
-              composer du chat.
+              {t("card.editDescription")}
             </DialogDescription>
           </DialogHeader>
           <form action={handleEdit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor={`name-${workflow.id}`}>Nom</Label>
+              <Label htmlFor={`name-${workflow.id}`}>{t("card.nameLabel")}</Label>
               <Input
                 id={`name-${workflow.id}`}
                 name="name"
@@ -122,7 +123,7 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`description-${workflow.id}`}>Description</Label>
+              <Label htmlFor={`description-${workflow.id}`}>{t("card.descriptionLabel")}</Label>
               <Input
                 id={`description-${workflow.id}`}
                 name="description"
@@ -131,7 +132,7 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`prompt-${workflow.id}`}>Prompt</Label>
+              <Label htmlFor={`prompt-${workflow.id}`}>{t("card.promptLabel")}</Label>
               <textarea
                 id={`prompt-${workflow.id}`}
                 name="prompt"
@@ -153,10 +154,10 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
                 variant="ghost"
                 onClick={() => setEditOpen(false)}
               >
-                Annuler
+                {t("card.cancel")}
               </Button>
               <Button type="submit" disabled={pending}>
-                {pending ? "Enregistrement…" : "Enregistrer"}
+                {pending ? t("card.saving") : t("card.save")}
               </Button>
             </DialogFooter>
           </form>
@@ -166,13 +167,8 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer ce workflow ?"
-        description={
-          <>
-            « {workflow.name} » sera définitivement supprimé. Le prompt ne
-            pourra pas être récupéré.
-          </>
-        }
+        title={t("card.deleteTitle")}
+        description={t("card.deleteDescription", { name: workflow.name })}
         pending={pending}
         onConfirm={handleDelete}
       />

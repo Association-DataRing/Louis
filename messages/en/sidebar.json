@@ -1,0 +1,14 @@
+{
+  "collapse": "Collapse",
+  "expand": "Expand",
+  "collapseAria": "Collapse the sidebar",
+  "expandAria": "Expand the sidebar",
+  "conversationsHeading": "Conversations",
+  "newConversation": "New conversation",
+  "searchPlaceholder": "Search…",
+  "searchAria": "Search a conversation",
+  "empty": "No conversation yet.",
+  "noResults": "No results.",
+  "myProfile": "My profile",
+  "signOut": "Sign out"
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ export function CabinetForm({
 }: {
   initial: CabinetSettings | null;
 }) {
+  const t = useTranslations("admin.cabinet");
   const [state, formAction, pending] = useActionState(
     updateCabinetSettings,
     initialState
@@ -23,53 +25,49 @@ export function CabinetForm({
   return (
     <form action={formAction} className="space-y-8">
       <section className="space-y-2">
-        <Label htmlFor="name">Nom du cabinet</Label>
+        <Label htmlFor="name">{t("nameLabel")}</Label>
         <Input
           id="name"
           name="name"
           required
           maxLength={120}
           defaultValue={initial?.name ?? "Cabinet"}
-          placeholder="Votre cabinet"
+          placeholder={t("namePlaceholder")}
           aria-invalid={state?.ok === false}
         />
         <p className="text-xs text-muted-foreground">
-          Affiché dans l&apos;UI et utilisé par défaut dans le footer des
-          documents générés via{" "}
-          <code className="text-foreground">generate_document</code>.
+          {t.rich("nameHelp", {
+            code: (chunks) => (
+              <code className="text-foreground">{chunks}</code>
+            ),
+          })}
         </p>
       </section>
 
       <section className="space-y-2">
-        <Label htmlFor="footerText">Texte de footer des documents</Label>
+        <Label htmlFor="footerText">{t("footerLabel")}</Label>
         <Input
           id="footerText"
           name="footerText"
           maxLength={200}
           defaultValue={initial?.footerText ?? ""}
-          placeholder="Votre cabinet · Confidentiel"
+          placeholder={t("footerPlaceholder")}
         />
-        <p className="text-xs text-muted-foreground">
-          Apparaît en pied de chaque page des DOCX/PDF générés, à gauche
-          du numéro de page. Laisser vide pour ne pas en afficher.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("footerHelp")}</p>
       </section>
 
       <section className="space-y-2">
-        <Label htmlFor="legalDisclaimer">Mention légale par défaut</Label>
+        <Label htmlFor="legalDisclaimer">{t("disclaimerLabel")}</Label>
         <textarea
           id="legalDisclaimer"
           name="legalDisclaimer"
           rows={4}
           maxLength={1000}
           defaultValue={initial?.legalDisclaimer ?? ""}
-          placeholder="Document généré par Louis. Ne constitue pas un conseil juridique personnalisé sans validation par un avocat."
+          placeholder={t("disclaimerPlaceholder")}
           className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         />
-        <p className="text-xs text-muted-foreground">
-          Ajoutée en dernière page des documents générés. Vous pouvez la
-          surcharger ponctuellement dans la conversation.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("disclaimerHelp")}</p>
       </section>
 
       {state?.ok === false && (
@@ -79,13 +77,13 @@ export function CabinetForm({
       )}
       {state?.ok === true && (
         <Alert>
-          <AlertDescription>Paramètres enregistrés.</AlertDescription>
+          <AlertDescription>{t("saved")}</AlertDescription>
         </Alert>
       )}
 
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
-          {pending ? "Enregistrement…" : "Enregistrer"}
+          {pending ? t("saving") : t("save")}
         </Button>
       </div>
     </form>

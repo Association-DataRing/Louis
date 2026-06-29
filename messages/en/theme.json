@@ -1,0 +1,9 @@
+{
+  "label": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "toggleLight": "Theme: light (click for dark)",
+  "toggleDark": "Theme: dark (click for system)",
+  "toggleSystem": "Theme: system (click for light)"
+}

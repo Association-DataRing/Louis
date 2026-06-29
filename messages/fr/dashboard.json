@@ -1,0 +1,41 @@
+{
+  "eyebrow": "Tableau de bord",
+  "greeting": "Bonjour.",
+  "greetingNamed": "Bonjour, {name}.",
+  "gettingStartedTitle": "Prise en main",
+  "gettingStartedBody": "Nouveau sur Louis ? Le parcours de mise en route en 5 étapes : connecter une clé provider, vos sources juridiques, puis lancer votre première conversation.",
+  "stats": {
+    "thisMonth": "Ce mois",
+    "projects": "Projets",
+    "documents": "Documents",
+    "activeProviders": "Providers actifs"
+  },
+  "month": {
+    "costEstimated": "coût estimé",
+    "capReached": "plafond atteint",
+    "percent": "{pct} %"
+  },
+  "recent": {
+    "title": "Reprendre.",
+    "subtitle": "Vos cinq dernières conversations. Cliquez pour reprendre où vous étiez.",
+    "inProject": "dans un projet",
+    "newConversation": "Nouvelle conversation"
+  },
+  "readiness": {
+    "heading": "Mise en route",
+    "subtitle": "Quelques étapes pour rendre Louis opérationnel sur votre instance.",
+    "stepProvider": "Ajouter une clé provider IA",
+    "stepProviderHint": "Mistral, Scaleway, OVH, Albert, Anthropic, ou endpoint compatible.",
+    "stepModel": "Activer au moins un modèle",
+    "stepModelHint": "Sans modèle activé, le chat reste vide.",
+    "stepConnector": "Brancher une source juridique",
+    "stepConnectorHint": "Légifrance (PISTE), Pappers.",
+    "optional": "optionnel",
+    "startConversation": "Lancer une première conversation"
+  },
+  "firstSteps": {
+    "importDocument": "Importer un premier document",
+    "createProject": "Créer un projet pour un dossier client",
+    "startConversation": "Lancer une première conversation"
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconCheck,
   IconAlertTriangle,
@@ -134,9 +135,11 @@ export function AgentEventBadge({
   isLive = false,
   showConnector = false,
 }: AgentEventBadgeProps) {
+  const t = useTranslations("chat");
+  const tBoard = useTranslations("board");
   const meta = roleMeta(event.role ?? "default-chat");
   const Icon = meta.icon;
-  const label = event.label ?? meta.label;
+  const label = event.label ?? tBoard(meta.labelKey);
 
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -173,13 +176,13 @@ export function AgentEventBadge({
   // L'asymétrie verbale crée la sensation de progression dans la timeline.
   const verb = (() => {
     if (event.type === "agent_start") {
-      if (!isLive) return "Interrompu";
+      if (!isLive) return t("agentSteps.interrupted");
       const inRetry = (event.retryAttempt ?? 0) > 1;
-      if (inRetry) return `Nouvelle tentative ${event.retryAttempt}`;
-      return "Travaille";
+      if (inRetry) return t("agentSteps.retrying", { attempt: event.retryAttempt ?? 0 });
+      return t("agentSteps.verbWorking");
     }
-    if (event.type === "agent_finish") return "Terminé";
-    return "Échec";
+    if (event.type === "agent_finish") return t("agentSteps.verbDone");
+    return t("agentSteps.verbFailed");
   })();
 
   const isError = event.type === "agent_error";

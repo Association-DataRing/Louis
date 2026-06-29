@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useChat } from "@ai-sdk/react";
 import {
   AgentEventBadge,
@@ -256,43 +257,23 @@ function linkifyDocMentions(
   return out;
 }
 
-const TOOL_LABEL: Record<string, string> = {
-  pappers_search: "Pappers · recherche",
-  pappers_get: "Pappers · fiche entreprise",
-  legifrance_search: "Légifrance · recherche",
-  search_documents: "Recherche dans vos documents",
-  list_documents: "Inventaire des documents",
-  read_document: "Lecture d'un document",
-  find_in_document: "Recherche exacte dans un document",
-  generate_document: "Génération de document",
-  edit_document: "Édition en tracked changes",
-};
+/** Traducteur next-intl (namespace `chat`) passé aux helpers module-level. */
+type Translator = ReturnType<typeof useTranslations>;
 
-/**
- * Texte présent pendant l'exécution (« Création du document… »,
- * « Application des changes… ») pour donner un feedback explicite à
- * l'utilisateur au lieu du seul nom de tool en gris.
- */
-const TOOL_PENDING_VERB: Record<string, string> = {
-  pappers_search: "Recherche Pappers en cours…",
-  pappers_get: "Récupération de la fiche entreprise…",
-  legifrance_search: "Recherche Légifrance en cours…",
-  search_documents: "Recherche dans vos documents…",
-  list_documents: "Listing de vos documents…",
-  read_document: "Lecture du document…",
-  find_in_document: "Recherche dans le document…",
-  generate_document: "Création du document…",
-  edit_document: "Application des tracked changes…",
-};
+/** Résout le libellé d'un outil depuis `tools.labels`, fallback sur le nom brut. */
+function toolLabel(t: Translator, name: string): string {
+  return t.has(`tools.labels.${name}`) ? t(`tools.labels.${name}`) : name;
+}
 
-function formatToolInput(input: unknown): string {
+function formatToolInput(t: Translator, input: unknown): string {
   if (!input || typeof input !== "object") return "";
   const obj = input as Record<string, unknown>;
   if (typeof obj.query === "string") return `« ${obj.query} »`;
   if (typeof obj.siren === "string") return `SIREN ${obj.siren}`;
   if (typeof obj.title === "string") return `« ${obj.title} »`;
   if (typeof obj.needle === "string") return `« ${obj.needle} »`;
-  if (Array.isArray(obj.edits)) return `${obj.edits.length} édit${obj.edits.length > 1 ? "s" : ""}`;
+  if (Array.isArray(obj.edits))
+    return t("tools.editsSummary", { count: obj.edits.length });
   return "";
 }
 
@@ -353,6 +334,7 @@ type DocCard =
  *     texte (legacy / messages sans metadata).
  */
 function buildDocCards(
+  t: Translator,
   parts: { type: string; output?: unknown }[],
   persisted: DocumentArtifactMeta[],
   text: string,
@@ -370,7 +352,7 @@ function buildDocCards(
           documentId: d.document_id,
           filename: d.filename,
           format: d.format,
-          title: "Document généré",
+          title: t("docCards.generated"),
         });
       }
     } else if (p.type === "tool-edit_document") {
@@ -393,7 +375,7 @@ function buildDocCards(
       documentId: a.documentId,
       filename: a.filename,
       format: a.format,
-      title: a.kind === "edited" ? "Document modifié" : "Document généré",
+      title: a.kind === "edited" ? t("docCards.edited") : t("docCards.generated"),
     });
   }
 
@@ -411,7 +393,7 @@ function buildDocCards(
           documentId: d.id,
           filename: d.filename,
           format: /\.pdf$/i.test(d.filename) ? "pdf" : "docx",
-          title: "Document",
+          title: t("docCards.documentFallback"),
         });
       }
     }
@@ -433,6 +415,7 @@ function DocumentDownloadCard({
   format: "docx" | "pdf";
   onPreview: () => void;
 }) {
+  const t = useTranslations("chat");
   const Icon = format === "pdf" ? IconFileTypePdf : IconFileTypeDocx;
   return (
     <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 max-w-[85%] flex items-center gap-3 transition-shadow hover:shadow-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-300">
@@ -440,8 +423,8 @@ function DocumentDownloadCard({
         type="button"
         onClick={onPreview}
         className="size-10 rounded-md bg-card border border-border flex items-center justify-center shrink-0 hover:border-primary transition-colors cursor-pointer"
-        aria-label="Aperçu"
-        title="Aperçu"
+        aria-label={t("docCards.preview")}
+        title={t("docCards.preview")}
       >
         <Icon className="size-5 text-primary" />
       </button>
@@ -455,7 +438,7 @@ function DocumentDownloadCard({
         </p>
         <p className="text-sm font-medium truncate">{filename}</p>
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          {format === "pdf" ? "Document PDF" : "Document Word (.docx)"}
+          {format === "pdf" ? t("docCards.pdfType") : t("docCards.docxType")}
         </p>
       </button>
       <div className="flex items-center gap-2 shrink-0">
@@ -465,7 +448,7 @@ function DocumentDownloadCard({
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium hover:bg-accent transition-colors"
         >
           <IconEye className="size-3.5" />
-          Voir
+          {t("docCards.view")}
         </button>
         <a
           href={`/api/documents/${documentId}/file?download=1`}
@@ -473,7 +456,7 @@ function DocumentDownloadCard({
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
         >
           <IconDownload className="size-3.5" />
-          Télécharger
+          {t("docCards.download")}
         </a>
       </div>
     </div>
@@ -497,6 +480,7 @@ function EditedDocumentCard({
   errorsCount: number;
   onPreview: () => void;
 }) {
+  const t = useTranslations("chat");
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden max-w-[85%] transition-shadow hover:shadow-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-300">
       <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
@@ -504,21 +488,21 @@ function EditedDocumentCard({
           type="button"
           onClick={onPreview}
           className="flex items-center gap-2 min-w-0 text-left hover:text-primary transition-colors"
-          aria-label="Aperçu"
+          aria-label={t("docCards.preview")}
         >
           <IconPencil className="size-4 text-primary shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{filename}</p>
             <p className="text-[10px] text-muted-foreground">
-              {appliedCount} édition{appliedCount > 1 ? "s" : ""} appliquée
-              {appliedCount > 1 ? "s" : ""}
+              {t("docCards.editsApplied", { count: appliedCount })}
               {errorsCount > 0 && (
                 <span className="text-destructive">
                   {" · "}
-                  {errorsCount} en erreur
+                  {t("docCards.editsFailed", { count: errorsCount })}
                 </span>
               )}
-              {" · cliquez pour prévisualiser"}
+              {" · "}
+              {t("docCards.clickToPreview")}
             </p>
           </div>
         </button>
@@ -528,7 +512,7 @@ function EditedDocumentCard({
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
         >
           <IconDownload className="size-3.5" />
-          Télécharger
+          {t("docCards.download")}
         </a>
       </header>
 
@@ -539,7 +523,7 @@ function EditedDocumentCard({
               <div className="grid sm:grid-cols-2 gap-2">
                 <div className="bg-destructive/5 border border-destructive/15 rounded px-2 py-1.5">
                   <p className="text-[10px] uppercase tracking-wider text-destructive font-semibold mb-0.5">
-                    Avant
+                    {t("docCards.before")}
                   </p>
                   <p className="font-mono text-foreground/80 line-through decoration-destructive/40">
                     {edit.find}
@@ -547,9 +531,9 @@ function EditedDocumentCard({
                 </div>
                 <div className="bg-primary/5 border border-primary/15 rounded px-2 py-1.5">
                   <p className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-0.5">
-                    Après
+                    {t("docCards.after")}
                   </p>
-                  <p className="font-mono">{edit.replace || <em className="text-muted-foreground">(suppression)</em>}</p>
+                  <p className="font-mono">{edit.replace || <em className="text-muted-foreground">{t("docCards.deletion")}</em>}</p>
                 </div>
               </div>
               {edit.reason && (
@@ -561,9 +545,7 @@ function EditedDocumentCard({
           ))}
           {applied.length > 8 && (
             <li className="px-4 py-2 text-[11px] text-muted-foreground text-center">
-              + {applied.length - 8} autre
-              {applied.length - 8 > 1 ? "s" : ""} édition
-              {applied.length - 8 > 1 ? "s" : ""} dans le document.
+              {t("docCards.moreEdits", { count: applied.length - 8 })}
             </li>
           )}
         </ul>
@@ -573,7 +555,7 @@ function EditedDocumentCard({
         <div className="border-t border-border bg-destructive/5 px-4 py-3">
           <div className="flex items-center gap-1.5 text-xs font-medium text-destructive mb-1">
             <IconAlertTriangle className="size-3.5" />
-            Édits non appliqués
+            {t("docCards.editsNotApplied")}
           </div>
           <ul className="text-[11px] text-muted-foreground space-y-0.5">
             {errors.slice(0, 5).map((e) => (
@@ -584,9 +566,7 @@ function EditedDocumentCard({
       )}
 
       <footer className="px-4 py-2 border-t border-border bg-muted/20 text-[10px] text-muted-foreground">
-        Marques de révision Word natives — ouvrez le fichier dans Word /
-        Pages / LibreOffice et utilisez l&apos;onglet Révision pour
-        Accepter ou Refuser chaque modification.
+        {t("docCards.wordRevisionFooter")}
       </footer>
     </div>
   );
@@ -606,6 +586,7 @@ const RICH_TOOLS = new Set([
 
 /** Construit les lignes de la timeline d'outils à partir des parts d'un message. */
 function buildToolRows(
+  t: Translator,
   parts: { type: string; input?: unknown; output?: unknown; state?: string }[]
 ): ToolTimelineRow[] {
   const rows: ToolTimelineRow[] = [];
@@ -617,8 +598,8 @@ function buildToolRows(
     rows.push({
       id: `tool-${i}`,
       name,
-      label: TOOL_LABEL[name] ?? name,
-      summary: formatToolInput(part.input),
+      label: toolLabel(t, name),
+      summary: formatToolInput(t, part.input),
       pending,
       // Tout est replié par défaut (look minimaliste) — le détail s'ouvre au clic.
       autoExpand: false,
@@ -655,8 +636,9 @@ function ToolPart({
   state?: string;
   onOpenDoc: (documentId: string, targetText: string) => void;
 }) {
-  const label = TOOL_LABEL[name] ?? name;
-  const inputSummary = formatToolInput(input);
+  const t = useTranslations("chat");
+  const label = toolLabel(t, name);
+  const inputSummary = formatToolInput(t, input);
   const isPending = state === "input-streaming" || state === "input-available";
 
   // generate_document → carte de téléchargement (.docx ou .pdf)
@@ -665,7 +647,7 @@ function ToolPart({
     if (d && d.document_id) {
       return (
         <DocumentDownloadCard
-          title="Document généré"
+          title={t("docCards.generated")}
           filename={d.filename}
           documentId={d.document_id}
           format={d.format ?? "docx"}
@@ -710,7 +692,7 @@ function ToolPart({
           <span className="font-medium text-foreground">{label}</span>
           {inputSummary && <span className="truncate">· {inputSummary}</span>}
           <span className="ml-auto text-[10px]">
-            {hits.length} extrait{hits.length > 1 ? "s" : ""}
+            {t("tools.extractsCount", { count: hits.length })}
           </span>
         </div>
         <div className="flex flex-col gap-1">
@@ -769,7 +751,11 @@ function ToolPart({
         <IconTool className="size-3 text-primary" />
       )}
       <span className="font-medium">
-        {isPending ? TOOL_PENDING_VERB[name] ?? `${label}…` : label}
+        {isPending
+          ? t.has(`tools.pending.${name}`)
+            ? t(`tools.pending.${name}`)
+            : `${label}…`
+          : label}
       </span>
       {inputSummary && !isPending && (
         <span className="text-muted-foreground truncate">· {inputSummary}</span>
@@ -785,17 +771,18 @@ function WorkflowPickerContent({
   workflows: WorkflowOption[];
   onPick: (prompt: string) => void;
 }) {
+  const t = useTranslations("chat");
   if (workflows.length === 0) {
     return (
       <div className="p-4 text-center">
         <p className="text-sm text-muted-foreground">
-          Aucun workflow pour l&apos;instant.
+          {t("composer.noWorkflow")}
         </p>
         <Link
           href="/workflows"
           className="mt-2 inline-block text-xs text-primary hover:underline underline-offset-2"
         >
-          Créer un workflow →
+          {t("composer.createWorkflow")}
         </Link>
       </div>
     );
@@ -804,12 +791,12 @@ function WorkflowPickerContent({
     <div className="max-h-96 overflow-y-auto py-1">
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
         <IconLibrary className="size-3.5 text-muted-foreground" />
-        <p className="text-xs font-medium">Trames</p>
+        <p className="text-xs font-medium">{t("composer.workflowsHeading")}</p>
         <Link
           href="/workflows"
           className="ml-auto text-[10px] text-primary hover:underline underline-offset-2"
         >
-          Gérer
+          {t("composer.manage")}
         </Link>
       </div>
       <div className="divide-y divide-border">
@@ -1042,6 +1029,7 @@ function DocPickerContent({
   selected: string[];
   onToggle: (id: string) => void;
 }) {
+  const t = useTranslations("chat");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const toggleCollapse = (id: string) =>
     setCollapsed((prev) => {
@@ -1080,13 +1068,13 @@ function DocPickerContent({
     return (
       <div className="p-4 text-center">
         <p className="text-sm text-muted-foreground">
-          Aucun document avec texte extrait.
+          {t("composer.noDocWithText")}
         </p>
         <Link
           href="/documents"
           className="mt-2 inline-block text-xs text-primary hover:underline underline-offset-2"
         >
-          Importer un fichier →
+          {t("composer.importFile")}
         </Link>
       </div>
     );
@@ -1099,9 +1087,9 @@ function DocPickerContent({
   return (
     <div className="max-h-72 overflow-y-auto py-1">
       <div className="px-3 py-2 border-b border-border">
-        <p className="text-xs font-medium">Joindre au prompt</p>
+        <p className="text-xs font-medium">{t("composer.attachToPrompt")}</p>
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          Le texte extrait sera inséré dans le system prompt.
+          {t("composer.attachToPromptHint")}
         </p>
       </div>
       <div className="p-1">
@@ -1150,6 +1138,7 @@ export function ChatShell({
   initialUsage,
   skillLabels = {},
 }: Props) {
+  const t = useTranslations("chat");
   const router = useRouter();
   const [providerKeyId, setProviderKeyId] = useState(initialProviderKeyId);
   // Sélection de pipeline orchestrateur. Priorité :
@@ -1467,7 +1456,7 @@ export function ChatShell({
     // d'affichage stable indépendant du rythme du provider.
     experimental_throttle: 50,
     onFinish: ({ message }) => {
-      setStatusText("Réponse de Louis terminée.");
+      setStatusText(t("composer.statusDone"));
       const meta = message?.metadata as
         | { conversationId?: string; usage?: Usage }
         | undefined;
@@ -1649,7 +1638,7 @@ export function ChatShell({
     const trimmed = editingDraft.trim();
     if (!trimmed) return;
     if (!conversationId) {
-      setEditError("Aucune conversation active.");
+      setEditError(t("composer.noConversation"));
       return;
     }
     setEditError(null);
@@ -2008,8 +1997,8 @@ export function ChatShell({
     <Dropzone
       onFiles={handleDroppedFiles}
       disabled={isBusy}
-      overlayLabel="Déposez pour joindre à la conversation"
-      overlayHint="PDF, DOCX ou texte — 25 Mo max par fichier"
+      overlayLabel={t("composer.dropOverlayLabel")}
+      overlayHint={t("composer.dropOverlayHint")}
       className="flex-1 flex h-full min-w-0 w-full"
     >
     <div className="flex-1 flex flex-col h-full min-w-0 bg-background">
@@ -2021,7 +2010,7 @@ export function ChatShell({
           <Link
             href={`/projects/${projectContext.id}`}
             className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="Voir le projet"
+            title={t("composer.viewProject")}
           >
             <span className="size-1.5 rounded-full bg-primary" />
             <span className="truncate max-w-[200px]">{projectContext.name}</span>
@@ -2041,7 +2030,7 @@ export function ChatShell({
         tabIndex={0}
         className="flex-1 overflow-y-auto relative"
         aria-busy={isBusy}
-        aria-label="Conversation avec Louis"
+        aria-label={t("composer.conversationAria")}
       >
         {isEmpty ? (
           <EmptyState
@@ -2071,6 +2060,7 @@ export function ChatShell({
               const toolRows = isUser
                 ? []
                 : buildToolRows(
+                    t,
                     m.parts as {
                       type: string;
                       input?: unknown;
@@ -2087,6 +2077,7 @@ export function ChatShell({
               const docCards = isUser
                 ? []
                 : buildDocCards(
+                    t,
                     m.parts as { type: string; output?: unknown }[],
                     documentArtifactsByMessageId[m.id] ?? [],
                     extractTextFromParts(
@@ -2113,7 +2104,7 @@ export function ChatShell({
               return (
                 <div
                   key={m.id}
-                  aria-label={isUser ? "Vous" : "Louis"}
+                  aria-label={isUser ? t("composer.you") : t("composer.assistant")}
                   className={`flex flex-col gap-1.5 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 ${isUser ? "items-end" : "items-start group/msg"}`}
                 >
                   {/* Wrapper d'étapes : utile UNIQUEMENT pour pipelines
@@ -2231,14 +2222,14 @@ export function ChatShell({
                               )}
                               <div className="flex justify-end items-center gap-2 text-xs">
                                 <span className="text-muted-foreground mr-auto">
-                                  Entrée pour envoyer · Échap pour annuler
+                                  {t("composer.editHint")}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={cancelEditing}
                                   className="px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                                 >
-                                  Annuler
+                                  {t("composer.cancel")}
                                 </button>
                                 <button
                                   type="button"
@@ -2246,7 +2237,7 @@ export function ChatShell({
                                   disabled={!editingDraft.trim() || isBusy}
                                   className="px-2.5 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                                 >
-                                  Envoyer
+                                  {t("composer.send")}
                                 </button>
                               </div>
                             </div>
@@ -2274,7 +2265,9 @@ export function ChatShell({
                                       <IconPaperclip className="size-3" />
                                       <span className="max-w-[200px] truncate">
                                         {doc?.filename ??
-                                          `Document ${docId.slice(0, 8)}`}
+                                          t("composer.attachmentFallback", {
+                                            id: docId.slice(0, 8),
+                                          })}
                                       </span>
                                     </Badge>
                                   );
@@ -2288,8 +2281,8 @@ export function ChatShell({
                                   startEditing(m.id, part.text ?? "")
                                 }
                                 disabled={isBusy}
-                                title="Modifier cette question"
-                                aria-label="Modifier cette question"
+                                title={t("composer.editQuestion")}
+                                aria-label={t("composer.editQuestion")}
                                 className="opacity-0 group-hover/user:opacity-100 focus:opacity-100 inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-opacity disabled:opacity-0 mt-1"
                               >
                                 <IconPencil className="size-3.5" />
@@ -2440,10 +2433,10 @@ export function ChatShell({
             type="button"
             onClick={scrollToBottom}
             className="sticky bottom-4 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-md hover:text-foreground hover:bg-accent transition-colors"
-            aria-label="Revenir au bas de la conversation"
+            aria-label={t("composer.backToBottomAria")}
           >
             <IconArrowDown className="size-3.5" />
-            Revenir en bas
+            {t("composer.backToBottom")}
           </button>
         )}
       </div>
@@ -2456,8 +2449,7 @@ export function ChatShell({
               {uploadingCount > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
                   <Spinner className="size-3" />
-                  Téléversement de {uploadingCount} fichier
-                  {uploadingCount > 1 ? "s" : ""}…
+                  {t("composer.uploading", { count: uploadingCount })}
                 </span>
               )}
               {uploadError && (
@@ -2468,7 +2460,7 @@ export function ChatShell({
                     type="button"
                     onClick={() => setUploadError(null)}
                     className="ml-1 rounded-sm hover:bg-destructive/10 p-0.5"
-                    aria-label="Ignorer l'erreur"
+                    aria-label={t("composer.dismissError")}
                   >
                     <IconX className="size-3" />
                   </button>
@@ -2499,7 +2491,9 @@ export function ChatShell({
                         )
                       }
                       className="ml-0.5 rounded-sm hover:bg-background/50 p-0.5"
-                      aria-label={`Retirer ${doc.filename}`}
+                      aria-label={t("composer.removeAttachment", {
+                        filename: doc.filename,
+                      })}
                     >
                       <IconX className="size-3" />
                     </button>
@@ -2512,7 +2506,7 @@ export function ChatShell({
           {appliedSkills.length > 0 && (
             <div className="mb-2 flex flex-wrap items-center justify-center gap-1.5">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Compétences appliquées
+                {t("composer.appliedSkills")}
               </span>
               {appliedSkills.map((label) => (
                 <span
@@ -2571,8 +2565,8 @@ export function ChatShell({
                   e.currentTarget.form?.requestSubmit();
                 }
               }}
-              placeholder="Posez votre question…"
-              aria-label="Votre message à Louis"
+              placeholder={t("composer.placeholder")}
+              aria-label={t("composer.ariaLabel")}
               rows={1}
               disabled={isBusy}
               className="w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3 pb-1 text-[15px] leading-[1.55] placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-h-[240px] overflow-y-auto"
@@ -2619,8 +2613,8 @@ export function ChatShell({
                   <button
                     type="button"
                     disabled={isBusy}
-                    aria-label="Joindre un document"
-                    title="Joindre un document"
+                    aria-label={t("composer.attachDocument")}
+                    title={t("composer.attachDocument")}
                     className="inline-flex items-center justify-center size-10 rounded-md hover:bg-accent transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
                   >
                     <IconPaperclip className="size-4" />
@@ -2637,7 +2631,7 @@ export function ChatShell({
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md hover:bg-accent text-sm text-left transition-colors"
                     >
                       <IconUpload className="size-4 text-muted-foreground" />
-                      Téléverser depuis l&apos;ordinateur
+                      {t("composer.uploadFromComputer")}
                     </button>
                   </div>
                   {mergedDocuments.length > 0 && (
@@ -2711,32 +2705,36 @@ export function ChatShell({
                     <Popover>
                       <PopoverTrigger
                         className="inline-flex items-center gap-1.5 rounded-full border border-border/60 px-2 py-0.5 text-[11px] text-muted-foreground tabular-nums hover:bg-accent hover:text-foreground transition-colors"
-                        aria-label="Détails d'usage de la conversation"
+                        aria-label={t("usage.detailsAria")}
                       >
                         {cost
                           ? formatCost(cost)
-                          : `${formatTokens(usage.inputTokens + usage.outputTokens)} tokens`}
+                          : t("usage.tokens", {
+                              value: formatTokens(
+                                usage.inputTokens + usage.outputTokens
+                              ),
+                            })}
                       </PopoverTrigger>
                       <PopoverContent side="top" align="start" className="w-64 p-3">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-                          Usage de la conversation
+                          {t("usage.title")}
                         </p>
                         <dl className="space-y-1.5 text-xs">
                           <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">Tokens entrée</dt>
+                            <dt className="text-muted-foreground">{t("usage.inputTokens")}</dt>
                             <dd className="tabular-nums">
                               {usage.inputTokens.toLocaleString("fr-FR")}
                             </dd>
                           </div>
                           <div className="flex justify-between gap-3">
-                            <dt className="text-muted-foreground">Tokens sortie</dt>
+                            <dt className="text-muted-foreground">{t("usage.outputTokens")}</dt>
                             <dd className="tabular-nums">
                               {usage.outputTokens.toLocaleString("fr-FR")}
                             </dd>
                           </div>
                           {cost && (
                             <div className="flex justify-between gap-3 pt-1.5 border-t border-border">
-                              <dt className="font-medium">Coût estimé</dt>
+                              <dt className="font-medium">{t("usage.estimatedCost")}</dt>
                               <dd className="tabular-nums font-medium">
                                 {formatCost(cost)}
                               </dd>
@@ -2744,8 +2742,7 @@ export function ChatShell({
                           )}
                         </dl>
                         <p className="mt-2 text-[10px] text-muted-foreground">
-                          Tarifs publics du provider — facturation réelle peut
-                          varier.
+                          {t("usage.pricingNote")}
                         </p>
                       </PopoverContent>
                     </Popover>
@@ -2761,7 +2758,7 @@ export function ChatShell({
                       : "outline"
                 }
                 className="text-[10px]"
-                title="Souveraineté du modèle"
+                title={t("usage.sovereigntyTitle")}
               >
                 {SOVEREIGNTY_LABEL[selectedMeta.sovereignty]}
               </Badge>
@@ -2772,7 +2769,7 @@ export function ChatShell({
                     type="button"
                     onClick={() => stop()}
                     className="inline-flex items-center justify-center size-11 rounded-full bg-foreground text-background hover:opacity-90 active:scale-95 transition-[opacity,transform] duration-150"
-                    aria-label="Arrêter"
+                    aria-label={t("composer.stop")}
                   >
                     <IconPlayerStop className="size-4" />
                   </button>
@@ -2781,7 +2778,7 @@ export function ChatShell({
                     type="submit"
                     disabled={!input.trim()}
                     className="inline-flex items-center justify-center size-11 rounded-full bg-primary text-primary-foreground hover:opacity-90 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 transition-[opacity,transform] duration-150"
-                    aria-label="Envoyer"
+                    aria-label={t("composer.send")}
                   >
                     <IconArrowUp className="size-5" />
                   </button>
@@ -2792,17 +2789,21 @@ export function ChatShell({
 
           {estimatedCalls > 1 && (
             <p className="mt-2 text-[11px] text-muted-foreground text-center tabular-nums">
-              {selectedPipeline?.name} : ~{estimatedCalls} appels IA par question
+              {t("composer.estimateBase", {
+                name: selectedPipeline?.name ?? "",
+                calls: estimatedCalls,
+              })}
               {estimatedRunCost
-                ? ` · ~${formatCost(estimatedRunCost)} estimé`
+                ? t("composer.estimateEstimated", {
+                    cost: formatCost(estimatedRunCost),
+                  })
                 : modelId
-                  ? " · coût non tarifé pour ce modèle"
+                  ? t("composer.estimateUnpriced")
                   : ""}
             </p>
           )}
           <p className="mt-2 text-[11px] text-muted-foreground text-center">
-            Louis n&apos;est pas un avocat. Vérifiez le badge de souveraineté
-            avant d&apos;envoyer des données sensibles.
+            {t("composer.disclaimer")}
           </p>
         </div>
       </div>
@@ -2821,18 +2822,18 @@ export function ChatShell({
   );
 }
 
-const EMPTY_SUGGESTIONS = [
-  "Rédige une mise en demeure pour loyers impayés.",
-  "Cherche la jurisprudence récente sur la clause de non-concurrence.",
-  "Résume les points clés d'une décision de justice.",
-  "Explique le régime de la responsabilité civile (art. 1240 C. civ.).",
-];
-
 function EmptyState({
   onPickSuggestion,
 }: {
   onPickSuggestion: (text: string) => void;
 }) {
+  const t = useTranslations("chat");
+  const EMPTY_SUGGESTIONS = [
+    t("emptyState.suggestion1"),
+    t("emptyState.suggestion2"),
+    t("emptyState.suggestion3"),
+    t("emptyState.suggestion4"),
+  ];
   // Stagger d'entrée subtile : logo, titre, puis les suggestions l'une après
   // l'autre. Wrappé sous `motion-safe` (respecte prefers-reduced-motion).
   return (
@@ -2841,18 +2842,14 @@ function EmptyState({
         <LouisLogo className="size-10 text-primary mb-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500" />
         <div className="flex items-center gap-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700">
           <h1 className="font-heading text-4xl md:text-5xl tracking-tight">
-            Une nouvelle conversation.
+            {t("emptyState.title")}
           </h1>
-          <ModuleHelp slug="user/chat" title="Utiliser le chat">
-            Posez une question, joignez une pièce (trombone) ou laissez Louis
-            chercher dans le droit (Légifrance, Pappers) et vos documents. Il
-            peut aussi rédiger des actes en .docx. Chaque appel d&apos;outil est
-            inspectable.
+          <ModuleHelp slug="user/chat" title={t("emptyState.helpTitle")}>
+            {t("emptyState.helpBody")}
           </ModuleHelp>
         </div>
         <p className="mt-3 text-base text-muted-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-700 motion-safe:delay-150">
-          Posez une question juridique, joignez une pièce, ou partez d&apos;un
-          exemple.
+          {t("emptyState.subtitle")}
         </p>
 
         <div className="mt-8 grid sm:grid-cols-2 gap-2.5">
@@ -2880,16 +2877,15 @@ function EmptyState({
           style={{ animationDelay: "560ms", animationFillMode: "both" }}
         >
           <span className="inline-flex items-center gap-1">
-            <IconPaperclip className="size-3.5" /> joindre une pièce ou un
-            document de Louis
+            <IconPaperclip className="size-3.5" /> {t("emptyState.footerAttach")}
           </span>
           <span aria-hidden>·</span>
           <span>
-            <strong className="text-foreground/80">+</strong> trames, board
-            multi-agents et réglages
+            <strong className="text-foreground/80">+</strong>{" "}
+            {t("emptyState.footerMenu")}
           </span>
           <span aria-hidden>·</span>
-          <span>badge FR / UE / US = souveraineté du modèle</span>
+          <span>{t("emptyState.footerSovereignty")}</span>
         </p>
       </div>
     </div>

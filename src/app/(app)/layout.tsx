@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -107,13 +108,15 @@ export default async function AppLayout({
     conversation: convList.length > 0,
   };
 
+  const t = await getTranslations("common");
+
   return (
     <div className="h-dvh bg-background flex flex-col md:flex-row overflow-hidden">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground focus:shadow-md"
       >
-        Aller au contenu
+        {t("skipToContent")}
       </a>
       <aside className="hidden md:flex shrink-0">
         <SidebarContent

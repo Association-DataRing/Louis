@@ -1,0 +1,27 @@
+{
+  "searchPlaceholder": "Rechercher conversations, documents, projets, pages…",
+  "empty": "Aucun résultat.",
+  "footerHint": "↑↓ pour naviguer · ↵ pour ouvrir · ESC pour fermer",
+  "groups": {
+    "actions": "Actions",
+    "conversations": "Conversations",
+    "projects": "Projets",
+    "documents": "Documents",
+    "workflows": "Trames",
+    "navigation": "Navigation"
+  },
+  "actions": {
+    "newConversation": "Nouvelle conversation",
+    "newWorkflow": "Nouveau workflow",
+    "newProject": "Nouveau projet",
+    "newTabularReview": "Nouvelle analyse tabulaire"
+  },
+  "pages": {
+    "settings": "Paramètres",
+    "profile": "Profil",
+    "usage": "Coûts & usage",
+    "providers": "Providers IA",
+    "connectors": "Connecteurs",
+    "mcp": "Serveurs MCP"
+  }
+}

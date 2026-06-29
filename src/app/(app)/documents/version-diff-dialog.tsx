@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { IconGitCompare } from "@tabler/icons-react";
 import {
   Dialog,
@@ -30,6 +31,7 @@ export function VersionDiffButton({
   olderId,
   olderVersion,
 }: Props) {
+  const t = useTranslations("documents.versionDiff");
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<VersionDiffResult | null>(null);
@@ -48,10 +50,13 @@ export function VersionDiffButton({
         type="button"
         onClick={load}
         className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-        aria-label={`Comparer la version ${olderVersion} à la version ${currentVersion}`}
+        aria-label={t("compareAria", {
+          older: olderVersion,
+          current: currentVersion,
+        })}
       >
         <IconGitCompare className="size-3" />
-        Comparer
+        {t("compare")}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -59,18 +64,18 @@ export function VersionDiffButton({
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               <IconGitCompare className="size-5" />
-              Comparaison v{olderVersion} → v{currentVersion}
+              {t("dialogTitle", {
+                older: olderVersion,
+                current: currentVersion,
+              })}
             </DialogTitle>
-            <DialogDescription>
-              Différences sur le texte extrait. Les passages identiques sont
-              repliés. Ceci ne remplace pas une relecture du document final.
-            </DialogDescription>
+            <DialogDescription>{t("dialogDescription")}</DialogDescription>
           </DialogHeader>
 
           {pending && (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
               <Spinner className="size-4" />
-              Calcul des différences…
+              {t("computing")}
             </div>
           )}
 
@@ -105,6 +110,7 @@ function DiffView({
   olderVersion: number;
   newerVersion: number;
 }) {
+  const t = useTranslations("documents.versionDiff");
   let added = 0;
   let removed = 0;
   for (const op of ops) {
@@ -115,8 +121,7 @@ function DiffView({
   if (added === 0 && removed === 0) {
     return (
       <p className="py-12 text-center text-sm text-muted-foreground">
-        Aucune différence textuelle entre la v{olderVersion} et la v
-        {newerVersion}.
+        {t("noDifference", { older: olderVersion, newer: newerVersion })}
       </p>
     );
   }
@@ -125,16 +130,16 @@ function DiffView({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-3 text-xs pb-2">
         <span className="inline-flex items-center gap-1 text-success">
-          + {added} ajoutée{added > 1 ? "s" : ""}
+          + {t("added", { count: added })}
         </span>
         <span className="inline-flex items-center gap-1 text-destructive">
-          − {removed} supprimée{removed > 1 ? "s" : ""}
+          − {t("removed", { count: removed })}
         </span>
       </div>
 
       {truncated && (
         <p className="mb-2 rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-xs text-foreground">
-          Comparaison volumineuse : seul le début des différences est affiché.
+          {t("truncated")}
         </p>
       )}
 
@@ -146,8 +151,7 @@ function DiffView({
                 key={i}
                 className="bg-muted/40 px-3 py-1 text-center text-[10px] text-muted-foreground select-none"
               >
-                ··· {op.count} ligne{op.count > 1 ? "s" : ""} inchangée
-                {op.count > 1 ? "s" : ""} ···
+                ··· {t("linesUnchanged", { count: op.count })} ···
               </div>
             );
           }
