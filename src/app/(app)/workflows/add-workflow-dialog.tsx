@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import { createWorkflow } from "./actions";
 
 export function AddWorkflowDialog() {
   const router = useRouter();
+  const t = useTranslations("workflows");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -42,53 +44,52 @@ export function AddWorkflowDialog() {
       <DialogTrigger asChild>
         <Button>
           <IconPlus className="size-4" />
-          Nouveau workflow
+          {t("add.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="font-heading">Nouveau workflow</DialogTitle>
+          <DialogTitle className="font-heading">{t("add.title")}</DialogTitle>
           <DialogDescription>
-            Donnez un nom à votre template et écrivez le prompt que vous
-            voudrez réutiliser dans le chat.
+            {t("add.description")}
           </DialogDescription>
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nom</Label>
+            <Label htmlFor="name">{t("add.nameLabel")}</Label>
             <Input
               id="name"
               name="name"
               required
               maxLength={120}
               autoFocus
-              placeholder="ex. Résumé d'arrêt en 5 points"
+              placeholder={t("add.namePlaceholder")}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">
-              Description{" "}
+              {t("add.descriptionLabel")}{" "}
               <span className="text-[10px] text-muted-foreground font-normal">
-                (optionnel)
+                {t("add.descriptionOptional")}
               </span>
             </Label>
             <Input
               id="description"
               name="description"
               maxLength={300}
-              placeholder="Note rapide sur l'usage du template"
+              placeholder={t("add.descriptionPlaceholder")}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="prompt">Prompt</Label>
+            <Label htmlFor="prompt">{t("add.promptLabel")}</Label>
             <textarea
               id="prompt"
               name="prompt"
               required
               maxLength={4000}
               rows={6}
-              placeholder="Le texte qui sera inséré dans le composer du chat…"
+              placeholder={t("add.promptPlaceholder")}
               className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             />
           </div>
@@ -101,10 +102,10 @@ export function AddWorkflowDialog() {
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Annuler
+              {t("add.cancel")}
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? "Création…" : "Créer"}
+              {pending ? t("add.creating") : t("add.create")}
             </Button>
           </DialogFooter>
         </form>

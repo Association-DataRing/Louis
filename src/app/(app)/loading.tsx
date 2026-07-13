@@ -3,14 +3,17 @@
  * Server Components multi-requêtes (dashboard, admin, usage…). Respecte
  * prefers-reduced-motion.
  */
-export default function Loading() {
+import { getTranslations } from "next-intl/server";
+
+export default async function Loading() {
+  const t = await getTranslations("gettingStarted");
   return (
     <div
       className="mx-auto w-full max-w-5xl px-6 py-10 md:px-8 md:py-14"
       aria-busy="true"
       aria-live="polite"
     >
-      <span className="sr-only">Chargement…</span>
+      <span className="sr-only">{t("loading")}</span>
       <div className="motion-safe:animate-pulse">
         <div className="h-3 w-32 rounded bg-muted" />
         <div className="mt-3 h-9 w-64 rounded bg-muted" />

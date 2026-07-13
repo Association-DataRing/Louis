@@ -17,7 +17,6 @@ import {
 import { applyContextBudget } from "../context-budget";
 import { applyCachedSystem } from "../provider-tuning";
 import type {
-  Agent,
   AgentContext,
   AgentDefinition,
   AgentRunResult,
@@ -88,73 +87,71 @@ export function composeSystem(
 }
 
 /**
- * DefaultAgent — rôle « default-chat ». Reproduit le comportement
+ * runDefaultAgent — rôle « default-chat ». Reproduit le comportement
  * historique de /api/chat : système prompt FR, outils connecteurs + MCP,
  * stopWhen multi-step. C'est l'agent par défaut du preset chat-simple
- * et celui sur lequel retombe le pipeline mono-agent.
+ * et celui sur lequel retombe le pipeline mono-agent. Exécution distincte
+ * de runAgentStream (base.ts) : tous les outils par défaut + prepareStep
+ * qui force une conclusion au dernier pas.
  */
-export class DefaultAgent implements Agent {
-  constructor(public readonly definition: AgentDefinition) {}
+export async function runDefaultAgent(
+  def: AgentDefinition,
+  ctx: AgentContext
+): Promise<AgentRunResult> {
+  const key = await loadProviderKey(ctx.userId, def.providerKeyId);
+  const model = modelFromKey(key, def.modelOverride);
+  const modelMessages = applyContextBudget(
+    injectUntrustedContext(await convertToModelMessages(ctx.messages), ctx)
+  );
 
-  async run(ctx: AgentContext): Promise<AgentRunResult> {
-    const key = await loadProviderKey(ctx.userId, this.definition.providerKeyId);
-    const model = modelFromKey(key, this.definition.modelOverride);
-    const modelMessages = applyContextBudget(
-      injectUntrustedContext(await convertToModelMessages(ctx.messages), ctx)
-    );
+  const system = composeSystem(DEFAULT_CHAT_SYSTEM_PROMPT, def, ctx);
 
-    const system = composeSystem(DEFAULT_CHAT_SYSTEM_PROMPT, this.definition, ctx);
-
-    const { scope, hideDocumentaryRag } = await resolveAgentRag(
-      ctx,
-      this.definition.ragScope
-    );
-    const { connectorTools, mcpTools } = await loadAgentCatalogue(
-      ctx.userId,
-      scope,
-      ctx.toolCatalogue
-    );
-    let merged: ToolSet = { ...connectorTools, ...mcpTools };
-    if (hideDocumentaryRag) merged = omitDocumentaryRagTools(merged);
-    let tools: ToolSet = withApprovalGates(
-      instrumentTools(
-        filterTools(merged, this.definition.toolAllowlist),
-        ctx.userId
-      ),
-      ctx.requestToolApproval
-    );
-    // Outils injectés par l'orchestrateur (mode maestro avec terminal
-    // default-chat) — même contrat que runAgentStream (base.ts).
-    if (ctx.extraTools) {
-      tools = { ...tools, ...ctx.extraTools };
-    }
-
-    const cached = applyCachedSystem({
-      keyType: key.type,
-      system,
-      messages: modelMessages,
-      hasTools: Object.keys(tools).length > 0,
-    });
-
-    const stream = streamText({
-      model,
-      system: cached.system,
-      messages: cached.messages,
-      tools,
-      // Budget de pas élargi : un tour réaliste (vérifier un article + lire le
-      // document joint + générer le .docx) peut chaîner 4-5 outils ; 5 ne
-      // laissait aucune marge et coupait le modèle en plein milieu. Au dernier
-      // pas autorisé, on retire les outils pour forcer une vraie conclusion
-      // plutôt qu'un appel d'outil tronqué.
-      stopWhen: stepCountIs(ctx.maxStepsOverride ?? 8),
-      prepareStep: ({ stepNumber }) =>
-        stepNumber >= (ctx.maxStepsOverride ?? 8) - 1
-          ? { toolChoice: "none" }
-          : {},
-      temperature: this.definition.temperature ?? undefined,
-      abortSignal: ctx.abortSignal,
-    });
-
-    return { kind: "stream", stream };
+  const { scope, hideDocumentaryRag } = await resolveAgentRag(
+    ctx,
+    def.ragScope
+  );
+  const { connectorTools, mcpTools } = await loadAgentCatalogue(
+    ctx.userId,
+    scope,
+    ctx.toolCatalogue
+  );
+  let merged: ToolSet = { ...connectorTools, ...mcpTools };
+  if (hideDocumentaryRag) merged = omitDocumentaryRagTools(merged);
+  let tools: ToolSet = withApprovalGates(
+    instrumentTools(filterTools(merged, def.toolAllowlist), ctx.userId),
+    ctx.requestToolApproval
+  );
+  // Outils injectés par l'orchestrateur (mode maestro avec terminal
+  // default-chat) — même contrat que runAgentStream (base.ts).
+  if (ctx.extraTools) {
+    tools = { ...tools, ...ctx.extraTools };
   }
+
+  const cached = applyCachedSystem({
+    keyType: key.type,
+    system,
+    messages: modelMessages,
+    hasTools: Object.keys(tools).length > 0,
+  });
+
+  const stream = streamText({
+    model,
+    system: cached.system,
+    messages: cached.messages,
+    tools,
+    // Budget de pas élargi : un tour réaliste (vérifier un article + lire le
+    // document joint + générer le .docx) peut chaîner 4-5 outils ; 5 ne
+    // laissait aucune marge et coupait le modèle en plein milieu. Au dernier
+    // pas autorisé, on retire les outils pour forcer une vraie conclusion
+    // plutôt qu'un appel d'outil tronqué.
+    stopWhen: stepCountIs(ctx.maxStepsOverride ?? 8),
+    prepareStep: ({ stepNumber }) =>
+      stepNumber >= (ctx.maxStepsOverride ?? 8) - 1
+        ? { toolChoice: "none" }
+        : {},
+    temperature: def.temperature ?? undefined,
+    abortSignal: ctx.abortSignal,
+  });
+
+  return { kind: "stream", stream };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { useTranslations } from "next-intl";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import {
   IconAlertTriangle,
@@ -20,18 +21,20 @@ import { roleMeta } from "../agent-role-meta";
  * canvas — on ne signale QUE les agents à portée restreinte.
  */
 function ragScopeBadge(
-  scope: PipelineAgent["ragScope"]
+  scope: PipelineAgent["ragScope"],
+  t: ReturnType<typeof useTranslations>
 ): { label: string; off: boolean } | null {
   if (!scope || scope.mode === "inherit" || scope.mode === "project") {
     return null;
   }
-  if (scope.mode === "none") return { label: "RAG désactivé", off: true };
+  if (scope.mode === "none")
+    return { label: t("flowNode.ragDisabled"), off: true };
   if (scope.mode === "folders") {
     const n = scope.folderIds.length;
-    return { label: `lit : ${n} dossier${n > 1 ? "s" : ""}`, off: false };
+    return { label: t("flowNode.ragFolders", { count: n }), off: false };
   }
   const n = scope.documentIds.length;
-  return { label: `lit : ${n} doc${n > 1 ? "s" : ""}`, off: false };
+  return { label: t("flowNode.ragDocs", { count: n }), off: false };
 }
 
 /**
@@ -51,6 +54,7 @@ export interface AgentFlowNodeData {
 }
 
 function AgentFlowNodeBase({ data }: NodeProps) {
+  const t = useTranslations("board");
   const {
     agent,
     providerKeys,
@@ -64,7 +68,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
   const meta = roleMeta(agent.role);
   const Icon = meta.icon;
   const provider = providerKeys.find((k) => k.id === agent.providerKeyId);
-  const rag = ragScopeBadge(agent.ragScope);
+  const rag = ragScopeBadge(agent.ragScope, t);
 
   return (
     <div
@@ -81,7 +85,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
       {state === "active" && (
         <span
           className="absolute top-2 right-2 z-10 flex size-2"
-          aria-label="Agent actif"
+          aria-label={t("flowNode.agentActive")}
         >
           <span className="absolute inline-flex size-full motion-safe:animate-pulse rounded-full bg-foreground/30 opacity-75" />
           <span className="relative inline-flex size-2 rounded-full bg-foreground/80" />
@@ -90,19 +94,19 @@ function AgentFlowNodeBase({ data }: NodeProps) {
       {state === "done" && (
         <span
           className="absolute top-2 right-2 z-10 inline-flex items-center gap-0.5 text-[10px] uppercase tracking-wider text-success"
-          aria-label="Agent terminé"
+          aria-label={t("flowNode.agentDone")}
         >
           <IconCheck className="size-3.5" />
-          Terminé
+          {t("flowNode.done")}
         </span>
       )}
       {state === "error" && (
         <span
           className="absolute top-2 right-2 z-10 inline-flex items-center gap-0.5 text-[10px] uppercase tracking-wider text-destructive"
-          aria-label="Agent en erreur"
+          aria-label={t("flowNode.agentError")}
         >
           <IconAlertTriangle className="size-3.5" />
-          Erreur
+          {t("flowNode.error")}
         </span>
       )}
       {/* Handle conservé pour l'ANCRAGE des edges auto-générées, mais invisible
@@ -130,7 +134,8 @@ function AgentFlowNodeBase({ data }: NodeProps) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-[11px] uppercase tracking-wider text-foreground/70">
-            Étape {position + 1} {isFinal && "· terminal"}
+            {t("flowNode.step", { n: position + 1 })}{" "}
+            {isFinal && t("flowNode.terminalSuffix")}
           </div>
           <h3 className="font-heading text-sm tracking-tight truncate font-medium">
             {agent.label}
@@ -146,7 +151,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
                   onEdit();
                 }}
                 className="size-9 grid place-items-center rounded-md hover:bg-accent transition-colors"
-                aria-label={`Modifier ${agent.label}`}
+                aria-label={t("flowNode.edit", { label: agent.label })}
               >
                 <IconPencil className="size-3.5" />
               </button>
@@ -159,7 +164,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
                   onDelete();
                 }}
                 className="size-9 grid place-items-center rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors"
-                aria-label={`Supprimer ${agent.label}`}
+                aria-label={t("flowNode.delete", { label: agent.label })}
               >
                 <IconTrash className="size-3.5" />
               </button>
@@ -170,7 +175,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
 
       {/* Body */}
       <div className="px-3 py-3 space-y-2">
-        <div className="text-[11px] text-muted-foreground">{meta.pitch}</div>
+        <div className="text-[11px] text-muted-foreground">{t(meta.pitchKey)}</div>
 
         <div className="flex flex-wrap gap-1.5 text-[11px]">
           {agent.modelOverride ? (
@@ -179,7 +184,7 @@ function AgentFlowNodeBase({ data }: NodeProps) {
             </span>
           ) : (
             <span className="inline-flex items-center rounded border border-dashed border-border bg-background px-1.5 py-0.5 text-muted-foreground italic">
-              modèle par défaut
+              {t("flowNode.defaultModel")}
             </span>
           )}
           {provider && (
@@ -216,15 +221,14 @@ function AgentFlowNodeBase({ data }: NodeProps) {
 
       {/* Footer */}
       <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center justify-between text-[11px] text-muted-foreground">
-        <span className="font-mono uppercase tracking-wider">{meta.label}</span>
+        <span className="font-mono uppercase tracking-wider">{t(meta.labelKey)}</span>
         {agent.toolAllowlist === null || agent.toolAllowlist === undefined ? (
-          <span>Tous les outils</span>
+          <span>{t("flowNode.allTools")}</span>
         ) : agent.toolAllowlist.length === 0 ? (
-          <span>Aucun outil</span>
+          <span>{t("flowNode.noTools")}</span>
         ) : (
           <span>
-            {agent.toolAllowlist.length} outil
-            {agent.toolAllowlist.length > 1 ? "s" : ""}
+            {t("flowNode.toolsCount", { count: agent.toolAllowlist.length })}
           </span>
         )}
       </div>

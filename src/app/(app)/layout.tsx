@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -10,6 +11,7 @@ import {
   providerKeys,
   workflows,
 } from "@/db/schema";
+import { listAccessibleProjectIds } from "@/lib/projects/access";
 import { SidebarContent } from "./sidebar-content";
 import { MobileNav } from "./mobile-nav";
 import { CommandPalette } from "./command-palette";
@@ -28,6 +30,20 @@ export default async function AppLayout({
     role: session.user.role,
   };
 
+  // Projets accessibles en partage (où l'utilisateur est collaborateur) :
+  // élargit la sidebar aux conversations de ces projets et les affiche dans la
+  // liste des projets (pour le menu « déplacer vers » et la cohérence).
+  const { owned, member } = await listAccessibleProjectIds(session.user.id);
+  const accessibleProjectIds = [...owned, ...member];
+
+  const convOwnerOrShared =
+    member.length > 0
+      ? or(
+          eq(conversations.userId, session.user.id),
+          inArray(conversations.projectId, member)
+        )
+      : eq(conversations.userId, session.user.id);
+
   const [convList, projectList, docList, workflowList, providerCount, modelCount] = await Promise.all([
     db
       .select({
@@ -37,17 +53,19 @@ export default async function AppLayout({
         pinnedAt: conversations.pinnedAt,
       })
       .from(conversations)
-      .where(eq(conversations.userId, session.user.id))
+      .where(convOwnerOrShared)
       .orderBy(
         sql`${conversations.pinnedAt} desc nulls last`,
         desc(conversations.updatedAt)
       )
       .limit(50),
-    db
-      .select({ id: projects.id, name: projects.name })
-      .from(projects)
-      .where(eq(projects.userId, session.user.id))
-      .orderBy(asc(projects.name)),
+    accessibleProjectIds.length > 0
+      ? db
+          .select({ id: projects.id, name: projects.name })
+          .from(projects)
+          .where(inArray(projects.id, accessibleProjectIds))
+          .orderBy(asc(projects.name))
+      : Promise.resolve([] as { id: string; name: string }[]),
     db
       .select({ id: documents.id, filename: documents.filename })
       .from(documents)
@@ -90,13 +108,15 @@ export default async function AppLayout({
     conversation: convList.length > 0,
   };
 
+  const t = await getTranslations("common");
+
   return (
     <div className="h-dvh bg-background flex flex-col md:flex-row overflow-hidden">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground focus:shadow-md"
       >
-        Aller au contenu
+        {t("skipToContent")}
       </a>
       <aside className="hidden md:flex shrink-0">
         <SidebarContent

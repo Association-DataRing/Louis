@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconFolderPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ export function NewFolderButton({
   parentFolderId: string | null;
 }) {
   const router = useRouter();
+  const t = useTranslations("documents.newFolder");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -47,25 +49,21 @@ export function NewFolderButton({
       <DialogTrigger asChild>
         <Button variant="outline">
           <IconFolderPlus className="size-4" />
-          Nouveau dossier
+          {t("trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nouveau dossier</DialogTitle>
-          <DialogDescription>
-            Les dossiers vous aident à organiser vos documents par client,
-            dossier juridique ou matière. Vous pourrez y imbriquer
-            d&apos;autres dossiers.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="folder-name">Nom</Label>
+          <Label htmlFor="folder-name">{t("nameLabel")}</Label>
           <Input
             id="folder-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Dossier Dupont SAS"
+            placeholder={t("namePlaceholder")}
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter" && name.trim()) submit();
@@ -75,13 +73,13 @@ export function NewFolderButton({
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            Annuler
+            {t("cancel")}
           </Button>
           <Button
             onClick={submit}
             disabled={pending || !name.trim()}
           >
-            {pending ? "Création…" : "Créer"}
+            {pending ? t("creating") : t("create")}
           </Button>
         </DialogFooter>
       </DialogContent>

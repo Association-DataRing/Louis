@@ -1,4 +1,5 @@
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { IconUsers, IconFileText, IconMessageCircle } from "@tabler/icons-react";
 import { db } from "@/db";
 import {
@@ -18,6 +19,7 @@ import {
 
 export default async function AdminOverviewPage() {
   await requireAdmin();
+  const t = await getTranslations("admin.overview");
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -78,45 +80,45 @@ export default async function AdminOverviewPage() {
     <main className="mx-auto w-full max-w-5xl px-6 py-10 md:px-8 md:py-12">
       <header className="mb-10">
         <h1 className="font-heading text-3xl tracking-tight">
-          Vue d&apos;ensemble
+          {t("title")}
         </h1>
         <p className="mt-2 text-muted-foreground max-w-2xl">
-          Activité du cabinet ce mois et stock total.
+          {t("subtitle")}
         </p>
       </header>
 
       <section className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 border-b border-border pb-12">
         <Stat
-          label="Coût cabinet ce mois"
+          label={t("statMonthCost")}
           value={formatTotals(monthTotals)}
           highlight
         />
         <Stat
-          label="Utilisateurs actifs"
+          label={t("statActiveUsers")}
           value={`${activeUserCount} / ${userCount}`}
           icon={IconUsers}
         />
         <Stat
-          label="Documents stockés"
+          label={t("statDocuments")}
           value={docCount.toLocaleString("fr-FR")}
           icon={IconFileText}
         />
         <Stat
-          label="Conversations"
+          label={t("statConversations")}
           value={convCount.toLocaleString("fr-FR")}
           icon={IconMessageCircle}
-          hint={`${projectCount} projet${projectCount > 1 ? "s" : ""}`}
+          hint={t("projectsHint", { count: projectCount })}
         />
       </section>
 
       <section className="grid lg:grid-cols-[280px_1fr] gap-x-12 gap-y-6">
         <h2 className="font-heading text-2xl tracking-tight">
-          Top utilisateurs.
+          {t("topUsers")}
         </h2>
         <div>
           {topUsersRows.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 border-y border-dashed border-border">
-              Aucune activité IA ce mois-ci.
+              {t("noActivity")}
             </p>
           ) : (
             <ul className="divide-y divide-border border-y border-border">
@@ -138,7 +140,7 @@ export default async function AdminOverviewPage() {
                       </span>
                     </span>
                     <span className="text-xs text-muted-foreground tabular-nums">
-                      {u.msgCount} msg
+                      {t("msgCount", { count: u.msgCount })}
                     </span>
                     <span className="font-heading tabular-nums text-sm">
                       {cost ? formatCost(cost) : "—"}
@@ -152,13 +154,8 @@ export default async function AdminOverviewPage() {
       </section>
 
       <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground mb-1">À noter</p>
-        <p>
-          Les coûts sont des estimations basées sur les tarifs publics des
-          providers. Les modèles auto-hébergés (Ollama, Albert d&apos;Etalab,
-          openai-compatible) sont comptés à 0 — l&apos;infrastructure est
-          facturée séparément.
-        </p>
+        <p className="font-medium text-foreground mb-1">{t("noteHeading")}</p>
+        <p>{t("noteBody")}</p>
       </aside>
     </main>
   );

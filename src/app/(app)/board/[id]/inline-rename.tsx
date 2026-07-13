@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { IconPencil } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ export function InlineRename({
   editable,
 }: InlineRenameProps) {
   const router = useRouter();
+  const t = useTranslations("board");
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialName);
   const [pending, startTransition] = useTransition();
@@ -64,11 +66,11 @@ export function InlineRename({
       if (result.ok) {
         setEditing(false);
         router.refresh();
-        toast.success("Pipeline renommée");
+        toast.success(t("inlineRename.renamed"));
       } else {
         setValue(initialName);
         setEditing(false);
-        toast.error("Renommage impossible", { description: result.error });
+        toast.error(t("inlineRename.renameError"), { description: result.error });
       }
     });
   }
@@ -100,7 +102,7 @@ export function InlineRename({
         }}
         disabled={pending}
         maxLength={120}
-        aria-label="Renommer la pipeline"
+        aria-label={t("inlineRename.renameAria")}
         className={cn(
           "font-heading text-3xl md:text-4xl tracking-tight bg-transparent border-b-2 border-foreground/30 focus:border-foreground/60 outline-none px-0 py-0.5 w-full max-w-xl",
           pending && "opacity-50"
@@ -114,7 +116,7 @@ export function InlineRename({
       type="button"
       onClick={() => setEditing(true)}
       className="group inline-flex items-center gap-2 font-heading text-3xl md:text-4xl tracking-tight text-left hover:opacity-90 transition-opacity"
-      aria-label={`Renommer ${initialName}`}
+      aria-label={t("inlineRename.renameNamed", { name: initialName })}
     >
       {initialName}
       <IconPencil

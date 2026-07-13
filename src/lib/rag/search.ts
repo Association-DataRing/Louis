@@ -18,17 +18,23 @@ export type RagHit = {
 const VECTOR_WEIGHT = 0.7;
 const KEYWORD_WEIGHT = 0.3;
 
-/** Construit la condition de périmètre documentaire (user + sous-ensemble). */
+/**
+ * Construit la condition de périmètre documentaire.
+ *  - Mode projet (`documentIds` fourni) : la liste d'IDs EST la frontière
+ *    d'autorisation — elle est calculée côté appelant sur le périmètre du
+ *    PROPRIÉTAIRE du projet (cf. getProjectScope). On ne filtre donc pas par
+ *    `user_id`, sinon un collaborateur ne verrait pas les documents partagés.
+ *  - Mode personnel (pas de `documentIds`) : périmètre = documents de l'user.
+ */
 function scopeClause(userId: string, documentIds?: string[]) {
-  const base = sql`d.user_id = ${userId}`;
   if (documentIds?.length) {
     const ids = sql.join(
       documentIds.map((id) => sql`${id}::uuid`),
       sql`, `
     );
-    return sql`${base} AND d.id IN (${ids})`;
+    return sql`d.id IN (${ids})`;
   }
-  return base;
+  return sql`d.user_id = ${userId}`;
 }
 
 /**

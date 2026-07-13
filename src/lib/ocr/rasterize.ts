@@ -7,13 +7,8 @@
 const RASTER_SCALE = 2; // 2× → ~150–200 DPI : bon compromis qualité OCR / temps
 const MAX_PAGES = 50; // garde-fou : l'OCR par image est coûteux, on borne
 
-export type RasterOptions = { maxPages?: number; scale?: number };
-
 /** Rastérise les pages d'un PDF en buffers PNG. */
-export async function rasterizePdf(
-  buffer: Buffer,
-  { maxPages = MAX_PAGES, scale = RASTER_SCALE }: RasterOptions = {}
-): Promise<Buffer[]> {
+export async function rasterizePdf(buffer: Buffer): Promise<Buffer[]> {
   const canvasMod = await import("@napi-rs/canvas");
   const { createCanvas } = canvasMod;
 
@@ -35,10 +30,10 @@ export async function rasterizePdf(
 
   const pages: Buffer[] = [];
   try {
-    const count = Math.min(doc.numPages, maxPages);
+    const count = Math.min(doc.numPages, MAX_PAGES);
     for (let p = 1; p <= count; p++) {
       const page = await doc.getPage(p);
-      const viewport = page.getViewport({ scale });
+      const viewport = page.getViewport({ scale: RASTER_SCALE });
       const canvas = createCanvas(
         Math.ceil(viewport.width),
         Math.ceil(viewport.height)

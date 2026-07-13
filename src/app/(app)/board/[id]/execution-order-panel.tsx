@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { IconArrowUp, IconArrowDown, IconFlag } from "@tabler/icons-react";
 import type { PipelineAgent } from "@/db/schema";
@@ -9,16 +10,11 @@ import { roleMeta } from "../agent-role-meta";
 import { reorderPipelineAgents } from "../actions";
 
 const MODE_HINT: Record<string, string> = {
-  sequential:
-    "Chaîne : chaque agent voit la sortie des précédents. Le dernier agent rend la réponse finale.",
-  council:
-    "Conseil : tous les agents délibèrent (N tours). Le dernier agent — le terminal — synthétise et rend la réponse.",
-  parallel:
-    "Parallèle : les agents travaillent en même temps sur la question. Le dernier agent — le terminal — agrège et rend la réponse.",
-  iterative:
-    "Itératif : le premier agent reprend ses notes à chaque tour pour creuser les lacunes. Le dernier agent — le terminal — synthétise et rend la réponse.",
-  maestro:
-    "Maestro : le dernier agent dirige l'équipe — il choisit qui consulter, avec quelle consigne, dans l'ordre qu'il juge utile, puis rend la réponse. L'ordre ci-dessous n'est qu'indicatif.",
+  sequential: "executionOrder.modeHint.sequential",
+  council: "executionOrder.modeHint.council",
+  parallel: "executionOrder.modeHint.parallel",
+  iterative: "executionOrder.modeHint.iterative",
+  maestro: "executionOrder.modeHint.maestro",
 };
 
 /**
@@ -40,6 +36,7 @@ export function ExecutionOrderPanel({
   editable: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations("board");
   const [pending, startTransition] = useTransition();
   const [order, setOrder] = useState<PipelineAgent[]>(
     [...agents].sort((a, b) => a.position - b.position)
@@ -75,9 +72,9 @@ export function ExecutionOrderPanel({
   return (
     <section className="mt-6 rounded-lg border border-border">
       <div className="border-b border-border px-4 py-3">
-        <h2 className="font-heading text-sm">Ordre d&apos;exécution</h2>
+        <h2 className="font-heading text-sm">{t("executionOrder.title")}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          {MODE_HINT[mode] ?? MODE_HINT.sequential}
+          {t(MODE_HINT[mode] ?? MODE_HINT.sequential)}
         </p>
       </div>
       <ol className="divide-y divide-border">
@@ -96,7 +93,7 @@ export function ExecutionOrderPanel({
               </span>
               {isTerminal && (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-foreground/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-foreground/80">
-                  <IconFlag className="size-3" /> répond en dernier
+                  <IconFlag className="size-3" /> {t("executionOrder.respondsLast")}
                 </span>
               )}
               {editable && (
@@ -106,7 +103,7 @@ export function ExecutionOrderPanel({
                     disabled={pending || i === 0}
                     onClick={() => move(i, -1)}
                     className="grid size-8 place-items-center rounded-md transition-colors hover:bg-accent disabled:opacity-30"
-                    aria-label={`Monter ${a.label}`}
+                    aria-label={t("executionOrder.moveUp", { label: a.label })}
                   >
                     <IconArrowUp className="size-4" />
                   </button>
@@ -115,7 +112,7 @@ export function ExecutionOrderPanel({
                     disabled={pending || i === order.length - 1}
                     onClick={() => move(i, 1)}
                     className="grid size-8 place-items-center rounded-md transition-colors hover:bg-accent disabled:opacity-30"
-                    aria-label={`Descendre ${a.label}`}
+                    aria-label={t("executionOrder.moveDown", { label: a.label })}
                   >
                     <IconArrowDown className="size-4" />
                   </button>

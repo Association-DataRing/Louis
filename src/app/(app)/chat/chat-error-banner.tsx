@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   IconAlertTriangle,
   IconRefresh,
@@ -14,16 +15,16 @@ interface ChatErrorBannerProps {
 }
 
 interface ParsedError {
-  title: string;
-  description: string;
-  hint?: string;
+  /** Clé du sous-namespace `errors` (titre/description/hint résolus chez le consommateur). */
+  key: string;
   hintHref?: string;
-  hintLabel?: string;
+  /** Message brut du provider — utilisé comme description pour le cas générique. */
+  rawMessage?: string;
 }
 
 /**
- * Mappe les erreurs courantes AI SDK / provider vers des messages
- * actionnables en français. Fallback générique si pattern non reconnu.
+ * Mappe les erreurs courantes AI SDK / provider vers une clé i18n
+ * actionnable. Fallback générique si pattern non reconnu.
  *
  * Codes Mistral récurrents :
  * - 3505 service_tier_capacity_exceeded
@@ -42,109 +43,70 @@ function parseError(err: Error): ParsedError {
     /service.?tier.?capacity/i.test(msg) ||
     /3505/.test(msg)
   ) {
-    return {
-      title: "Le modèle est saturé",
-      description:
-        "Le provider (Mistral, OpenAI…) refuse temporairement les requêtes — sa capacité de service est dépassée. C'est fréquent en heure de pointe sur les tiers gratuits/standard.",
-      hint: "Réessayez dans 20-30 secondes, ou changez de modèle/provider (un agent en Claude/GPT au lieu de Mistral par exemple).",
-      hintHref: "/settings/providers",
-      hintLabel: "Voir mes providers",
-    };
+    return { key: "saturated", hintHref: "/settings/providers" };
   }
 
   // Rate limit générique
   if (/rate.?limit|429/i.test(msg) || /quota/i.test(msg)) {
-    return {
-      title: "Trop de requêtes",
-      description:
-        "Vous avez atteint la limite de votre provider. Patientez quelques secondes avant de réessayer.",
-      hint: "Si ça persiste, vérifiez votre plan provider ou ajoutez une clé alternative.",
-      hintHref: "/settings/providers",
-      hintLabel: "Mes providers",
-    };
+    return { key: "rateLimit", hintHref: "/settings/providers" };
   }
 
   // Clé invalide
   if (/api.?key|401|unauthor/i.test(msg)) {
-    return {
-      title: "Clé provider invalide",
-      description:
-        "Le provider refuse votre clé d'accès. Vérifiez qu'elle est encore valide et active.",
-      hintHref: "/settings/providers",
-      hintLabel: "Vérifier ma clé",
-    };
+    return { key: "invalidKey", hintHref: "/settings/providers" };
   }
 
   // Modèle introuvable / non-supporté
   if (/model.?not.?found|invalid.?model/i.test(msg)) {
-    return {
-      title: "Modèle introuvable",
-      description:
-        "Le modèle sélectionné n'est pas disponible chez ce provider. Choisissez un autre modèle dans le sélecteur.",
-    };
+    return { key: "modelNotFound" };
   }
 
   // Overload (Anthropic 529)
   if (/overload|529/i.test(msg)) {
-    return {
-      title: "Le provider est surchargé",
-      description:
-        "Anthropic ou OpenAI signale une surcharge globale. Réessayez dans une minute.",
-    };
+    return { key: "overload" };
   }
 
   // No output (stream vide)
   if (/no.?output.?generated/i.test(msg)) {
-    return {
-      title: "Le modèle n'a rien produit",
-      description:
-        "Le stream s'est terminé sans générer de réponse. Souvent dû à un timeout du provider ou à un prompt qui sature le contexte. Réessayez, ou raccourcissez votre question.",
-    };
+    return { key: "noOutput" };
   }
 
   // OpenAI Responses API : mismatch entre function_call et function_call_output
   // dans l'historique envoyé. Le tour précédent a été interrompu pendant
   // un tool call ou la sérialisation des messages a perdu un function_call.
   if (/No tool call found for function call output/i.test(msg)) {
-    return {
-      title: "Historique de conversation incohérent",
-      description:
-        "Le provider attend que chaque résultat d'outil soit précédé de son appel — un tour précédent a probablement été interrompu pendant un tool call. Réessayer relance la requête avec un historique propre. Si l'erreur persiste, créez une nouvelle conversation.",
-      hintHref: "/chat",
-      hintLabel: "Nouvelle conversation",
-    };
+    return { key: "incoherentHistory", hintHref: "/chat" };
   }
 
   // Erreur générique OpenRouter (le provider downstream a échoué sans
   // détail spécifique). On reste explicite sur le diagnostic.
   if (/Provider returned error/i.test(msg)) {
-    return {
-      title: "Le provider a refusé la requête",
-      description:
-        "Le modèle ou son agrégateur (OpenRouter, OVH, Scaleway…) a renvoyé une erreur générique. Changer de modèle dans le sélecteur du composer permet souvent de débloquer.",
-      hintHref: "/settings/models",
-      hintLabel: "Mes modèles",
-    };
+    return { key: "providerRefused", hintHref: "/settings/models" };
   }
 
   // Network / timeout côté client.
   if (/network|fetch failed|ECONNRESET|ETIMEDOUT|timeout/i.test(msg)) {
-    return {
-      title: "Problème réseau",
-      description:
-        "La connexion au provider a échoué — vérifiez votre accès Internet ou le statut du provider. Réessayez dans quelques secondes.",
-    };
+    return { key: "network" };
   }
 
   // Fallback générique
-  return {
-    title: "Une erreur est survenue",
-    description: msg || "Erreur inconnue lors de la communication avec le provider.",
-  };
+  return { key: "generic", rawMessage: msg || undefined };
 }
 
 export function ChatErrorBanner({ error, onRetry }: ChatErrorBannerProps) {
+  const t = useTranslations("chat");
   const parsed = parseError(error);
+  const base = `errors.${parsed.key}`;
+  const title = t(`${base}.title`);
+  const description =
+    parsed.key === "generic" && parsed.rawMessage
+      ? parsed.rawMessage
+      : t(`${base}.description`);
+  const hint = t.has(`${base}.hint`) ? t(`${base}.hint`) : undefined;
+  const hintLabel =
+    parsed.hintHref && t.has(`${base}.hintLabel`)
+      ? t(`${base}.hintLabel`)
+      : undefined;
 
   return (
     <div
@@ -154,13 +116,13 @@ export function ChatErrorBanner({ error, onRetry }: ChatErrorBannerProps) {
       <IconAlertTriangle className="size-5 text-destructive shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1 space-y-2">
         <div>
-          <p className="font-medium text-foreground">{parsed.title}</p>
+          <p className="font-medium text-foreground">{title}</p>
           <p className="mt-1 text-muted-foreground text-xs leading-relaxed">
-            {parsed.description}
+            {description}
           </p>
-          {parsed.hint && (
+          {hint && (
             <p className="mt-2 text-xs text-muted-foreground italic">
-              {parsed.hint}
+              {hint}
             </p>
           )}
         </div>
@@ -174,16 +136,16 @@ export function ChatErrorBanner({ error, onRetry }: ChatErrorBannerProps) {
               className="h-8"
             >
               <IconRefresh className="size-3.5" />
-              Réessayer
+              {t("errors.retry")}
             </Button>
           )}
-          {parsed.hintHref && parsed.hintLabel && (
+          {parsed.hintHref && hintLabel && (
             <Link
               href={parsed.hintHref}
               className="inline-flex items-center gap-1 text-xs text-foreground/70 hover:text-foreground transition-colors h-8 px-2"
             >
               <IconExternalLink className="size-3.5" />
-              {parsed.hintLabel}
+              {hintLabel}
             </Link>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { desc, eq, sql } from "drizzle-orm";
 import { IconArrowUpRight, IconPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ export default async function TabularReviewsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("tabularReviews");
 
   const list = await db
     .select({
@@ -33,20 +35,19 @@ export default async function TabularReviewsPage() {
       <header className="mb-10 flex items-end justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Excel-style sur N documents
+            {t("list.eyebrow")}
           </p>
           <h1 className="mt-2 font-heading text-4xl tracking-tight">
-            Analyses tabulaires.
+            {t("list.title")}
           </h1>
           <p className="mt-3 text-muted-foreground">
-            Définissez vos colonnes (durée, montant, juridiction, clauses…),
-            sélectionnez un lot de documents, obtenez un tableau structuré.
+            {t("list.subtitle")}
           </p>
         </div>
         <Link href="/tabular-reviews/new">
           <Button>
             <IconPlus className="size-4" />
-            Nouvelle analyse
+            {t("list.newReview")}
           </Button>
         </Link>
       </header>
@@ -65,10 +66,10 @@ export default async function TabularReviewsPage() {
                   {r.name}
                 </p>
                 <span className="hidden sm:inline-block text-xs text-muted-foreground tabular-nums">
-                  {r.columnsCount} colonne{r.columnsCount > 1 ? "s" : ""}
+                  {t("list.columnsCount", { count: r.columnsCount })}
                 </span>
                 <span className="hidden sm:inline-block text-xs text-muted-foreground tabular-nums">
-                  {r.rowsCount} doc{r.rowsCount > 1 ? "s" : ""}
+                  {t("list.docsCount", { count: r.rowsCount })}
                 </span>
                 <span className="text-xs text-muted-foreground tabular-nums sm:w-20 sm:text-right inline-flex items-center gap-1 justify-end">
                   {new Date(r.updatedAt).toLocaleDateString("fr-FR")}
@@ -81,31 +82,29 @@ export default async function TabularReviewsPage() {
       )}
 
       <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-sm text-muted-foreground">
-        <strong className="text-foreground">Cas d&apos;usage type :</strong>{" "}
-        30 contrats fournisseurs, colonnes durée / montant / juridiction /
-        clause de résiliation / clause RGPD, extraction en lot, tableau
-        comparable. Les valeurs sont réutilisables ensuite dans le chat.
+        <strong className="text-foreground">{t("list.useCaseLabel")}</strong>{" "}
+        {t("list.useCaseBody")}
       </aside>
     </main>
   );
 }
 
-function EmptyState() {
+async function EmptyState() {
+  const t = await getTranslations("tabularReviews");
   return (
     <div className="py-16 border-y border-dashed border-border">
       <p className="font-heading text-2xl tracking-tight">
-        Pas encore d&apos;analyse.
+        {t("list.emptyTitle")}
       </p>
       <p className="mt-3 text-sm text-muted-foreground max-w-md">
-        Vous définirez les colonnes, choisirez vos documents, et lancerez
-        l&apos;extraction. L&apos;IA remplit le tableau ligne par ligne.
+        {t("list.emptyBody")}
       </p>
       <Link
         href="/tabular-reviews/new"
         className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
       >
         <IconPlus className="size-4" />
-        Créer une analyse
+        {t("list.emptyAction")}
       </Link>
     </div>
   );

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { ocrSettings, providerKeys } from "@/db/schema";
@@ -25,13 +26,8 @@ const VISION_SUGGESTIONS: Record<string, string[]> = {
   albert: [],
 };
 
-const ENGINE_LABEL: Record<string, string> = {
-  mistral: "Mistral OCR (endpoint dédié)",
-  vision: "Modèle de vision",
-  tesseract: "Tesseract local (souverain)",
-};
-
 export default async function OcrSettingsPage() {
+  const t = await getTranslations("settings.ocr");
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
@@ -57,11 +53,9 @@ export default async function OcrSettingsPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-8">
-        <h1 className="font-heading text-3xl tracking-tight">OCR des PDF scannés</h1>
+        <h1 className="font-heading text-3xl tracking-tight">{t("title")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Les PDF à couche texte sont convertis en Markdown 100&nbsp;% localement.
-          Les PDF scannés (images) nécessitent de l&apos;OCR : choisissez le moteur,
-          ou laissez Louis décider automatiquement.
+          {t("subtitle")}
         </p>
       </header>
 
@@ -74,20 +68,18 @@ export default async function OcrSettingsPage() {
         }`}
       >
         <p className="font-medium">
-          Moteur actuellement utilisé : {ENGINE_LABEL[plan.engine]}
+          {t("currentEngine", { engine: t(`engine.${plan.engine}`) })}
           {plan.modelId ? ` — ${plan.modelId}` : ""}
         </p>
         {plan.degraded && (
           <p className="mt-1 text-muted-foreground">
-            Aucune clé OCR/vision configurée : Louis utilise Tesseract local
-            (souverain et gratuit, mais de qualité moindre sur le juridique,
-            les tableaux et le manuscrit). Pour une bien meilleure qualité,
-            ajoutez une clé Mistral (OCR dédié) ou une clé d&apos;un provider
-            vision (OpenRouter, OpenAI, Anthropic…) dans{" "}
-            <a className="underline" href="/settings/providers">
-              Providers
-            </a>
-            .
+            {t.rich("degraded", {
+              providers: (chunks) => (
+                <a className="underline" href="/settings/providers">
+                  {chunks}
+                </a>
+              ),
+            })}
           </p>
         )}
       </div>

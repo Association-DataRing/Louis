@@ -4,7 +4,6 @@ import { toolInvocations } from "@/db/schema";
 
 export interface ToolStatRow {
   toolName: string;
-  category: string;
   calls: number;
   failed: number;
   successRate: number;
@@ -41,7 +40,6 @@ export async function aggregateToolStats(opts: {
   const rows = await db
     .select({
       toolName: toolInvocations.toolName,
-      category: toolInvocations.category,
       calls: sql<number>`count(*)::int`,
       failed: sql<number>`sum(case when ${toolInvocations.success} then 0 else 1 end)::int`,
       avgMs: sql<number>`coalesce(round(avg(${toolInvocations.durationMs})), 0)::int`,
@@ -49,13 +47,12 @@ export async function aggregateToolStats(opts: {
     })
     .from(toolInvocations)
     .where(where)
-    .groupBy(toolInvocations.toolName, toolInvocations.category)
+    .groupBy(toolInvocations.toolName)
     .orderBy(sql`count(*) desc`)
     .limit(50);
 
   const byTool: ToolStatRow[] = rows.map((r) => ({
     toolName: r.toolName,
-    category: r.category,
     calls: r.calls,
     failed: r.failed,
     successRate: r.calls > 0 ? ((r.calls - r.failed) / r.calls) * 100 : 0,

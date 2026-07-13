@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ export function NewReviewForm({
   documents: DocOption[];
 }) {
   const router = useRouter();
+  const t = useTranslations("tabularReviews");
   const [name, setName] = useState("");
   const [providerKeyId, setProviderKeyId] = useState(providerKeys[0].id);
   const initialType = providerKeys[0].type;
@@ -89,16 +91,16 @@ export function NewReviewForm({
   function submit() {
     setError(null);
     if (!name.trim()) {
-      setError("Donnez un nom à votre analyse.");
+      setError(t("form.errorName"));
       return;
     }
     if (columns.length === 0) {
-      setError("Au moins une colonne est requise.");
+      setError(t("form.errorColumnRequired"));
       return;
     }
     for (const c of columns) {
       if (!c.label.trim() || !c.prompt.trim()) {
-        setError("Toutes les colonnes doivent avoir un libellé et une instruction.");
+        setError(t("form.errorColumnFields"));
         return;
       }
     }
@@ -130,12 +132,12 @@ export function NewReviewForm({
     <div className="space-y-8">
       {/* Nom */}
       <section className="space-y-2">
-        <Label htmlFor="name">Nom de l&apos;analyse</Label>
+        <Label htmlFor="name">{t("form.nameLabel")}</Label>
         <Input
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="ex. Audit contrats fournisseurs T2 2026"
+          placeholder={t("form.namePlaceholder")}
           maxLength={120}
         />
       </section>
@@ -143,7 +145,7 @@ export function NewReviewForm({
       {/* Provider + modèle */}
       <section className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Provider</Label>
+          <Label>{t("form.providerLabel")}</Label>
           <Select
             value={providerKeyId}
             onValueChange={changeProvider}
@@ -165,7 +167,7 @@ export function NewReviewForm({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Modèle</Label>
+          <Label>{t("form.modelLabel")}</Label>
           <Select
             value={modelId}
             onValueChange={setModelId}
@@ -194,16 +196,14 @@ export function NewReviewForm({
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-heading text-lg tracking-tight">Colonnes</h2>
+            <h2 className="font-heading text-lg tracking-tight">{t("form.columnsHeading")}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Chaque colonne devient une valeur extraite par document.
-              L&apos;instruction est utilisée comme description Zod pour le
-              modèle.
+              {t("form.columnsHint")}
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addColumn}>
             <IconPlus className="size-3.5" />
-            Ajouter
+            {t("form.addColumn")}
           </Button>
         </div>
         <div className="space-y-3">
@@ -216,15 +216,15 @@ export function NewReviewForm({
                 <Input
                   value={c.label}
                   onChange={(e) => updateColumn(i, { label: e.target.value })}
-                  placeholder="Libellé (ex. Durée du contrat)"
-                  aria-label="Libellé de la colonne"
+                  placeholder={t("form.columnLabelPlaceholder")}
+                  aria-label={t("form.columnLabelAria")}
                   maxLength={80}
                 />
                 <Input
                   value={c.prompt}
                   onChange={(e) => updateColumn(i, { prompt: e.target.value })}
-                  placeholder="Instruction d'extraction (ex. Durée totale en années, format chiffré)"
-                  aria-label="Instruction d'extraction"
+                  placeholder={t("form.columnPromptPlaceholder")}
+                  aria-label={t("form.columnPromptAria")}
                   maxLength={500}
                 />
               </div>
@@ -232,7 +232,7 @@ export function NewReviewForm({
                 type="button"
                 onClick={() => removeColumn(i)}
                 className="size-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                aria-label="Supprimer la colonne"
+                aria-label={t("form.removeColumnAria")}
               >
                 <IconTrash className="size-4" />
               </button>
@@ -244,15 +244,14 @@ export function NewReviewForm({
       {/* Documents */}
       <section className="space-y-3">
         <div>
-          <h2 className="font-heading text-lg tracking-tight">Documents</h2>
+          <h2 className="font-heading text-lg tracking-tight">{t("form.documentsHeading")}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Sélectionnez les fichiers à analyser. Vous pourrez en ajouter
-            ou retirer plus tard.
+            {t("form.documentsHint")}
           </p>
         </div>
         {documents.length === 0 ? (
           <div className="border border-dashed border-border rounded-md p-6 text-center text-sm text-muted-foreground">
-            Aucun document avec texte extrait pour l&apos;instant.
+            {t("form.noDocuments")}
           </div>
         ) : (
           <div className="border border-border rounded-md bg-card max-h-72 overflow-y-auto divide-y divide-border">
@@ -272,8 +271,7 @@ export function NewReviewForm({
         )}
         {selectedDocs.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            {selectedDocs.length} document{selectedDocs.length > 1 ? "s" : ""}{" "}
-            sélectionné{selectedDocs.length > 1 ? "s" : ""}
+            {t("form.selectedDocs", { count: selectedDocs.length })}
           </p>
         )}
       </section>
@@ -289,10 +287,10 @@ export function NewReviewForm({
           variant="ghost"
           onClick={() => router.push("/tabular-reviews")}
         >
-          Annuler
+          {t("form.cancel")}
         </Button>
         <Button onClick={submit} disabled={pending}>
-          {pending ? "Création…" : "Créer l'analyse"}
+          {pending ? t("form.submitting") : t("form.submit")}
         </Button>
       </div>
     </div>

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconCopy,
   IconCheck,
   IconRefresh,
   IconArrowsExchange,
+  IconGitFork,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -32,6 +34,8 @@ type Props = {
   availableModels: ModelOption[];
   onRegenerate: () => void;
   onRegenerateWith: (modelId: string) => void;
+  /** Forke la conversation jusqu'à ce message inclus. Caché si absent. */
+  onFork?: () => void;
   disabled?: boolean;
 };
 
@@ -47,8 +51,10 @@ export function AssistantMessageActions({
   availableModels,
   onRegenerate,
   onRegenerateWith,
+  onFork,
   disabled = false,
 }: Props) {
+  const t = useTranslations("chat");
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -69,8 +75,8 @@ export function AssistantMessageActions({
         type="button"
         onClick={handleCopy}
         disabled={disabled}
-        title={copied ? "Copié" : "Copier la réponse"}
-        aria-label={copied ? "Copié" : "Copier la réponse"}
+        title={copied ? t("messageActions.copied") : t("messageActions.copy")}
+        aria-label={copied ? t("messageActions.copied") : t("messageActions.copy")}
         className="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
       >
         {copied ? (
@@ -83,25 +89,37 @@ export function AssistantMessageActions({
         type="button"
         onClick={onRegenerate}
         disabled={disabled}
-        title="Régénérer cette réponse"
-        aria-label="Régénérer cette réponse"
+        title={t("messageActions.regenerate")}
+        aria-label={t("messageActions.regenerate")}
         className="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
       >
         <IconRefresh className="size-3.5" />
       </button>
+      {onFork && (
+        <button
+          type="button"
+          onClick={onFork}
+          disabled={disabled}
+          title={t("messageActions.fork")}
+          aria-label={t("messageActions.fork")}
+          className="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          <IconGitFork className="size-3.5" />
+        </button>
+      )}
       {availableModels.length > 1 && (
         <DropdownMenu>
           <DropdownMenuTrigger
             disabled={disabled}
-            title="Régénérer avec un autre modèle"
-            aria-label="Régénérer avec un autre modèle"
+            title={t("messageActions.regenerateWith")}
+            aria-label={t("messageActions.regenerateWith")}
             className="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
           >
             <IconArrowsExchange className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="bottom">
             <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-              Régénérer avec
+              {t("messageActions.regenerateWithLabel")}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {availableModels.slice(0, 12).map((m) => (
@@ -125,8 +143,9 @@ export function AssistantMessageActions({
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] font-normal text-muted-foreground">
-                  {availableModels.length - 12} modèles supplémentaires —
-                  changez de modèle dans le composer
+                  {t("messageActions.moreModels", {
+                    count: availableModels.length - 12,
+                  })}
                 </DropdownMenuLabel>
               </>
             )}

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
+import { useTranslations } from "next-intl";
 import { IconSearch } from "@tabler/icons-react";
 
 import { cn } from "@/lib/utils";
@@ -30,14 +31,15 @@ function Command({
 }
 
 function CommandDialog({
-  title = "Recherche",
-  description = "Recherche globale dans Louis",
+  title,
+  description,
   children,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string;
   description?: string;
 }) {
+  const t = useTranslations("components");
   return (
     <Dialog {...props}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-[640px]">
@@ -45,8 +47,10 @@ function CommandDialog({
             pour que Radix câble aria-labelledby (sinon dialog sans nom
             accessible + warning console). */}
         <DialogHeader className="sr-only">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogTitle>{title ?? t("ui.commandSearchTitle")}</DialogTitle>
+          <DialogDescription>
+            {description ?? t("ui.commandSearchDescription")}
+          </DialogDescription>
         </DialogHeader>
         <Command className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input-wrapper]_svg]:size-4 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2.5 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:size-4">
           {children}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { Pipeline, PipelineAgent, ProviderKey } from "@/db/schema";
 import type {
   AgentSourceFolder,
@@ -38,12 +39,13 @@ export function PipelineBoard({
   availableFolders,
   availableDocuments,
 }: PipelineBoardProps) {
+  const t = useTranslations("board");
   const [editingAgent, setEditingAgent] = useState<PipelineAgent | null>(null);
 
   if (agents.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-        Cette pipeline n&apos;a aucun agent configuré.
+        {t("pipelineBoard.noAgents")}
       </div>
     );
   }
@@ -80,13 +82,13 @@ export function PipelineBoard({
               aria-hidden
             />
             <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
-              s&apos;appuie sur
+              {t("pipelineBoard.reliesOn")}
             </div>
             <div className="grid grid-cols-1 gap-4 w-full">
               {team.map((a, i) => (
                 <div key={a.id} className="relative">
                   <span className="absolute -top-3 left-3 text-[11px] uppercase tracking-wider bg-background px-1 text-muted-foreground">
-                    Étape {i + 1}
+                    {t("pipelineBoard.step", { n: i + 1 })}
                   </span>
                   <AgentCard
                     agent={a}

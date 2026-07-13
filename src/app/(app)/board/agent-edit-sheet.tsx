@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import {
@@ -76,6 +77,7 @@ export function AgentEditSheet({
   onOpenChange,
 }: AgentEditSheetProps) {
   const router = useRouter();
+  const t = useTranslations("board");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -199,12 +201,14 @@ export function AgentEditSheet({
       if (result.ok) {
         onOpenChange(false);
         router.refresh();
-        toast.success("Agent enregistré", {
-          description: `${label.trim() || agent.label} a été mis à jour.`,
+        toast.success(t("editSheet.toastSaved"), {
+          description: t("editSheet.toastSavedDesc", {
+            name: label.trim() || agent.label,
+          }),
         });
       } else {
         setError(result.error);
-        toast.error("Enregistrement impossible", {
+        toast.error(t("editSheet.toastSaveError"), {
           description: result.error,
         });
       }
@@ -217,15 +221,15 @@ export function AgentEditSheet({
         <SheetHeader>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
             <Icon className="size-3.5" />
-            {meta.label}
+            {t(meta.labelKey)}
           </div>
-          <SheetTitle className="font-heading">Modifier l&apos;agent</SheetTitle>
-          <SheetDescription>{meta.pitch}</SheetDescription>
+          <SheetTitle className="font-heading">{t("editSheet.title")}</SheetTitle>
+          <SheetDescription>{t(meta.pitchKey)}</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-5 px-4 pb-4">
           <div className="space-y-2">
-            <Label htmlFor={`role-${agent.id}`}>Rôle</Label>
+            <Label htmlFor={`role-${agent.id}`}>{t("editSheet.roleLabel")}</Label>
             <Select value={role} onValueChange={(v) => setRole(v as AgentRole)}>
               <SelectTrigger id={`role-${agent.id}`}>
                 <SelectValue />
@@ -233,7 +237,7 @@ export function AgentEditSheet({
               <SelectContent>
                 {AGENT_ROLES.map((r) => (
                   <SelectItem key={r} value={r}>
-                    {roleMeta(r).label}
+                    {t(roleMeta(r).labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -241,19 +245,15 @@ export function AgentEditSheet({
             {role !== agent.role ? (
               <p className="flex items-start gap-1 text-xs text-warning">
                 <IconAlertTriangle className="size-3.5 shrink-0 mt-px" />
-                <span>
-                  Changer le rôle modifie le prompt « factory » et les outils
-                  par défaut de l&apos;agent. Votre prompt système personnalisé
-                  est conservé.
-                </span>
+                <span>{t("editSheet.roleChangeWarning")}</span>
               </p>
             ) : (
-              <p className="text-xs text-muted-foreground">{meta.pitch}</p>
+              <p className="text-xs text-muted-foreground">{t(meta.pitchKey)}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`label-${agent.id}`}>Nom affiché</Label>
+            <Label htmlFor={`label-${agent.id}`}>{t("editSheet.nameLabel")}</Label>
             <Input
               id={`label-${agent.id}`}
               value={label}
@@ -263,7 +263,7 @@ export function AgentEditSheet({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`provider-${agent.id}`}>Clé provider</Label>
+            <Label htmlFor={`provider-${agent.id}`}>{t("editSheet.providerLabel")}</Label>
             <Select
               value={providerKeyId}
               onValueChange={(v) => {
@@ -272,11 +272,11 @@ export function AgentEditSheet({
               }}
             >
               <SelectTrigger id={`provider-${agent.id}`}>
-                <SelectValue placeholder="Hériter du chat" />
+                <SelectValue placeholder={t("editSheet.inheritPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE_VALUE}>
-                  Hériter du chat (clé choisie au moment de l&apos;envoi)
+                  {t("editSheet.inheritOption")}
                 </SelectItem>
                 {providerKeys.map((k) => (
                   <SelectItem key={k.id} value={k.id}>
@@ -289,14 +289,12 @@ export function AgentEditSheet({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Permet d&apos;assigner un provider/modèle différent par agent —
-              par exemple Mistral-small pour le Relecteur, Claude pour le
-              Maestro.
+              {t("editSheet.providerHelp")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`model-${agent.id}`}>Modèle</Label>
+            <Label htmlFor={`model-${agent.id}`}>{t("editSheet.modelLabel")}</Label>
             {modelOptions.length > 0 ? (
               <Select
                 value={modelOverride || NONE_VALUE}
@@ -305,11 +303,11 @@ export function AgentEditSheet({
                 }
               >
                 <SelectTrigger id={`model-${agent.id}`}>
-                  <SelectValue placeholder="Par défaut du provider" />
+                  <SelectValue placeholder={t("editSheet.modelDefaultPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE_VALUE}>
-                    Par défaut du provider
+                    {t("editSheet.modelDefaultOption")}
                   </SelectItem>
                   {modelOptions.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
@@ -328,7 +326,7 @@ export function AgentEditSheet({
                 id={`model-${agent.id}`}
                 value={modelOverride}
                 onChange={(e) => setModelOverride(e.target.value)}
-                placeholder="ex. mistral-small-latest"
+                placeholder={t("editSheet.modelInputPlaceholder")}
                 maxLength={120}
               />
             )}
@@ -336,7 +334,7 @@ export function AgentEditSheet({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor={`temp-${agent.id}`}>Température</Label>
+              <Label htmlFor={`temp-${agent.id}`}>{t("editSheet.temperatureLabel")}</Label>
               <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
                 <button
                   type="button"
@@ -347,7 +345,7 @@ export function AgentEditSheet({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Défaut
+                  {t("editSheet.tempDefault")}
                 </button>
                 <button
                   type="button"
@@ -358,7 +356,7 @@ export function AgentEditSheet({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Personnalisée
+                  {t("editSheet.tempCustom")}
                 </button>
               </div>
             </div>
@@ -386,15 +384,13 @@ export function AgentEditSheet({
                   id={`temp-help-${agent.id}`}
                   className="flex justify-between text-[10px] text-muted-foreground"
                 >
-                  <span>0 · précis / factuel</span>
-                  <span>créatif · 2</span>
+                  <span>{t("editSheet.tempLow")}</span>
+                  <span>{t("editSheet.tempHigh")}</span>
                 </div>
               </>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Température par défaut du provider — convient à la plupart des
-                usages. Passez en « Personnalisée » pour un Relecteur très
-                factuel (bas) ou un Rédacteur plus créatif (haut).
+                {t("editSheet.tempHelp")}
               </p>
             )}
           </div>
@@ -402,9 +398,9 @@ export function AgentEditSheet({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor={`prompt-${agent.id}`}>
-                System prompt{" "}
+                {t("editSheet.systemPromptLabel")}{" "}
                 <span className="text-muted-foreground text-xs">
-                  (optionnel)
+                  {t("editSheet.optional")}
                 </span>
               </Label>
               <span
@@ -417,7 +413,7 @@ export function AgentEditSheet({
                 }`}
                 aria-live="polite"
               >
-                {systemPrompt.length} / 8000
+                {t("editSheet.charCount", { count: systemPrompt.length })}
               </span>
             </div>
             <textarea
@@ -425,7 +421,7 @@ export function AgentEditSheet({
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={6}
-              placeholder={`Vide = prompt « factory » du rôle "${meta.label}".`}
+              placeholder={t("editSheet.promptPlaceholder", { role: t(meta.labelKey) })}
               className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 font-mono"
               maxLength={8000}
               aria-describedby={`prompt-help-${agent.id}`}
@@ -441,21 +437,18 @@ export function AgentEditSheet({
               {systemPrompt.length > 2000 ? (
                 <>
                   <IconAlertTriangle className="size-3.5 shrink-0 mt-px" />
-                  <span>
-                    Ce prompt sera répété à chaque appel de cet agent — un
-                    prompt long multiplie les coûts en mode council/parallel.
-                  </span>
+                  <span>{t("editSheet.promptWarning")}</span>
                 </>
               ) : (
-                "Vide = prompt « factory » du rôle. Plus le prompt est long, plus chaque appel coûte cher."
+                t("editSheet.promptHelp")
               )}
             </p>
           </div>
 
           <div className="space-y-2">
             <Label>
-              Outils autorisés{" "}
-              <span className="text-muted-foreground text-xs">(optionnel)</span>
+              {t("editSheet.toolsLabel")}{" "}
+              <span className="text-muted-foreground text-xs">{t("editSheet.optional")}</span>
             </Label>
             <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
               <button
@@ -467,7 +460,7 @@ export function AgentEditSheet({
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Tous les outils
+                {t("editSheet.toolsAll")}
               </button>
               <button
                 type="button"
@@ -478,7 +471,7 @@ export function AgentEditSheet({
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Sélection
+                {t("editSheet.toolsCustom")}
               </button>
             </div>
             {allowlistMode === "custom" && (
@@ -486,8 +479,7 @@ export function AgentEditSheet({
                 {availableTools.length === 0 &&
                 unavailableSelected.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    Aucun outil disponible — configurez un connecteur ou un
-                    serveur MCP.
+                    {t("editSheet.noToolsAvailable")}
                   </p>
                 ) : (
                   <>
@@ -505,20 +497,20 @@ export function AgentEditSheet({
                         <code className="text-xs">{t}</code>
                       </label>
                     ))}
-                    {unavailableSelected.map((t) => (
+                    {unavailableSelected.map((tool) => (
                       <label
-                        key={t}
+                        key={tool}
                         className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent"
                       >
                         <input
                           type="checkbox"
                           checked
-                          onChange={() => toggleTool(t)}
+                          onChange={() => toggleTool(tool)}
                           className="size-4 accent-primary"
                         />
-                        <code className="text-xs">{t}</code>
+                        <code className="text-xs">{tool}</code>
                         <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-warning">
-                          <IconAlertTriangle className="size-3" /> indisponible
+                          <IconAlertTriangle className="size-3" /> {t("editSheet.unavailable")}
                         </span>
                       </label>
                     ))}
@@ -528,19 +520,17 @@ export function AgentEditSheet({
             )}
             <p className="text-xs text-muted-foreground">
               {allowlistMode === "all"
-                ? "L'agent peut utiliser tous les outils disponibles."
+                ? t("editSheet.toolsHelpAll")
                 : selectedTools.size === 0
-                  ? "Aucun outil — l'agent travaille uniquement sur le texte."
-                  : `${selectedTools.size} outil${
-                      selectedTools.size > 1 ? "s" : ""
-                    } sélectionné${selectedTools.size > 1 ? "s" : ""}.`}
+                  ? t("editSheet.toolsHelpNone")
+                  : t("editSheet.toolsHelpSelected", { count: selectedTools.size })}
             </p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor={`rag-${agent.id}`}>
-              Sources documentaires{" "}
-              <span className="text-muted-foreground text-xs">(RAG)</span>
+              {t("editSheet.ragLabel")}{" "}
+              <span className="text-muted-foreground text-xs">{t("editSheet.ragTag")}</span>
             </Label>
             <Select
               value={ragMode}
@@ -551,11 +541,11 @@ export function AgentEditSheet({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="inherit">
-                  Périmètre de la conversation
+                  {t("editSheet.ragInherit")}
                 </SelectItem>
-                <SelectItem value="none">Aucun document</SelectItem>
-                <SelectItem value="folders">Dossiers choisis</SelectItem>
-                <SelectItem value="documents">Documents choisis</SelectItem>
+                <SelectItem value="none">{t("editSheet.ragNone")}</SelectItem>
+                <SelectItem value="folders">{t("editSheet.ragFolders")}</SelectItem>
+                <SelectItem value="documents">{t("editSheet.ragDocuments")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -563,7 +553,7 @@ export function AgentEditSheet({
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border p-2">
                 {availableFolders.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    Aucun dossier — créez-en dans l&apos;onglet Documents.
+                    {t("editSheet.noFolders")}
                   </p>
                 ) : (
                   availableFolders.map((f) => (
@@ -589,7 +579,7 @@ export function AgentEditSheet({
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border p-2">
                 {availableDocuments.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    Aucun document importé.
+                    {t("editSheet.noDocuments")}
                   </p>
                 ) : (
                   availableDocuments.map((d) => (
@@ -608,7 +598,7 @@ export function AgentEditSheet({
                       </span>
                       {!d.indexed && (
                         <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-[10px] text-warning">
-                          <IconAlertTriangle className="size-3" /> non indexé
+                          <IconAlertTriangle className="size-3" /> {t("editSheet.notIndexed")}
                         </span>
                       )}
                     </label>
@@ -619,12 +609,12 @@ export function AgentEditSheet({
 
             <p className="text-xs text-muted-foreground">
               {ragMode === "inherit"
-                ? "L'agent lit les pièces du projet de la conversation (par défaut)."
+                ? t("editSheet.ragHelpInherit")
                 : ragMode === "none"
-                  ? "L'agent ne lit aucune pièce — il travaille sans recherche documentaire."
+                  ? t("editSheet.ragHelpNone")
                   : ragMode === "folders"
-                    ? `${ragFolderIds.size} dossier${ragFolderIds.size > 1 ? "s" : ""} sélectionné${ragFolderIds.size > 1 ? "s" : ""} — intersecté avec le périmètre du projet de la conversation.`
-                    : `${ragDocIds.size} document${ragDocIds.size > 1 ? "s" : ""} sélectionné${ragDocIds.size > 1 ? "s" : ""} — intersecté avec le périmètre du projet de la conversation.`}
+                    ? t("editSheet.ragHelpFolders", { count: ragFolderIds.size })
+                    : t("editSheet.ragHelpDocuments", { count: ragDocIds.size })}
             </p>
           </div>
 
@@ -643,10 +633,10 @@ export function AgentEditSheet({
             onClick={() => onOpenChange(false)}
             disabled={pending}
           >
-            Annuler
+            {t("common.cancel")}
           </Button>
           <Button type="button" onClick={handleSave} disabled={pending}>
-            {pending ? "Enregistrement…" : "Enregistrer"}
+            {pending ? t("common.saving") : t("common.save")}
           </Button>
         </SheetFooter>
       </SheetContent>

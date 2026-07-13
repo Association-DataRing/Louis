@@ -1,0 +1,40 @@
+{
+  "list": {
+    "eyebrow": "Bibliothèque cabinet",
+    "title": "Trames.",
+    "subtitle": "Prompts réutilisables du cabinet — résumé d'arrêt, analyse de clause, due diligence. Insérez-les d'un clic dans une conversation via l'icône <icon></icon>.",
+    "emptyTitle": "Pas encore de trame.",
+    "emptyBody1": "Une trame est un prompt réutilisable que vous insérez d'un clic dans une conversation. Créez-en un depuis votre pratique — Louis ne livre pas de templates par défaut, c'est votre cabinet qui définit sa bibliothèque.",
+    "emptyBody2": "Besoin d'inspiration ? <link>Importez des modèles de skills juridiques</link> comme point de départ — relisez-les et adaptez-les avant de les utiliser."
+  },
+  "add": {
+    "trigger": "Nouveau workflow",
+    "title": "Nouveau workflow",
+    "description": "Donnez un nom à votre template et écrivez le prompt que vous voudrez réutiliser dans le chat.",
+    "nameLabel": "Nom",
+    "namePlaceholder": "ex. Résumé d'arrêt en 5 points",
+    "descriptionLabel": "Description",
+    "descriptionOptional": "(optionnel)",
+    "descriptionPlaceholder": "Note rapide sur l'usage du template",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Le texte qui sera inséré dans le composer du chat…",
+    "cancel": "Annuler",
+    "creating": "Création…",
+    "create": "Créer"
+  },
+  "card": {
+    "actionsAria": "Actions",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "editTitle": "Modifier le workflow",
+    "editDescription": "Les modifications sont disponibles immédiatement depuis le composer du chat.",
+    "nameLabel": "Nom",
+    "descriptionLabel": "Description",
+    "promptLabel": "Prompt",
+    "cancel": "Annuler",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer",
+    "deleteTitle": "Supprimer ce workflow ?",
+    "deleteDescription": "« {name} » sera définitivement supprimé. Le prompt ne pourra pas être récupéré."
+  }
+}

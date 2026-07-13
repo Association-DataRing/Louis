@@ -11,7 +11,8 @@ import {
 
 export type NavItem = {
   href: string;
-  label: string;
+  /** Clé i18n dans le namespace `nav` (résolue chez le consommateur). */
+  labelKey: string;
   icon: ComponentType<{ className?: string }>;
 };
 
@@ -21,13 +22,17 @@ export type NavItem = {
  * surface tenait sa propre copie : les renommages VOCAB (« Bureau » → « Board »,
  * etc.) devaient être appliqués à plusieurs endroits et finissaient par diverger
  * en libellé, ordre et icône. Un seul tableau ici = plus de dérive possible.
+ *
+ * Les libellés sont des clés i18n (namespace `nav`) résolues côté consommateur
+ * via `useTranslations("nav")` / `getTranslations("nav")` — ce module n'est pas
+ * un composant React, il ne peut donc pas appeler le hook lui-même.
  */
 export const PRIMARY_NAV: readonly NavItem[] = [
-  { href: "/dashboard", label: "Tableau de bord", icon: IconLayoutDashboard },
-  { href: "/chat", label: "Conversations", icon: IconMessageCircle },
-  { href: "/projects", label: "Projets", icon: IconFolders },
-  { href: "/documents", label: "Documents", icon: IconFolder },
-  { href: "/tabular-reviews", label: "Analyses tabulaires", icon: IconTable },
-  { href: "/workflows", label: "Trames", icon: IconLibrary },
-  { href: "/board", label: "Board", icon: IconBriefcase },
+  { href: "/dashboard", labelKey: "dashboard", icon: IconLayoutDashboard },
+  { href: "/chat", labelKey: "chat", icon: IconMessageCircle },
+  { href: "/projects", labelKey: "projects", icon: IconFolders },
+  { href: "/documents", labelKey: "documents", icon: IconFolder },
+  { href: "/tabular-reviews", labelKey: "tabularReviews", icon: IconTable },
+  { href: "/workflows", labelKey: "workflows", icon: IconLibrary },
+  { href: "/board", labelKey: "board", icon: IconBriefcase },
 ];

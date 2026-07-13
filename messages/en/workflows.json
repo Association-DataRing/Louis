@@ -1,0 +1,40 @@
+{
+  "list": {
+    "eyebrow": "Firm library",
+    "title": "Templates.",
+    "subtitle": "Reusable firm prompts — case summary, clause analysis, due diligence. Insert them into a conversation in one click via the <icon></icon> icon.",
+    "emptyTitle": "No template yet.",
+    "emptyBody1": "A template is a reusable prompt you insert into a conversation in one click. Create one from your practice — Louis ships no default templates; it's your firm that defines its library.",
+    "emptyBody2": "Need inspiration? <link>Import legal skill templates</link> as a starting point — review and adapt them before using them."
+  },
+  "add": {
+    "trigger": "New workflow",
+    "title": "New workflow",
+    "description": "Give your template a name and write the prompt you'll want to reuse in the chat.",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Case summary in 5 points",
+    "descriptionLabel": "Description",
+    "descriptionOptional": "(optional)",
+    "descriptionPlaceholder": "Quick note on the template's use",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "The text that will be inserted into the chat composer…",
+    "cancel": "Cancel",
+    "creating": "Creating…",
+    "create": "Create"
+  },
+  "card": {
+    "actionsAria": "Actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editTitle": "Edit workflow",
+    "editDescription": "Changes are available immediately from the chat composer.",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "promptLabel": "Prompt",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "save": "Save",
+    "deleteTitle": "Delete this workflow?",
+    "deleteDescription": "“{name}” will be permanently deleted. The prompt cannot be recovered."
+  }
+}

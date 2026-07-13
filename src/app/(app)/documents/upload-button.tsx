@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconUpload } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -13,6 +14,7 @@ export function UploadButton({
   folderId?: string | null;
 }) {
   const router = useRouter();
+  const t = useTranslations("documents.uploadButton");
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -33,11 +35,7 @@ export function UploadButton({
       }
       if (fileRef.current) fileRef.current.value = "";
       if (failed > 0) {
-        setError(
-          `${failed} fichier${failed > 1 ? "s" : ""} sur ${files.length} n'${
-            failed > 1 ? "ont" : "a"
-          } pas pu être importé${failed > 1 ? "s" : ""}.`
-        );
+        setError(t("uploadError", { count: failed, total: files.length }));
       }
       router.refresh();
     });
@@ -50,7 +48,7 @@ export function UploadButton({
         disabled={pending}
       >
         {pending ? <Spinner className="size-4" /> : <IconUpload className="size-4" />}
-        {pending ? "Envoi…" : "Importer"}
+        {pending ? t("sending") : t("import")}
       </Button>
       <input
         ref={fileRef}

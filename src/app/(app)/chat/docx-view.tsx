@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Spinner } from "@/components/ui/spinner";
 
 /**
@@ -25,6 +26,7 @@ export function DocxView({
   targetText?: string;
   className?: string;
 }) {
+  const t = useTranslations("chat");
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +108,7 @@ export function DocxView({
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Render error");
+          setError(err instanceof Error ? err.message : t("docPanel.renderError"));
         }
       } finally {
         if (!cancelled) {
@@ -118,7 +120,7 @@ export function DocxView({
     return () => {
       cancelled = true;
     };
-  }, [documentId, targetText]);
+  }, [documentId, targetText, t]);
 
   return (
     <div

@@ -1,4 +1,4 @@
-import { pistePost } from "./piste";
+import { pisteFetch } from "./piste";
 import { runTool, toolOk, type ToolResult } from "@/lib/tools/result";
 
 export type BofipHit = {
@@ -39,10 +39,8 @@ export async function bofipSearch(
       totalResultNumber?: number;
     };
 
-    const r = await pistePost<Raw>(
-      userId,
-      "/dila/legifrance/lf-engine-app/search",
-      {
+    const r = await pisteFetch<Raw>(userId, "POST", "/dila/legifrance/lf-engine-app/search", {
+      body: {
         fond: "CIRC",
         recherche: {
           champs: [
@@ -62,8 +60,8 @@ export async function bofipSearch(
           operateur: "ET",
         },
       },
-      "BOFIP"
-    );
+      serviceName: "BOFIP",
+    });
 
     if (!r.ok) return r;
 

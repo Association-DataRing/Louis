@@ -7,17 +7,18 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { approveMemory, unapproveMemory, deleteMemory } from "./actions";
 
-const CATEGORY_LABEL: Record<string, string> = {
-  party: "Partie",
-  deadline: "Échéance",
-  convention: "Convention",
-  fact: "Fait",
-  preference: "Préférence",
-};
+const CATEGORY_KEYS = new Set([
+  "party",
+  "deadline",
+  "convention",
+  "fact",
+  "preference",
+]);
 
 export type MemoryItem = {
   id: string;
@@ -28,6 +29,7 @@ export type MemoryItem = {
 };
 
 export function MemoryRow({ memory }: { memory: MemoryItem }) {
+  const t = useTranslations("settings.memory");
   const [pending, start] = useTransition();
   const approved = memory.status === "approved";
 
@@ -37,7 +39,7 @@ export function MemoryRow({ memory }: { memory: MemoryItem }) {
         await fn(memory.id);
         toast.success(ok);
       } catch {
-        toast.error("Action impossible.");
+        toast.error(t("toast.error"));
       }
     });
   }
@@ -47,7 +49,9 @@ export function MemoryRow({ memory }: { memory: MemoryItem }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <Badge variant="outline" className="text-[10px] shrink-0">
-            {CATEGORY_LABEL[memory.category] ?? memory.category}
+            {CATEGORY_KEYS.has(memory.category)
+              ? t(`category.${memory.category}`)
+              : memory.category}
           </Badge>
           <span className="text-xs text-muted-foreground truncate">
             {memory.projectName}
@@ -61,8 +65,8 @@ export function MemoryRow({ memory }: { memory: MemoryItem }) {
             size="sm"
             variant="ghost"
             disabled={pending}
-            onClick={() => run(unapproveMemory, "Fait remis en attente.")}
-            title="Remettre en attente"
+            onClick={() => run(unapproveMemory, t("toast.unapproved"))}
+            title={t("unapproveTitle")}
           >
             <IconArrowBackUp className="size-4" />
           </Button>
@@ -71,8 +75,8 @@ export function MemoryRow({ memory }: { memory: MemoryItem }) {
             size="sm"
             variant="ghost"
             disabled={pending}
-            onClick={() => run(approveMemory, "Fait validé.")}
-            title="Valider ce fait"
+            onClick={() => run(approveMemory, t("toast.approved"))}
+            title={t("approveTitle")}
           >
             <IconCheck className="size-4 text-success" />
           </Button>
@@ -81,8 +85,8 @@ export function MemoryRow({ memory }: { memory: MemoryItem }) {
           size="sm"
           variant="ghost"
           disabled={pending}
-          onClick={() => run(deleteMemory, "Fait supprimé.")}
-          title="Supprimer"
+          onClick={() => run(deleteMemory, t("toast.deleted"))}
+          title={t("deleteTitle")}
         >
           <IconTrash className="size-4 text-destructive" />
         </Button>

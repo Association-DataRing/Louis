@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconDots,
   IconFolder,
@@ -31,6 +32,7 @@ export function FolderRow({
   subfolderCount?: number;
 }) {
   const router = useRouter();
+  const t = useTranslations("documents.folder");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(folder.name);
   const [pending, startTransition] = useTransition();
@@ -69,7 +71,7 @@ export function FolderRow({
           <div className="flex items-center gap-2">
             <input
               autoFocus
-              aria-label="Nouveau nom du dossier"
+              aria-label={t("renameAria")}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -85,8 +87,8 @@ export function FolderRow({
               type="button"
               onClick={commitRename}
               className="size-8 inline-flex items-center justify-center rounded-md text-primary hover:bg-accent"
-              title="Valider"
-              aria-label="Valider"
+              title={t("validate")}
+              aria-label={t("validate")}
             >
               <IconCheck className="size-4" />
             </button>
@@ -97,8 +99,8 @@ export function FolderRow({
                 setDraft(folder.name);
               }}
               className="size-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
-              title="Annuler"
-              aria-label="Annuler"
+              title={t("cancel")}
+              aria-label={t("cancel")}
             >
               <IconX className="size-4" />
             </button>
@@ -112,15 +114,16 @@ export function FolderRow({
           </Link>
         )}
         <div className="text-xs text-muted-foreground mt-0.5">
-          Dossier · créé le{" "}
-          {new Date(folder.createdAt).toLocaleDateString("fr-FR")}
+          {t("createdAt", {
+            date: new Date(folder.createdAt).toLocaleDateString("fr-FR"),
+          })}
         </div>
       </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger
           className="size-8 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors disabled:opacity-50"
-          aria-label="Actions"
+          aria-label={t("actionsAria")}
           disabled={pending}
         >
           <IconDots className="size-4" />
@@ -128,7 +131,7 @@ export function FolderRow({
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setEditing(true)}>
             <IconPencil className="size-4" />
-            Renommer
+            {t("rename")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -136,7 +139,7 @@ export function FolderRow({
             onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
-            Supprimer
+            {t("delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -144,22 +147,11 @@ export function FolderRow({
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer ce dossier ?"
-        description={
-          <>
-            « {folder.name} » sera supprimé
-            {subfolderCount > 0 && (
-              <>
-                {" "}
-                ainsi que ses {subfolderCount} sous-dossier
-                {subfolderCount > 1 ? "s" : ""}
-              </>
-            )}
-            . Tous les documents qu&apos;il contient
-            {subfolderCount > 0 ? " (y compris ceux des sous-dossiers)" : ""}{" "}
-            remonteront à la racine — ils ne sont pas perdus.
-          </>
-        }
+        title={t("deleteTitle")}
+        description={t("deleteDescription", {
+          count: subfolderCount,
+          name: folder.name,
+        })}
         pending={pending}
         onConfirm={handleDelete}
       />

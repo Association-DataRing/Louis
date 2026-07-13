@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   IconBooks,
@@ -28,9 +29,9 @@ import { MODEL_PRICING } from "@/lib/providers/pricing";
 
 /** H23 : prix par M de tokens (entrée/sortie) pour signaler le coût AVANT
  * d'activer un modèle. « prix inconnu » plutôt qu'un faux « gratuit ». */
-function formatModelPrice(modelId: string): string {
+function formatModelPrice(modelId: string, unknownLabel: string): string {
   const p = MODEL_PRICING[modelId];
-  if (!p) return "prix inconnu";
+  if (!p) return unknownLabel;
   const sym = p.currency === "EUR" ? "€" : "$";
   return `${p.inputPerMillion} / ${p.outputPerMillion} ${sym}/M`;
 }
@@ -58,6 +59,7 @@ export function LibraryBrowser({
   enabledKeys,
 }: LibraryBrowserProps) {
   const router = useRouter();
+  const t = useTranslations("settings.models");
   const [selectedKeyId, setSelectedKeyId] = useState<string>(
     providerKeys[0]?.id ?? ""
   );
@@ -84,7 +86,7 @@ export function LibraryBrowser({
           } | null;
           setState({
             kind: "error",
-            message: body?.error ?? `Erreur HTTP ${res.status}`,
+            message: body?.error ?? t("library.httpError", { status: res.status }),
           });
           return;
         }
@@ -96,11 +98,11 @@ export function LibraryBrowser({
       } catch (err) {
         setState({
           kind: "error",
-          message: err instanceof Error ? err.message : "Erreur réseau",
+          message: err instanceof Error ? err.message : t("library.networkError"),
         });
       }
     },
-    []
+    [t]
   );
 
   // Auto-fetch dès qu'on a une clé sélectionnée. loadModels appelle
@@ -179,13 +181,13 @@ export function LibraryBrowser({
       const result = await addModelsBulk({ providerType, models });
       if (result.ok) {
         toast.success(
-          `${models.length} modèle${models.length > 1 ? "s" : ""} ajouté${models.length > 1 ? "s" : ""}`,
+          t("toast.modelsAdded", { count: models.length }),
           { description: `${PROVIDER_CATALOG[providerType].label}` }
         );
         setSelection(new Set());
         router.refresh();
       } else {
-        toast.error("Ajout impossible", { description: result.error });
+        toast.error(t("toast.addFailed"), { description: result.error });
       }
     });
   }
@@ -201,10 +203,10 @@ export function LibraryBrowser({
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p className="text-xs text-foreground/70 uppercase tracking-wider">
-              Provider
+              {t("library.providerLabel")}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Choisissez la clé pour interroger son catalogue live.
+              {t("library.providerHint")}
             </p>
           </div>
           <Select value={selectedKeyId} onValueChange={setSelectedKeyId}>
@@ -226,7 +228,7 @@ export function LibraryBrowser({
               <strong className="text-foreground">
                 {PROVIDER_CATALOG[selectedKey.type].label}
               </strong>{" "}
-              · clé «{" "}
+              · {t("library.keyWord")} «{" "}
               <span className="font-mono">{selectedKey.label}</span> »
             </span>
             <a
@@ -236,7 +238,7 @@ export function LibraryBrowser({
               className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors ml-auto"
             >
               <IconExternalLink className="size-3" />
-              docs
+              {t("library.docs")}
             </a>
           </div>
         )}
@@ -249,7 +251,7 @@ export function LibraryBrowser({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher par nom, id, vendor…"
+            placeholder={t("library.searchPlaceholder")}
             className="pl-9 h-9"
             disabled={state.kind !== "ready"}
           />
@@ -267,7 +269,7 @@ export function LibraryBrowser({
               state.kind === "loading" && "animate-spin"
             )}
           />
-          Rafraîchir
+          {t("library.refresh")}
         </Button>
         <Button
           type="button"
@@ -276,7 +278,7 @@ export function LibraryBrowser({
           onClick={selectAll}
           disabled={state.kind !== "ready"}
         >
-          Tout cocher
+          {t("library.selectAll")}
         </Button>
         {selection.size > 0 && (
           <Button
@@ -285,7 +287,7 @@ export function LibraryBrowser({
             size="sm"
             onClick={clearSelection}
           >
-            Décocher ({selection.size})
+            {t("library.deselect", { count: selection.size })}
           </Button>
         )}
       </div>
@@ -293,21 +295,21 @@ export function LibraryBrowser({
       {/* Body */}
       {state.kind === "idle" && (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          Sélectionnez un provider pour voir son catalogue.
+          {t("library.idle")}
         </div>
       )}
 
       {state.kind === "loading" && (
         <div className="rounded-xl border border-border p-8 text-center text-sm text-muted-foreground">
           <IconLoader2 className="inline-block size-4 animate-spin mr-2" />
-          Récupération du catalogue…
+          {t("library.loading")}
         </div>
       )}
 
       {state.kind === "error" && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
           <p className="font-medium text-foreground">
-            Impossible de récupérer le catalogue.
+            {t("library.errorTitle")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {state.message}
@@ -320,7 +322,7 @@ export function LibraryBrowser({
             onClick={() => selectedKeyId && loadModels(selectedKeyId)}
           >
             <IconRefresh className="size-3.5" />
-            Réessayer
+            {t("library.retry")}
           </Button>
         </div>
       )}
@@ -332,23 +334,24 @@ export function LibraryBrowser({
               <strong className="text-foreground">
                 {state.models.length}
               </strong>{" "}
-              modèle{state.models.length > 1 ? "s" : ""} retourné
-              {state.models.length > 1 ? "s" : ""} par l&apos;API de{" "}
-              {providerType
-                ? PROVIDER_CATALOG[providerType].label
-                : "ce provider"}
+              {t("library.returnedSuffix", {
+                count: state.models.length,
+                provider: providerType
+                  ? PROVIDER_CATALOG[providerType].label
+                  : t("library.thisProvider"),
+              })}
               {search.trim() && (
                 <>
                   {" "}
                   · <strong className="text-foreground">{filtered.length}</strong>{" "}
-                  après filtre
+                  {t("library.afterFilter")}
                 </>
               )}
             </span>
             {selection.size > 0 && (
               <span>
                 <strong className="text-foreground">{selection.size}</strong>{" "}
-                sélectionné{selection.size > 1 ? "s" : ""}
+                {t("library.selectedSuffix", { count: selection.size })}
               </span>
             )}
           </div>
@@ -356,7 +359,7 @@ export function LibraryBrowser({
           <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
             {filtered.length === 0 ? (
               <p className="p-8 text-center text-sm text-muted-foreground">
-                Aucun modèle ne correspond à votre recherche.
+                {t("library.noMatch")}
               </p>
             ) : (
               <ul className="divide-y divide-border max-h-[600px] overflow-y-auto">
@@ -374,7 +377,7 @@ export function LibraryBrowser({
                       {added ? (
                         <span
                           className="size-4 rounded-sm bg-foreground/10 grid place-items-center shrink-0"
-                          aria-label="Déjà ajouté"
+                          aria-label={t("library.alreadyAddedAria")}
                         >
                           <IconCheck className="size-3" />
                         </span>
@@ -382,7 +385,7 @@ export function LibraryBrowser({
                         <Checkbox
                           checked={checked}
                           onCheckedChange={() => toggleSelection(m.id)}
-                          aria-label={`Sélectionner ${m.label}`}
+                          aria-label={t("library.selectAria", { label: m.label })}
                         />
                       )}
                       <div className="min-w-0 flex-1">
@@ -393,13 +396,13 @@ export function LibraryBrowser({
                           </code>
                           <span
                             className="text-[10px] text-muted-foreground tabular-nums"
-                            title="Prix par million de tokens (entrée / sortie)"
+                            title={t("library.priceTitle")}
                           >
-                            {formatModelPrice(m.id)}
+                            {formatModelPrice(m.id, t("library.priceUnknown"))}
                           </span>
                           {added && (
                             <span className="text-[10px] uppercase tracking-wider text-foreground/70">
-                              · déjà ajouté
+                              · {t("library.alreadyAddedBadge")}
                             </span>
                           )}
                         </div>
@@ -421,11 +424,10 @@ export function LibraryBrowser({
             <div className="sticky bottom-4 z-20 flex items-center justify-between gap-3 rounded-xl border border-border bg-card/95 backdrop-blur shadow-lg px-4 py-3">
               <div className="text-sm">
                 <span className="font-medium text-foreground">
-                  {selection.size} modèle{selection.size > 1 ? "s" : ""}
+                  {t("library.modelCount", { count: selection.size })}
                 </span>{" "}
                 <span className="text-muted-foreground">
-                  prêt{selection.size > 1 ? "s" : ""} à être ajouté
-                  {selection.size > 1 ? "s" : ""}.
+                  {t("library.readyToAdd", { count: selection.size })}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -436,14 +438,14 @@ export function LibraryBrowser({
                   onClick={clearSelection}
                   disabled={saving}
                 >
-                  Annuler
+                  {t("library.cancel")}
                 </Button>
                 <Button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
                 >
-                  {saving ? "Ajout…" : "Ajouter à ma plateforme"}
+                  {saving ? t("library.adding") : t("library.addToPlatform")}
                 </Button>
               </div>
             </div>
@@ -455,15 +457,15 @@ export function LibraryBrowser({
 }
 
 function NoProviderState() {
+  const t = useTranslations("settings.models");
   return (
     <div className="py-12 border-y border-dashed border-border text-center">
       <IconBooks className="size-8 mx-auto text-muted-foreground" />
       <p className="mt-3 font-heading text-2xl tracking-tight">
-        Configurez d&apos;abord un provider.
+        {t("library.noProvider.title")}
       </p>
       <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-        La bibliothèque interroge l&apos;API de vos providers pour vous
-        montrer leurs modèles disponibles.
+        {t("library.noProvider.body")}
       </p>
       <div className="mt-6 flex justify-center">
         <ProviderQuickAdd />

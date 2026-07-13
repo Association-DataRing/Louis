@@ -1,0 +1,33 @@
+{
+  "form": {
+    "titleCredentials": "Bon retour",
+    "titleTotp": "Vérification",
+    "subtitleCredentials": "Connectez-vous pour accéder à vos dossiers.",
+    "subtitleTotp": "Saisissez le code de votre application d'authentification.",
+    "emailLabel": "Adresse e-mail",
+    "emailPlaceholder": "vous@cabinet.fr",
+    "passwordLabel": "Mot de passe",
+    "change": "Changer",
+    "totpLabel": "Code de vérification",
+    "totpHint": "Code à 6 chiffres, ou un code de secours si besoin.",
+    "submitting": "Connexion…",
+    "submitCredentials": "Se connecter",
+    "submitTotp": "Vérifier le code",
+    "backToCredentials": "Revenir à l'identification",
+    "forgotPassword": "Mot de passe oublié ? Votre administrateur de cabinet peut le réinitialiser."
+  },
+  "aside": {
+    "tagline": "De la question à l'acte —<br></br>sous votre seul contrôle.",
+    "trustEncryption": "Chiffrement at-rest",
+    "trustTwoFactor": "Double authentification",
+    "trustAudit": "Journal d'audit",
+    "mockWindowTitle": "Nouvelle assignation",
+    "mockSourcesVerified": "Sources vérifiées",
+    "mockDrafting": "Rédaction du document…",
+    "mockDocHeading": "TRIBUNAL JUDICIAIRE DE PARIS",
+    "mockComposerPlaceholder": "Posez une question juridique…"
+  },
+  "page": {
+    "footer": "Plateforme privée — accès réservé aux membres du cabinet."
+  }
+}

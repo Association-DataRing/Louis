@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { IconSparkles } from "@tabler/icons-react";
 import { auth } from "@/auth";
 import { listSkills, listSkillTemplates } from "./actions";
@@ -16,20 +17,20 @@ export default async function SkillsPage() {
     listSkillTemplates(),
   ]);
   const enabledCount = all.filter((s) => s.enabled).length;
+  const t = await getTranslations("settings.skills");
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-8 flex items-end justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
           <p className="text-xs text-foreground/70 uppercase tracking-wider">
-            Compétences IA
+            {t("eyebrow")}
           </p>
-          <h1 className="mt-1 font-heading text-3xl tracking-tight">Skills</h1>
+          <h1 className="mt-1 font-heading text-3xl tracking-tight">
+            {t("title")}
+          </h1>
           <p className="mt-2 text-muted-foreground text-sm">
-            Mini-instructions que Louis injecte dans le prompt système quand un
-            détecteur identifie qu&apos;elles sont pertinentes à votre demande.
-            Vous créez vos propres compétences — rien n&apos;est livré par
-            défaut, votre cabinet décide.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -43,8 +44,7 @@ export default async function SkillsPage() {
       ) : (
         <>
           <p className="mb-3 text-xs text-muted-foreground">
-            {all.length} compétence{all.length > 1 ? "s" : ""} ·{" "}
-            {enabledCount} active{enabledCount > 1 ? "s" : ""}
+            {t("countLine", { count: all.length, active: enabledCount })}
           </p>
           <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
             <ul className="divide-y divide-border">
@@ -64,7 +64,9 @@ export default async function SkillsPage() {
                       {s.description}
                     </p>
                     <p className="mt-1.5 text-[11px] text-muted-foreground/80 italic">
-                      <span className="not-italic font-medium">Activée quand :</span>{" "}
+                      <span className="not-italic font-medium">
+                        {t("triggerLabel")}
+                      </span>{" "}
                       {s.triggerHint}
                     </p>
                   </div>
@@ -92,33 +94,30 @@ export default async function SkillsPage() {
       )}
 
       <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-xs text-muted-foreground">
-        <strong className="text-foreground">Comment ça marche.</strong> À chaque
-        message, un petit modèle ({"~"}1k tokens) regarde votre demande et la
-        liste des compétences actives. S&apos;il en détecte une de pertinente,
-        son instruction système est ajoutée au modèle principal — sans
-        intervention de votre part. Coût : quelques millièmes par requête.
+        {t.rich("aside", {
+          strong: (chunks) => (
+            <strong className="text-foreground">{chunks}</strong>
+          ),
+        })}
       </aside>
     </main>
   );
 }
 
-function EmptyState({ hasTemplates }: { hasTemplates: boolean }) {
+async function EmptyState({ hasTemplates }: { hasTemplates: boolean }) {
+  const t = await getTranslations("settings.skills");
   return (
     <div className="py-16 border-y border-dashed border-border">
       <IconSparkles className="size-6 text-muted-foreground" />
       <p className="mt-4 font-heading text-2xl tracking-tight">
-        Aucune compétence pour l&apos;instant.
+        {t("emptyState.title")}
       </p>
       <p className="mt-3 text-sm text-muted-foreground max-w-md">
-        Créez votre propre compétence depuis zéro
-        {hasTemplates ? (
-          <>
-            {" "}ou parcourez la <strong>bibliothèque d&apos;exemples</strong>{" "}
-            (à adapter à la pratique de votre cabinet).
-          </>
-        ) : (
-          "."
-        )}
+        {hasTemplates
+          ? t.rich("emptyState.descWithTemplates", {
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })
+          : t("emptyState.descNoTemplates")}
       </p>
     </div>
   );

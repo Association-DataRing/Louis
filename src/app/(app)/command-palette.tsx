@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconMessageCircle,
   IconFolders,
@@ -40,27 +41,27 @@ type Props = {
 
 // Pages « profondes » propres à la palette (réglages granulaires que la barre
 // latérale n'expose pas). La nav primaire vient de la source unique PRIMARY_NAV.
+// `labelKey` est résolu dans le namespace `commandPalette.pages`.
 const SETTINGS_PAGES: NavItem[] = [
-  { href: "/settings/general", label: "Paramètres", icon: IconSettings },
-  { href: "/settings/profile", label: "Profil", icon: IconSettings },
-  { href: "/settings/usage", label: "Coûts & usage", icon: IconCash },
-  { href: "/settings/providers", label: "Providers IA", icon: IconKey },
+  { href: "/settings/general", labelKey: "settings", icon: IconSettings },
+  { href: "/settings/profile", labelKey: "profile", icon: IconSettings },
+  { href: "/settings/usage", labelKey: "usage", icon: IconCash },
+  { href: "/settings/providers", labelKey: "providers", icon: IconKey },
   {
     href: "/settings/connectors",
-    label: "Connecteurs",
+    labelKey: "connectors",
     icon: IconPlugConnected,
   },
-  { href: "/settings/mcp", label: "Serveurs MCP", icon: IconBolt },
+  { href: "/settings/mcp", labelKey: "mcp", icon: IconBolt },
 ];
 
-const PAGES: NavItem[] = [...PRIMARY_NAV, ...SETTINGS_PAGES];
-
-const ACTIONS = [
-  { href: "/chat", label: "Nouvelle conversation", icon: IconMessageCircle },
-  { href: "/workflows", label: "Nouveau workflow", icon: IconLibrary },
-  { href: "/projects", label: "Nouveau projet", icon: IconFolders },
-  { href: "/tabular-reviews/new", label: "Nouvelle analyse tabulaire", icon: IconTable },
-] as const;
+// `labelKey` résolu dans le namespace `commandPalette.actions`.
+const ACTIONS: readonly NavItem[] = [
+  { href: "/chat", labelKey: "newConversation", icon: IconMessageCircle },
+  { href: "/workflows", labelKey: "newWorkflow", icon: IconLibrary },
+  { href: "/projects", labelKey: "newProject", icon: IconFolders },
+  { href: "/tabular-reviews/new", labelKey: "newTabularReview", icon: IconTable },
+];
 
 export function CommandPalette({
   conversations,
@@ -71,6 +72,8 @@ export function CommandPalette({
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const t = useTranslations("commandPalette");
+  const tNav = useTranslations("nav");
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -90,27 +93,30 @@ export function CommandPalette({
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Rechercher conversations, documents, projets, pages…" />
+      <CommandInput placeholder={t("searchPlaceholder")} />
       <CommandList>
-        <CommandEmpty>Aucun résultat.</CommandEmpty>
+        <CommandEmpty>{t("empty")}</CommandEmpty>
 
-        <CommandGroup heading="Actions">
-          {ACTIONS.map((a) => (
-            <CommandItem
-              key={a.label}
-              value={`action ${a.label}`}
-              onSelect={() => go(a.href)}
-            >
-              <IconPlus className="text-primary" />
-              {a.label}
-            </CommandItem>
-          ))}
+        <CommandGroup heading={t("groups.actions")}>
+          {ACTIONS.map((a) => {
+            const label = t(`actions.${a.labelKey}`);
+            return (
+              <CommandItem
+                key={a.href}
+                value={`action ${label}`}
+                onSelect={() => go(a.href)}
+              >
+                <IconPlus className="text-primary" />
+                {label}
+              </CommandItem>
+            );
+          })}
         </CommandGroup>
 
         {conversations.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Conversations">
+            <CommandGroup heading={t("groups.conversations")}>
               {conversations.slice(0, 12).map((c) => (
                 <CommandItem
                   key={c.id}
@@ -128,7 +134,7 @@ export function CommandPalette({
         {projects.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Projets">
+            <CommandGroup heading={t("groups.projects")}>
               {projects.map((p) => (
                 <CommandItem
                   key={p.id}
@@ -146,7 +152,7 @@ export function CommandPalette({
         {documents.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Documents">
+            <CommandGroup heading={t("groups.documents")}>
               {documents.slice(0, 8).map((d) => (
                 <CommandItem
                   key={d.id}
@@ -164,7 +170,7 @@ export function CommandPalette({
         {workflows.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Trames">
+            <CommandGroup heading={t("groups.workflows")}>
               {workflows.map((w) => (
                 <CommandItem
                   key={w.id}
@@ -180,17 +186,32 @@ export function CommandPalette({
         )}
 
         <CommandSeparator />
-        <CommandGroup heading="Navigation">
-          {PAGES.map((p) => {
+        <CommandGroup heading={t("groups.navigation")}>
+          {PRIMARY_NAV.map((p) => {
             const Icon = p.icon;
+            const label = tNav(p.labelKey);
             return (
               <CommandItem
                 key={p.href}
-                value={`page ${p.label}`}
+                value={`page ${label}`}
                 onSelect={() => go(p.href)}
               >
                 <Icon className="text-muted-foreground" />
-                {p.label}
+                {label}
+              </CommandItem>
+            );
+          })}
+          {SETTINGS_PAGES.map((p) => {
+            const Icon = p.icon;
+            const label = t(`pages.${p.labelKey}`);
+            return (
+              <CommandItem
+                key={p.href}
+                value={`page ${label}`}
+                onSelect={() => go(p.href)}
+              >
+                <Icon className="text-muted-foreground" />
+                {label}
               </CommandItem>
             );
           })}
@@ -200,13 +221,13 @@ export function CommandPalette({
               onSelect={() => go("/admin/users")}
             >
               <IconShieldLock className="text-primary" />
-              Administration
+              {tNav("admin")}
             </CommandItem>
           )}
         </CommandGroup>
       </CommandList>
       <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground flex items-center justify-between">
-        <span>↑↓ pour naviguer · ↵ pour ouvrir · ESC pour fermer</span>
+        <span>{t("footerHint")}</span>
         <CommandShortcut>⌘K</CommandShortcut>
       </div>
     </CommandDialog>

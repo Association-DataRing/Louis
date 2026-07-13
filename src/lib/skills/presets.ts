@@ -146,7 +146,3 @@ L'utilisateur va expliquer ces notions à un client non-juriste. Tu dois :
 Garde la rigueur juridique en arrière-plan : pas d'imprécisions.`,
   },
 ];
-
-export function findSkillPreset(slug: string): SkillPreset | undefined {
-  return SKILL_PRESETS.find((s) => s.slug === slug);
-}

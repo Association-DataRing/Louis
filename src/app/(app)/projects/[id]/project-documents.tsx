@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconFileText,
   IconUpload,
@@ -28,6 +29,7 @@ export function ProjectDocuments({
   docs: Doc[];
 }) {
   const router = useRouter();
+  const t = useTranslations("projects.documentsPanel");
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export function ProjectDocuments({
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-heading text-lg tracking-tight inline-flex items-center gap-2">
           <IconFileText className="size-4 text-muted-foreground" aria-hidden />
-          Documents
+          {t("heading")}
           <span className="text-xs text-muted-foreground font-normal">
             ({docs.length})
           </span>
@@ -78,7 +80,7 @@ export function ProjectDocuments({
           ) : (
             <IconUpload className="size-3" />
           )}
-          {busy ? "Envoi…" : "Importer un document"}
+          {busy ? t("sending") : t("importDocument")}
         </button>
       </div>
 
@@ -102,7 +104,7 @@ export function ProjectDocuments({
             type="button"
             onClick={() => setError(null)}
             className="ml-1 rounded-sm hover:bg-destructive/10 p-0.5"
-            aria-label="Ignorer l'erreur"
+            aria-label={t("dismissError")}
           >
             <IconX className="size-3" />
           </button>
@@ -112,13 +114,12 @@ export function ProjectDocuments({
       <Dropzone
         onFiles={upload}
         disabled={busy}
-        overlayLabel="Déposez pour ajouter à ce projet"
-        overlayHint="PDF, DOCX ou texte — 25 Mo max par fichier"
+        overlayLabel={t("overlayLabel")}
+        overlayHint={t("overlayHint")}
       >
         {docs.length === 0 ? (
           <div className="border border-dashed border-border rounded-lg p-6 text-sm text-muted-foreground">
-            Glissez vos pièces ici, ou importez-les — elles seront rattachées à
-            ce dossier.
+            {t("empty")}
           </div>
         ) : (
           <ul
@@ -155,8 +156,7 @@ export function ProjectDocuments({
             className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
           >
             <Spinner className="size-3" />
-            Téléversement de {uploadingCount} fichier
-            {uploadingCount > 1 ? "s" : ""}…
+            {t("uploading", { count: uploadingCount })}
           </div>
         )}
       </Dropzone>

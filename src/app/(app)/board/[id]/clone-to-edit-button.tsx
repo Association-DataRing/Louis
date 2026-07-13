@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { IconCopy } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface CloneToEditButtonProps {
  */
 export function CloneToEditButton({ pipelineId }: CloneToEditButtonProps) {
   const router = useRouter();
+  const t = useTranslations("board");
   const [pending, startTransition] = useTransition();
 
   function handleClick() {
@@ -26,11 +28,11 @@ export function CloneToEditButton({ pipelineId }: CloneToEditButtonProps) {
       const result = await clonePipeline(pipelineId);
       if (result.ok) {
         router.push(`/board/${result.id}`);
-        toast.success("Pipeline clonée", {
-          description: "Vous pouvez maintenant éditer chaque agent.",
+        toast.success(t("cloneToEdit.cloned"), {
+          description: t("cloneToEdit.clonedDesc"),
         });
       } else {
-        toast.error("Clonage impossible", { description: result.error });
+        toast.error(t("cloneToEdit.cloneError"), { description: result.error });
       }
     });
   }
@@ -43,7 +45,7 @@ export function CloneToEditButton({ pipelineId }: CloneToEditButtonProps) {
       variant="default"
     >
       <IconCopy className="size-4" />
-      {pending ? "Création de la copie…" : "Cloner pour éditer"}
+      {pending ? t("cloneToEdit.creating") : t("cloneToEdit.label")}
     </Button>
   );
 }

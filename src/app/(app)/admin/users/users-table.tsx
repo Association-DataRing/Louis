@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IconSearch } from "@tabler/icons-react";
 import { UserRow, type UserEntryWithStats } from "./user-row";
 
@@ -21,12 +22,7 @@ const DORMANT_THRESHOLD_MS = DORMANT_DAYS * 24 * 60 * 60 * 1000;
 
 type Filter = "all" | "admin" | "inactive" | "dormant";
 
-const FILTER_LABELS: Record<Filter, string> = {
-  all: "Tous",
-  admin: "Admins",
-  inactive: "Inactifs",
-  dormant: `Dormants > ${DORMANT_DAYS} j`,
-};
+const FILTERS: Filter[] = ["all", "admin", "inactive", "dormant"];
 
 /**
  * Vue tableau filtrable des utilisateurs. Search côté client sur
@@ -34,8 +30,16 @@ const FILTER_LABELS: Record<Filter, string> = {
  * pagination), filter chips pour les sous-ensembles courants.
  */
 export function UsersTable({ rows, currentUserId, nowMs }: Props) {
+  const t = useTranslations("admin.users");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+
+  const filterLabels: Record<Filter, string> = {
+    all: t("filterAll"),
+    admin: t("filterAdmin"),
+    inactive: t("filterInactive"),
+    dormant: t("filterDormant", { days: DORMANT_DAYS }),
+  };
 
   const filtered = useMemo(() => {
     const now = nowMs;
@@ -68,13 +72,13 @@ export function UsersTable({ rows, currentUserId, nowMs }: Props) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher par email ou nom…"
-            aria-label="Rechercher un utilisateur"
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchAria")}
             className="w-full rounded-md border border-input bg-background pl-8 pr-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           />
         </div>
         <div className="flex items-center gap-1">
-          {(Object.keys(FILTER_LABELS) as Filter[]).map((f) => (
+          {FILTERS.map((f) => (
             <button
               key={f}
               type="button"
@@ -86,20 +90,21 @@ export function UsersTable({ rows, currentUserId, nowMs }: Props) {
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
             >
-              {FILTER_LABELS[f]}
+              {filterLabels[f]}
             </button>
           ))}
         </div>
       </div>
 
       <div className="text-xs text-muted-foreground mb-3">
-        {filtered.length} résultat{filtered.length > 1 ? "s" : ""}
-        {filtered.length !== rows.length && ` sur ${rows.length}`}
+        {t("results", { count: filtered.length })}
+        {filtered.length !== rows.length &&
+          t("resultsOf", { total: rows.length })}
       </div>
 
       {filtered.length === 0 ? (
         <div className="border border-dashed border-border rounded-lg p-10 text-center text-sm text-muted-foreground">
-          Aucun utilisateur ne correspond à ce filtre.
+          {t("noMatch")}
         </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border bg-card">

@@ -6,6 +6,7 @@ import {
   IconX,
   IconCircleCheck,
 } from "@tabler/icons-react";
+import { getTranslations } from "next-intl/server";
 import { LouisLogo } from "@/components/louis-logo";
 
 /**
@@ -22,7 +23,8 @@ import { LouisLogo } from "@/components/louis-logo";
  * d'un hero produit. Purement décoratif → masqué aux lecteurs d'écran
  * (aria-hidden) et caché sous `lg` pour laisser toute la place au formulaire.
  */
-export function LoginAside() {
+export async function LoginAside() {
+  const t = await getTranslations("login.aside");
   return (
     <aside
       aria-hidden
@@ -70,13 +72,11 @@ export function LoginAside() {
       {/* Accroche éditoriale + signaux de confiance. */}
       <div className="relative z-10 max-w-md">
         <p className="font-heading text-2xl leading-snug text-white xl:text-3xl">
-          De la question à l’acte —
-          <br />
-          sous votre seul contrôle.
+          {t.rich("tagline", { br: () => <br /> })}
         </p>
         <p className="mt-5 text-xs tracking-wide text-white/45">
-          Chiffrement at-rest&ensp;·&ensp;Double authentification&ensp;·&ensp;Journal
-          d’audit
+          {t("trustEncryption")}&ensp;·&ensp;{t("trustTwoFactor")}&ensp;·&ensp;
+          {t("trustAudit")}
         </p>
       </div>
     </aside>
@@ -92,7 +92,8 @@ const ACCENT = "oklch(0.62 0.19 265)";
  * surlignée en ambre (rappel de la feature citations), un seul accent bleu
  * (puce de génération + bouton d'envoi).
  */
-function ProductMock() {
+async function ProductMock() {
+  const t = await getTranslations("login.aside");
   return (
     <div className="relative w-full">
       {/* Carte fantôme en retrait — donne de la profondeur à la pile. */}
@@ -108,7 +109,7 @@ function ProductMock() {
             <span className="size-2 rounded-full bg-white/15" />
           </span>
           <span className="ml-2 text-[11px] text-white/40">
-            Nouvelle assignation
+            {t("mockWindowTitle")}
           </span>
           <span className="ml-auto flex items-center gap-1 text-[10px] text-white/35">
             <span
@@ -135,7 +136,7 @@ function ProductMock() {
               <div className="flex-1 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-[10px] text-white/45">
                   <IconCircleCheck className="size-3 text-white/55" />
-                  Sources vérifiées
+                  {t("mockSourcesVerified")}
                 </div>
                 <div className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5">
                   <div className="flex items-center gap-1.5">
@@ -144,7 +145,7 @@ function ProductMock() {
                       style={{ backgroundColor: ACCENT }}
                     />
                     <span className="text-[10px] text-white/50">
-                      Rédaction du document…
+                      {t("mockDrafting")}
                     </span>
                   </div>
                 </div>
@@ -168,7 +169,7 @@ function ProductMock() {
             <div className="flex-1 overflow-hidden p-2.5">
               <div className="h-full rounded-md bg-white/[0.06] px-3 py-2.5">
                 <p className="font-heading text-[11px] leading-tight tracking-wide text-white/80">
-                  TRIBUNAL JUDICIAIRE DE PARIS
+                  {t("mockDocHeading")}
                 </p>
                 <div className="mt-1 h-1 w-16 rounded-full bg-white/15" />
                 <div className="mt-3 space-y-1.5">
@@ -192,7 +193,7 @@ function ProductMock() {
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5">
             <IconPlus className="size-3.5 text-white/40" />
             <span className="text-[11px] text-white/30">
-              Posez une question juridique…
+              {t("mockComposerPlaceholder")}
             </span>
             <span
               className="ml-auto inline-flex size-5 items-center justify-center rounded-md"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
@@ -37,13 +38,13 @@ function getServerSnapshot(): string {
 
 const STEPS: {
   key: keyof OnboardingState;
-  label: string;
+  labelKey: string;
   href: string;
 }[] = [
-  { key: "provider", label: "Connecter une clé IA", href: "/settings/providers" },
-  { key: "model", label: "Activer un modèle", href: "/settings/models/library" },
-  { key: "document", label: "Importer un document", href: "/documents" },
-  { key: "conversation", label: "Première conversation", href: "/chat" },
+  { key: "provider", labelKey: "stepProvider", href: "/settings/providers" },
+  { key: "model", labelKey: "stepModel", href: "/settings/models/library" },
+  { key: "document", labelKey: "stepDocument", href: "/documents" },
+  { key: "conversation", labelKey: "stepConversation", href: "/chat" },
 ];
 
 /**
@@ -59,6 +60,7 @@ export function GettingStarted({
   state: OnboardingState;
   onNavigate?: () => void;
 }) {
+  const t = useTranslations("gettingStarted");
   const dismissed =
     useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) === "true";
 
@@ -73,12 +75,12 @@ export function GettingStarted({
 
   return (
     <section
-      aria-label="Prise en main"
+      aria-label={t("sectionLabel")}
       className="mx-1 mb-2 rounded-lg border border-border bg-background/60 p-3 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300"
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Prise en main
+          {t("heading")}
         </p>
         <div className="flex items-center gap-1">
           <span className="text-[10px] tabular-nums text-muted-foreground">
@@ -87,8 +89,8 @@ export function GettingStarted({
           <button
             type="button"
             onClick={dismiss}
-            aria-label="Masquer la prise en main"
-            title="Masquer"
+            aria-label={t("hideAria")}
+            title={t("hideTitle")}
             className="grid size-5 place-items-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
           >
             <IconX className="size-3" />
@@ -135,7 +137,7 @@ export function GettingStarted({
                 >
                   {done && <IconCheck className="size-2.5" />}
                 </span>
-                {s.label}
+                {t(s.labelKey)}
               </Link>
             </li>
           );

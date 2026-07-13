@@ -1,0 +1,42 @@
+{
+  "confirmDelete": {
+    "cancel": "Annuler",
+    "action": "Supprimer",
+    "pending": "Suppression…"
+  },
+  "dropzone": {
+    "overlayLabel": "Déposez vos fichiers",
+    "overlayHint": "PDF, DOCX ou texte — 25 Mo max par fichier",
+    "announce": "Déposez les fichiers pour les téléverser"
+  },
+  "moduleHelp": {
+    "label": "Aide sur ce module",
+    "learnMore": "En savoir plus"
+  },
+  "providerKeyForm": {
+    "legend": "Provider IA",
+    "recommended": "Conseillé",
+    "mistralHint": "Mistral (🇫🇷) alimente aussi la recherche dans vos documents — c'est le meilleur point de départ.",
+    "keyLabel": "Clé {provider}",
+    "apiKeyLabel": "Clé API {provider}",
+    "apiKeyPlaceholder": "Collez votre clé ici",
+    "getKey": "Obtenir ma clé {provider}",
+    "baseUrlLabel": "URL de base",
+    "saveWithoutTest": "Enregistrer sans test",
+    "testing": "Test de la clé…",
+    "testAndSave": "Tester et enregistrer",
+    "encryptionNote": "Chiffrée en AES-256-GCM avant stockage, déchiffrée uniquement à l'instant de l'appel, côté serveur. Elle ne quitte jamais votre instance."
+  },
+  "providerQuickAdd": {
+    "button": "Connecter une clé IA",
+    "title": "Connectez votre intelligence.",
+    "description": "Choisissez un provider, collez votre clé : Louis la teste avant de l'enregistrer, puis active les modèles correspondants.",
+    "success": "Clé {label} connectée — vos modèles sont prêts."
+  },
+  "ui": {
+    "close": "Fermer",
+    "loading": "Chargement",
+    "commandSearchTitle": "Recherche",
+    "commandSearchDescription": "Recherche globale dans Louis"
+  }
+}

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -75,6 +76,7 @@ async function loadUserStats(userId: string, monthStart: Date) {
 
 export default async function AdminUsersPage() {
   await requireAdmin();
+  const t = await getTranslations("admin.users");
   const session = await auth();
   if (!session?.user) redirect("/login");
   const currentId = session.user.id;
@@ -126,22 +128,20 @@ export default async function AdminUsersPage() {
     <main className="mx-auto w-full max-w-6xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl tracking-tight">Utilisateurs</h1>
+          <h1 className="font-heading text-3xl tracking-tight">{t("title")}</h1>
           <p className="mt-2 text-muted-foreground max-w-2xl">
-            Créez les comptes des collaborateurs, suivez leur usage IA et
-            définissez un plafond de dépense mensuel par utilisateur. Chaque
-            compte reste cloisonné à ses providers, documents et conversations.
+            {t("subtitle")}
           </p>
         </div>
         <AddUserDialog />
       </header>
 
       <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 border-y border-border py-5">
-        <Stat label="Total" value={rows.length.toString()} />
-        <Stat label="Actifs" value={activeCount.toString()} />
-        <Stat label="Admins" value={adminCount.toString()} />
+        <Stat label={t("statTotal")} value={rows.length.toString()} />
+        <Stat label={t("statActive")} value={activeCount.toString()} />
+        <Stat label={t("statAdmins")} value={adminCount.toString()} />
         <Stat
-          label="Coût ce mois"
+          label={t("statMonthCost")}
           value={
             totalMonthCost.EUR === 0 && totalMonthCost.USD === 0
               ? "—"

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { AdminNav } from "./admin-nav";
 
@@ -12,6 +13,8 @@ export default async function AdminLayout({
   if (!session?.user) redirect("/login");
   if (session.user.role !== "admin") redirect("/dashboard");
 
+  const t = await getTranslations("admin.nav");
+
   return (
     <div className="h-full flex flex-col">
       <header className="border-b border-border px-6 h-[52px] flex items-center gap-3 shrink-0">
@@ -19,10 +22,10 @@ export default async function AdminLayout({
           href="/dashboard"
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          ← Retour
+          ← {t("back")}
         </Link>
         <span className="text-xs text-muted-foreground">·</span>
-        <span className="text-sm font-medium">Administration</span>
+        <span className="text-sm font-medium">{t("administration")}</span>
       </header>
 
       <div className="flex-1 min-h-0 flex">

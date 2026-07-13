@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
+import { and, asc, desc, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
@@ -15,6 +16,10 @@ import {
   workflows,
 } from "@/db/schema";
 import { seedPresetsForUser } from "@/lib/orchestrator";
+import {
+  listSharedDocumentIds,
+  resolveProjectAccess,
+} from "@/lib/projects/access";
 import { listEnabledModels } from "../settings/models/actions";
 import { getEnabledSkills } from "../settings/skills/actions";
 import type { ProviderType } from "@/lib/providers/catalog";
@@ -45,14 +50,18 @@ export default async function ChatPage({
   // l'utilisateur et on récupère son nom pour l'afficher en breadcrumb.
   let projectContext: { id: string; name: string } | null = null;
   if (projectIdFromUrl) {
-    const [proj] = await db
-      .select({ id: projects.id, name: projects.name })
-      .from(projects)
-      .where(
-        and(eq(projects.id, projectIdFromUrl), eq(projects.userId, userId))
-      )
-      .limit(1);
-    if (proj) projectContext = proj;
+    // Autorise propriétaire, membre ou admin (collaboration). Le projet
+    // appartient au propriétaire, mais un collaborateur peut y démarrer une
+    // conversation rattachée.
+    const access = await resolveProjectAccess(userId, projectIdFromUrl);
+    if (access) {
+      const [proj] = await db
+        .select({ id: projects.id, name: projects.name })
+        .from(projects)
+        .where(eq(projects.id, projectIdFromUrl))
+        .limit(1);
+      if (proj) projectContext = proj;
+    }
   }
 
   const activeKeys = await db
@@ -135,6 +144,14 @@ export default async function ChatPage({
     };
   });
 
+  // Picker du trombone : documents perso + documents des projets partagés
+  // (où l'utilisateur est collaborateur), pour pouvoir les joindre au chat.
+  const sharedDocIds = await listSharedDocumentIds(userId);
+  const docOwnerOrShared =
+    sharedDocIds.length > 0
+      ? or(eq(documents.userId, userId), inArray(documents.id, sharedDocIds))
+      : eq(documents.userId, userId);
+
   const docList = await db
     .select({
       id: documents.id,
@@ -145,7 +162,7 @@ export default async function ChatPage({
     .from(documents)
     .where(
       and(
-        eq(documents.userId, userId),
+        docOwnerOrShared,
         or(isNotNull(documents.extractedText), isNotNull(documents.encExtractedText))
       )
     )
@@ -193,11 +210,17 @@ export default async function ChatPage({
     const [conv] = await db
       .select()
       .from(conversations)
-      .where(
-        and(eq(conversations.id, currentId), eq(conversations.userId, userId))
-      )
+      .where(eq(conversations.id, currentId))
       .limit(1);
     if (!conv) redirect("/chat");
+    // Autorisation : propriétaire de la conversation, ou collaborateur d'un
+    // projet partagé auquel la conversation est rattachée.
+    if (conv.userId !== userId) {
+      const access = conv.projectId
+        ? await resolveProjectAccess(userId, conv.projectId)
+        : null;
+      if (!access) redirect("/chat");
+    }
     if (conv.providerKeyId && activeKeys.some((k) => k.id === conv.providerKeyId)) {
       initialProviderKeyId = conv.providerKeyId;
     }
@@ -206,9 +229,7 @@ export default async function ChatPage({
       const [p] = await db
         .select({ id: projects.id, name: projects.name })
         .from(projects)
-        .where(
-          and(eq(projects.id, conv.projectId), eq(projects.userId, userId))
-        )
+        .where(eq(projects.id, conv.projectId))
         .limit(1);
       if (p) conversationProjectContext = p;
     }
@@ -275,17 +296,16 @@ export default async function ChatPage({
   );
 }
 
-function NoProviderState() {
+async function NoProviderState() {
+  const t = await getTranslations("chat");
   return (
     <main className="grid min-h-full place-items-center px-6 py-12">
       <div className="w-full max-w-md text-center motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300">
         <h1 className="font-heading text-3xl tracking-tight">
-          Une clé, et Louis s&apos;éveille.
+          {t("noProvider.title")}
         </h1>
         <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
-          Louis fonctionne avec vos propres clés API — elles restent chiffrées
-          sur votre instance. Connectez-en une pour lancer votre première
-          conversation.
+          {t("noProvider.description")}
         </p>
         <div className="mt-8 flex flex-col items-center gap-3">
           <ProviderQuickAdd />
@@ -293,7 +313,7 @@ function NoProviderState() {
             href="/settings/providers"
             className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
-            Voir tous les providers dans les réglages
+            {t("noProvider.allProvidersLink")}
           </Link>
         </div>
       </div>

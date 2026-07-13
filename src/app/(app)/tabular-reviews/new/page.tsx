@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { and, desc, eq, isNotNull, or } from "drizzle-orm";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { auth } from "@/auth";
@@ -11,6 +12,7 @@ export default async function NewReviewPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("tabularReviews");
 
   const [activeKeys, docList] = await Promise.all([
     db
@@ -53,21 +55,20 @@ export default async function NewReviewPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
         >
           <IconArrowLeft className="size-3.5" />
-          Retour
+          {t("new.back")}
         </Link>
         <h1 className="font-heading text-3xl tracking-tight">
-          Nouvelle analyse
+          {t("new.title")}
         </h1>
         <div className="mt-6 border border-dashed border-border rounded-lg p-10 text-center">
           <p className="text-sm text-muted-foreground">
-            Vous devez configurer et activer au moins un provider IA pour
-            créer une analyse.
+            {t("new.noProviderBody")}
           </p>
           <Link
             href="/providers"
             className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
           >
-            Configurer un provider
+            {t("new.configureProvider")}
           </Link>
         </div>
       </main>
@@ -81,15 +82,14 @@ export default async function NewReviewPage() {
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
       >
         <IconArrowLeft className="size-3.5" />
-        Retour
+        {t("new.back")}
       </Link>
       <header className="mb-8">
         <h1 className="font-heading text-3xl tracking-tight">
-          Nouvelle analyse tabulaire
+          {t("new.fullTitle")}
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Définissez les colonnes à extraire de vos documents, choisissez le
-          modèle IA, et sélectionnez les fichiers à analyser.
+          {t("new.subtitle")}
         </p>
       </header>
 
