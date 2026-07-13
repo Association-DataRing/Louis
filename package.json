@@ -1,0 +1,30 @@
+{
+  "name": "@association-dataring/create-louis",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Installeur interactif (TUI) de Louis — l'IA juridique souveraine. Prépare Docker, génère la configuration et lance la stack.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "bin": {
+    "create-louis": "index.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "index.mjs",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Association-DataRing/Louis.git",
+    "directory": "packages/create-louis"
+  },
+  "keywords": [
+    "louis",
+    "installer",
+    "tui",
+    "docker",
+    "legal-ai"
+  ]
+}
