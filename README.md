@@ -343,6 +343,19 @@ et [`docs/architecture/data-model.md`](./docs/architecture/data-model.md).
 
 ### Installation en une commande (recommandée)
 
+Un **installeur interactif** vous guide dans le terminal : Docker, port,
+options avancées, provider IA (clé testée) **et** compte administrateur —
+toute la mise en route, sans quitter le terminal.
+
+**Toutes plateformes (macOS / Linux / Windows) :**
+
+```bash
+npx -y github:Association-DataRing/Louis#installer
+```
+
+<details>
+<summary>Vous préférez le raccourci historique ?</summary>
+
 **macOS / Linux :**
 
 ```bash
@@ -355,15 +368,20 @@ curl -fsSL https://raw.githubusercontent.com/Association-DataRing/Louis/main/scr
 irm https://raw.githubusercontent.com/Association-DataRing/Louis/main/scripts/install.ps1 | iex
 ```
 
-Images pré-buildées (GHCR), secrets générés automatiquement, schéma appliqué
-au démarrage — puis l'**assistant de premier lancement** (`/setup`) guide la
-création du compte admin et la première clé IA dans le navigateur. Détails et
-mise à jour : [docs/installation/one-command.md](./docs/installation/one-command.md).
+Ces deux commandes se contentent désormais de lancer l'installeur `npx`
+ci-dessus.
+</details>
 
-> Aucun prérequis à installer soi-même : le script installe [Docker](https://docs.docker.com/get-docker/)
-> s'il manque (Docker Desktop sur macOS/Windows, Docker Engine sur Linux).
-> Sur Windows neuf, WSL2 peut exiger un redémarrage — relancez alors la commande.
-> Node.js n'est nécessaire que pour l'installation depuis les sources ci-dessous.
+Images pré-buildées (GHCR), secrets générés automatiquement, schéma appliqué
+au démarrage. Contrairement à avant, le **compte administrateur et la première
+clé IA se créent directement dans le terminal** (l'assistant navigateur
+`/setup` reste disponible en repli). Détails, mode non-interactif et mise à
+jour : [docs/installation/one-command.md](./docs/installation/one-command.md).
+
+> Un seul prérequis : **Node.js ≥ 18** (pour lancer l'installeur). Docker, lui,
+> est installé automatiquement s'il manque ([Docker Desktop](https://docs.docker.com/get-docker/)
+> sur macOS/Windows, Docker Engine sur Linux). Sur Windows neuf, WSL2 peut
+> exiger un redémarrage — relancez alors la commande.
 
 ### Installation depuis les sources (développement)
 

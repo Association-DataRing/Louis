@@ -89,7 +89,7 @@ jobs:
 
   # Publication des images Docker sur GHCR : l'image app (standalone) et
   # l'image migrate (drizzle-kit push one-shot) consommées par
-  # docker-compose.prod.yml et l'installeur scripts/install.sh.
+  # docker-compose.prod.yml et l'installeur interactif (packages/create-louis).
   docker:
     name: Build and push Docker images (GHCR)
     runs-on: ubuntu-latest
