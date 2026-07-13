@@ -146,6 +146,103 @@ export async function editUserMessageAndTrim(
   return { ok: true };
 }
 
+/**
+ * Duplique une conversation dans une nouvelle (« fork »), à la manière de la
+ * webui llama.cpp : on recopie les messages jusqu'à un point donné pour
+ * repartir d'un endroit précis sans toucher au fil d'origine.
+ *
+ *  - `upToMessageId` : coupe juste après ce message (inclus). Précis quand la
+ *    conv a été rechargée depuis la DB (vrais IDs). Pendant la session
+ *    courante les IDs côté client viennent de l'AI SDK et ne matchent pas →
+ *    on retombe alors sur `upToCount`.
+ *  - `upToCount` : nombre de messages (depuis le début) à recopier. Fallback
+ *    robuste, basé sur la position dans le fil.
+ *  - sans option : fork complet de la conversation.
+ *
+ * Fork « léger » : seuls role + content (+ modelId) sont copiés. Les parts
+ * (tool calls, reasoning), pièces jointes et compteurs de tokens ne sont pas
+ * dupliqués — le texte reste, le contexte envoyé au LLM aussi. Projet, clé
+ * provider et modèle de la conversation sont conservés pour rester dans le
+ * même contexte de travail. Les `createdAt` d'origine sont préservés pour
+ * garantir l'ordre du fil dans le fork.
+ */
+export async function forkConversation(
+  sourceId: string,
+  options?: { upToMessageId?: string; upToCount?: number }
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const userId = await requireUserId();
+
+  const [source] = await db
+    .select({
+      title: conversations.title,
+      projectId: conversations.projectId,
+      providerKeyId: conversations.providerKeyId,
+      modelId: conversations.modelId,
+    })
+    .from(conversations)
+    .where(
+      and(eq(conversations.id, sourceId), eq(conversations.userId, userId))
+    )
+    .limit(1);
+  if (!source) return { ok: false, error: "Conversation introuvable." };
+
+  const all = await db
+    .select({
+      id: messages.id,
+      role: messages.role,
+      content: messages.content,
+      modelId: messages.modelId,
+      createdAt: messages.createdAt,
+    })
+    .from(messages)
+    .where(eq(messages.conversationId, sourceId))
+    .orderBy(asc(messages.createdAt));
+
+  // Combien de messages recopier, depuis le début du fil.
+  let cut = all.length;
+  if (options?.upToMessageId) {
+    const idx = all.findIndex((m) => m.id === options.upToMessageId);
+    if (idx >= 0) cut = idx + 1;
+    else if (typeof options.upToCount === "number") cut = options.upToCount;
+  } else if (typeof options?.upToCount === "number") {
+    cut = options.upToCount;
+  }
+  cut = Math.max(0, Math.min(cut, all.length));
+  const slice = all.slice(0, cut);
+
+  const baseTitle = source.title.slice(0, 112).trim();
+  const title = `${baseTitle || "Conversation"} (fork)`;
+
+  const newId = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(conversations)
+      .values({
+        userId,
+        projectId: source.projectId,
+        providerKeyId: source.providerKeyId,
+        modelId: source.modelId,
+        title,
+      })
+      .returning({ id: conversations.id });
+
+    if (slice.length > 0) {
+      await tx.insert(messages).values(
+        slice.map((m) => ({
+          conversationId: created.id,
+          role: m.role,
+          content: m.content,
+          modelId: m.modelId,
+          createdAt: m.createdAt,
+        }))
+      );
+    }
+    return created.id;
+  });
+
+  revalidatePath("/chat");
+  return { ok: true, id: newId };
+}
+
 export type AuditRunView = {
   messageId: string | null;
   role: string;
@@ -166,9 +263,9 @@ export type AuditRunView = {
  * assistant (agent_runs.messageId, rattaché côté route — P1/H9). Vérifie la
  * propriété de la conversation. Sert à l'affichage et à l'export (H5).
  */
-export async function getConversationAuditTrail(
+async function getConversationAuditTrail(
   conversationId: string
-): Promise<{ ok: true; runs: AuditRunView[] } | { ok: false }> {
+): Promise<AuditRunView[] | null> {
   const userId = await requireUserId();
   const [conv] = await db
     .select({ id: conversations.id })
@@ -180,7 +277,7 @@ export async function getConversationAuditTrail(
       )
     )
     .limit(1);
-  if (!conv) return { ok: false };
+  if (!conv) return null;
 
   const runs = await db
     .select({
@@ -201,7 +298,7 @@ export async function getConversationAuditTrail(
     .where(eq(agentRuns.conversationId, conversationId))
     .orderBy(asc(agentRuns.startedAt));
 
-  return { ok: true, runs };
+  return runs;
 }
 
 /**
@@ -229,11 +326,11 @@ export async function exportConversationAuditJson(
     .limit(1);
   if (!conv) return { ok: false };
 
-  const trail = await getConversationAuditTrail(conversationId);
-  if (!trail.ok) return { ok: false };
+  const runs = await getConversationAuditTrail(conversationId);
+  if (!runs) return { ok: false };
 
   const byMessage = new Map<string, AuditRunView[]>();
-  for (const r of trail.runs) {
+  for (const r of runs) {
     const key = r.messageId ?? "(non rattaché)";
     const list = byMessage.get(key) ?? [];
     list.push(r);

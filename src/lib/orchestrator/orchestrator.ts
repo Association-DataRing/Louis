@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
-import { DefaultAgent, resolveAgentConstructor } from "./agents";
+import { AGENT_DEFAULTS, runAgentStream, runDefaultAgent } from "./agents";
 import { withRetry } from "./retry";
 import {
   DEFAULT_ITERATIVE_ROUNDS,
@@ -31,8 +31,13 @@ export interface OrchestratorRunArgs {
 }
 
 export function defaultAgentFactory(def: AgentDefinition): Agent {
-  const Ctor = resolveAgentConstructor(def.role);
-  return Ctor ? new Ctor(def) : new DefaultAgent(def);
+  const defaults = AGENT_DEFAULTS[def.role];
+  return {
+    definition: def,
+    run: defaults
+      ? (ctx) => runAgentStream(def, ctx, defaults)
+      : (ctx) => runDefaultAgent(def, ctx),
+  };
 }
 
 const PREVIEW_LIMIT = 240;

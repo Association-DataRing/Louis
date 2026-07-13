@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,28 +11,7 @@ import { saveOcrSettings } from "./actions";
 type Key = { id: string; type: string; label: string };
 type Mode = "auto" | "mistral" | "vision" | "tesseract";
 
-const MODES: { value: Mode; title: string; desc: string }[] = [
-  {
-    value: "auto",
-    title: "Automatique (recommandé)",
-    desc: "Mistral OCR si clé Mistral → sinon un modèle de vision via une clé disponible → sinon Tesseract local.",
-  },
-  {
-    value: "mistral",
-    title: "Mistral OCR (endpoint dédié)",
-    desc: "Meilleure qualité/coût sur du document. Nécessite une clé Mistral active.",
-  },
-  {
-    value: "vision",
-    title: "Modèle de vision (au choix)",
-    desc: "OCR via un modèle multimodal de votre choix (Pixtral via OpenRouter, GPT-4o, Claude…).",
-  },
-  {
-    value: "tesseract",
-    title: "Tesseract local (souverain)",
-    desc: "100 % local, gratuit, hors-ligne. Qualité moindre sur tableaux et manuscrit.",
-  },
-];
+const MODE_VALUES: Mode[] = ["auto", "mistral", "vision", "tesseract"];
 
 export function OcrForm({
   initialMode,
@@ -48,6 +28,7 @@ export function OcrForm({
   hasMistral: boolean;
   visionSuggestions: Record<string, string[]>;
 }) {
+  const t = useTranslations("settings.ocr");
   const [mode, setMode] = useState<Mode>((initialMode as Mode) ?? "auto");
   const [providerKeyId, setProviderKeyId] = useState<string>(
     initialProviderKeyId ?? keys[0]?.id ?? ""
@@ -76,12 +57,12 @@ export function OcrForm({
   return (
     <form action={onSubmit} className="space-y-5">
       <fieldset className="space-y-2">
-        <legend className="sr-only">Moteur OCR</legend>
-        {MODES.map((m) => (
+        <legend className="sr-only">{t("legend")}</legend>
+        {MODE_VALUES.map((value) => (
           <label
-            key={m.value}
+            key={value}
             className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${
-              mode === m.value
+              mode === value
                 ? "border-primary bg-primary/5"
                 : "border-border hover:bg-accent/40"
             }`}
@@ -89,20 +70,21 @@ export function OcrForm({
             <input
               type="radio"
               name="mode"
-              value={m.value}
-              checked={mode === m.value}
-              onChange={() => setMode(m.value)}
+              value={value}
+              checked={mode === value}
+              onChange={() => setMode(value)}
               className="mt-1"
             />
             <span className="min-w-0">
-              <span className="block text-sm font-medium">{m.title}</span>
-              <span className="block text-xs text-muted-foreground">
-                {m.desc}
+              <span className="block text-sm font-medium">
+                {t(`mode.${value}.title`)}
               </span>
-              {m.value === "mistral" && !hasMistral && (
+              <span className="block text-xs text-muted-foreground">
+                {t(`mode.${value}.desc`)}
+              </span>
+              {value === "mistral" && !hasMistral && (
                 <span className="mt-1 block text-xs text-amber-600 dark:text-amber-500">
-                  Aucune clé Mistral active — repli sur Tesseract tant qu&apos;elle
-                  n&apos;est pas ajoutée.
+                  {t("noMistralKey")}
                 </span>
               )}
             </span>
@@ -115,16 +97,18 @@ export function OcrForm({
         <div className="space-y-3 rounded-lg border border-border bg-background p-4">
           {keys.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Aucune clé provider active. Ajoutez-en une dans{" "}
-              <a className="underline" href="/settings/providers">
-                Providers
-              </a>{" "}
-              pour utiliser un modèle de vision.
+              {t.rich("noProviderKey", {
+                providers: (chunks) => (
+                  <a className="underline" href="/settings/providers">
+                    {chunks}
+                  </a>
+                ),
+              })}
             </p>
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor="providerKeyId">Clé provider</Label>
+                <Label htmlFor="providerKeyId">{t("providerKeyLabel")}</Label>
                 <select
                   id="providerKeyId"
                   name="providerKeyId"
@@ -140,12 +124,12 @@ export function OcrForm({
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="modelId">Modèle (vision-capable)</Label>
+                <Label htmlFor="modelId">{t("modelLabel")}</Label>
                 <Input
                   id="modelId"
                   name="modelId"
                   list="ocr-model-suggestions"
-                  placeholder={suggestions[0] ?? "ex. mistralai/pixtral-large-2411"}
+                  placeholder={suggestions[0] ?? t("modelPlaceholder")}
                   value={modelId}
                   onChange={(e) => setModelId(e.target.value)}
                 />
@@ -155,8 +139,11 @@ export function OcrForm({
                   ))}
                 </datalist>
                 <p className="text-xs text-muted-foreground">
-                  Le modèle doit accepter les images. Suggestions pour ce
-                  provider&nbsp;: {suggestions.length ? suggestions.join(", ") : "—"}.
+                  {t("modelHint", {
+                    suggestions: suggestions.length
+                      ? suggestions.join(", ")
+                      : "—",
+                  })}
                 </p>
               </div>
             </>
@@ -171,12 +158,12 @@ export function OcrForm({
       )}
       {success && (
         <Alert>
-          <AlertDescription>Réglage OCR enregistré.</AlertDescription>
+          <AlertDescription>{t("saved")}</AlertDescription>
         </Alert>
       )}
 
       <Button type="submit" disabled={pending}>
-        {pending ? "Enregistrement…" : "Enregistrer"}
+        {pending ? t("saving") : t("save")}
       </Button>
     </form>
   );

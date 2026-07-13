@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconDots,
   IconDownload,
@@ -64,6 +65,7 @@ export function DocumentRow({
   hasMistralKey = false,
 }: Props) {
   const router = useRouter();
+  const t = useTranslations("documents.row");
   const [pending, startTransition] = useTransition();
   const replaceRef = useRef<HTMLInputElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -104,7 +106,7 @@ export function DocumentRow({
         if (replaceRef.current) replaceRef.current.value = "";
         router.refresh();
       } catch (err) {
-        setReplaceError(err instanceof Error ? err.message : "Erreur réseau.");
+        setReplaceError(err instanceof Error ? err.message : t("networkError"));
       }
     });
   }
@@ -119,15 +121,13 @@ export function DocumentRow({
     startTransition(async () => {
       const r = await reindexDocumentAction(entry.id);
       if (r.ok) {
-        toast.success(
-          `Document indexé (${r.chunks} segment${r.chunks > 1 ? "s" : ""}).`
-        );
+        toast.success(t("toastIndexed", { count: r.chunks }));
       } else if (r.reason === "no_mistral_key") {
-        toast.error("Aucune clé Mistral active — impossible d'indexer.");
+        toast.error(t("toastNoMistralKey"));
       } else if (r.reason === "no_text") {
-        toast.error("Aucun texte exploitable à indexer.");
+        toast.error(t("toastNoText"));
       } else {
-        toast.error("Échec de l'indexation.");
+        toast.error(t("toastIndexFailed"));
       }
       router.refresh();
     });
@@ -152,18 +152,18 @@ export function DocumentRow({
           )}
           {entry.extractionStatus === "truncated" && (
             <Badge variant="outline" className="shrink-0 text-[10px]">
-              tronqué
+              {t("badgeTruncated")}
             </Badge>
           )}
           {entry.extractionStatus === "ocr" && (
             <Badge variant="outline" className="shrink-0 text-[10px]">
-              OCR
+              {t("badgeOcr")}
             </Badge>
           )}
           {entry.extractionStatus === "failed" && (
             <span className="inline-flex items-center gap-1 text-[10px] text-destructive">
               <IconAlertTriangle className="size-3" />
-              extraction échouée
+              {t("extractionFailed")}
             </span>
           )}
           {entry.extractionStatus !== "failed" &&
@@ -174,27 +174,28 @@ export function DocumentRow({
                 className="shrink-0 text-[10px] gap-1 text-success border-success/40"
               >
                 <IconDatabase className="size-2.5" />
-                indexé · {chunkCount}
+                {t("indexed", { count: chunkCount })}
               </Badge>
             ) : !hasMistralKey ? (
               <Badge
                 variant="outline"
                 className="shrink-0 text-[10px] text-warning border-warning/40"
               >
-                embedding non configuré
+                {t("embeddingNotConfigured")}
               </Badge>
             ) : (
               <Badge
                 variant="outline"
                 className="shrink-0 text-[10px] text-muted-foreground"
               >
-                non indexé
+                {t("notIndexed")}
               </Badge>
             ))}
           {entry.projectId && (
             <Badge variant="secondary" className="shrink-0 text-[10px] gap-1">
               <IconFolders className="size-2.5" />
-              {projects.find((p) => p.id === entry.projectId)?.name ?? "projet"}
+              {projects.find((p) => p.id === entry.projectId)?.name ??
+                t("projectFallback")}
             </Badge>
           )}
         </div>
@@ -202,7 +203,12 @@ export function DocumentRow({
           {formatBytes(entry.sizeBytes)} ·{" "}
           {new Date(entry.createdAt).toLocaleDateString("fr-FR")}
           {entry.extractedText && (
-            <> · {Math.round(entry.extractedText.length / 1000)}k caractères</>
+            <>
+              {" · "}
+              {t("charCount", {
+                count: Math.round(entry.extractedText.length / 1000),
+              })}
+            </>
           )}
         </div>
         {entry.extractionError && (
@@ -218,7 +224,7 @@ export function DocumentRow({
       <DropdownMenu>
         <DropdownMenuTrigger
           className="size-8 inline-flex items-center justify-center rounded-md hover:bg-accent transition-colors"
-          aria-label="Actions"
+          aria-label={t("actionsAria")}
         >
           <IconDots className="size-4" />
         </DropdownMenuTrigger>
@@ -232,7 +238,7 @@ export function DocumentRow({
             }}
           >
             <IconDownload className="size-4" />
-            Télécharger
+            {t("download")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -240,18 +246,20 @@ export function DocumentRow({
             onSelect={() => replaceRef.current?.click()}
           >
             <IconVersions className="size-4" />
-            Uploader nouvelle version
+            {t("uploadNewVersion")}
           </DropdownMenuItem>
           {hasText && (
             <DropdownMenuItem disabled={pending} onSelect={() => reindex()}>
               <IconRefresh className="size-4" />
-              {indexed ? "Réindexer" : "Indexer pour la recherche"}
+              {indexed ? t("reindex") : t("indexForSearch")}
             </DropdownMenuItem>
           )}
           {hasHistory && (
             <DropdownMenuItem onSelect={() => setHistoryOpen((v) => !v)}>
               <IconHistory className="size-4" />
-              {historyOpen ? "Masquer l'historique" : `Historique (${versions.length})`}
+              {historyOpen
+                ? t("hideHistory")
+                : t("showHistory", { count: versions.length })}
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
@@ -260,14 +268,14 @@ export function DocumentRow({
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <IconFolders className="size-4" />
-                  Déplacer vers
+                  {t("moveToProject")}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   {entry.projectId && (
                     <>
                       <DropdownMenuItem onSelect={() => moveTo(null)}>
                         <IconFolderOff className="size-4" />
-                        Retirer du projet
+                        {t("removeFromProject")}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
@@ -297,14 +305,14 @@ export function DocumentRow({
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <IconFolder className="size-4" />
-                  Déplacer vers (dossier)
+                  {t("moveToFolder")}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   {entry.folderId && (
                     <>
                       <DropdownMenuItem onSelect={() => moveToFolder(null)}>
                         <IconFolderOff className="size-4" />
-                        Remonter à la racine
+                        {t("moveToRoot")}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
@@ -335,7 +343,7 @@ export function DocumentRow({
             onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
-            Supprimer
+            {t("delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -344,14 +352,8 @@ export function DocumentRow({
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer ce document ?"
-        description={
-          <>
-            « {entry.filename} » et toutes ses versions antérieures seront
-            définitivement supprimés. Le texte extrait et les chunks RAG
-            associés seront retirés.
-          </>
-        }
+        title={t("deleteTitle")}
+        description={t("deleteDescription", { name: entry.filename })}
         pending={pending}
         onConfirm={() => {
           startTransition(async () => {
@@ -367,7 +369,7 @@ export function DocumentRow({
         type="file"
         accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
         className="hidden"
-        aria-label="Téléverser une nouvelle version"
+        aria-label={t("replaceAria")}
         onChange={onReplaceChange}
       />
       {replaceError && (
@@ -387,7 +389,7 @@ export function DocumentRow({
               <IconChevronRight className="size-3" />
             )}
             <IconHistory className="size-3" />
-            {versions.length} version{versions.length > 1 ? "s" : ""} antérieure{versions.length > 1 ? "s" : ""}
+            {t("olderVersions", { count: versions.length })}
           </button>
           {historyOpen && (
             <ul className="mt-2 space-y-1 border-l border-border pl-3">

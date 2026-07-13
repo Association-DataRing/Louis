@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   IconMessageCircle,
   IconDots,
@@ -15,6 +16,7 @@ import {
   IconPinFilled,
   IconDownload,
   IconPrinter,
+  IconGitFork,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -33,6 +35,7 @@ import {
   togglePinConversation,
   exportConversationMarkdown,
   exportConversationAuditJson,
+  forkConversation,
 } from "./actions";
 import { moveConversationToProject } from "../projects/actions";
 
@@ -66,6 +69,7 @@ export function ConversationItem({
   currentProjectId,
   projects = [],
 }: Props) {
+  const t = useTranslations("chat");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -104,6 +108,13 @@ export function ConversationItem({
     startTransition(async () => {
       await togglePinConversation(id);
       router.refresh();
+    });
+  }
+
+  function handleFork() {
+    startTransition(async () => {
+      const result = await forkConversation(id);
+      if (result.ok) router.push(`/chat?id=${result.id}`);
     });
   }
 
@@ -165,7 +176,7 @@ export function ConversationItem({
       <DropdownMenu>
         <DropdownMenuTrigger
           className="shrink-0 size-8 inline-flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-background/60 transition-opacity mr-1"
-          aria-label="Actions"
+          aria-label={t("conversationItem.actions")}
         >
           <IconDots className="size-4" />
         </DropdownMenuTrigger>
@@ -174,12 +185,12 @@ export function ConversationItem({
             {isPinned ? (
               <>
                 <IconPin className="size-4" />
-                Détacher
+                {t("conversationItem.unpin")}
               </>
             ) : (
               <>
                 <IconPinFilled className="size-4" />
-                Épingler
+                {t("conversationItem.pin")}
               </>
             )}
           </DropdownMenuItem>
@@ -191,15 +202,19 @@ export function ConversationItem({
             }}
           >
             <IconPencil className="size-4" />
-            Renommer
+            {t("conversationItem.rename")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleFork}>
+            <IconGitFork className="size-4" />
+            {t("conversationItem.fork")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleExport}>
             <IconDownload className="size-4" />
-            Exporter en Markdown
+            {t("conversationItem.exportMarkdown")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleExportAudit}>
             <IconDownload className="size-4" />
-            Exporter l&apos;audit (JSON)
+            {t("conversationItem.exportAudit")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() =>
@@ -207,21 +222,21 @@ export function ConversationItem({
             }
           >
             <IconPrinter className="size-4" />
-            Imprimer / PDF
+            {t("conversationItem.print")}
           </DropdownMenuItem>
 
           {projects.length > 0 && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <IconFolders className="size-4" />
-                Déplacer vers
+                {t("conversationItem.moveTo")}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 {currentProjectId && (
                   <>
                     <DropdownMenuItem onSelect={() => moveTo(null)}>
                       <IconFolderOff className="size-4" />
-                      Retirer du projet
+                      {t("conversationItem.removeFromProject")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
@@ -250,7 +265,7 @@ export function ConversationItem({
             onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
-            Supprimer
+            {t("conversationItem.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -258,13 +273,8 @@ export function ConversationItem({
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer cette conversation ?"
-        description={
-          <>
-            « {title} » sera définitivement supprimée. Les messages ne
-            pourront pas être récupérés.
-          </>
-        }
+        title={t("conversationItem.deleteTitle")}
+        description={t("conversationItem.deleteDescription", { title })}
         pending={pending}
         onConfirm={handleDelete}
       />

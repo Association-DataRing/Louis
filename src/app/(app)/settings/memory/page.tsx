@@ -1,10 +1,12 @@
 import { desc, eq } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { projectMemories, projects } from "@/db/schema";
 import { MemoryRow, type MemoryItem } from "./memory-row";
 
 export default async function MemoryPage() {
+  const t = await getTranslations("settings.memory");
   const session = await auth();
   if (!session?.user?.id) return null;
   const userId = session.user.id;
@@ -29,35 +31,32 @@ export default async function MemoryPage() {
     <main className="mx-auto w-full max-w-3xl px-6 py-8 md:px-8 md:py-10">
       <header className="mb-8 max-w-2xl">
         <p className="text-xs text-foreground/70 uppercase tracking-wider">
-          Intégrations
+          {t("eyebrow")}
         </p>
         <h1 className="mt-1 font-heading text-3xl tracking-tight">
-          Mémoire des dossiers
+          {t("title")}
         </h1>
         <p className="mt-2 text-muted-foreground text-sm">
-          Faits durables extraits de vos conversations, par dossier (parties,
-          échéances, conventions de rédaction…). Un fait n&apos;influence les
-          réponses qu&apos;une fois <strong>validé</strong>{" "}par vous — rien
-          n&apos;est utilisé automatiquement. Chaque fait reste rattaché à son
-          dossier (jamais partagé entre clients).
+          {t.rich("description", {
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
         </p>
       </header>
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground border rounded-lg px-4 py-8 text-center">
-          Aucun fait mémorisé pour l&apos;instant. L&apos;extraction automatique
-          s&apos;active via <code>LOUIS_MEMORY_EXTRACTION=1</code>.
+          {t.rich("empty", { code: (chunks) => <code>{chunks}</code> })}
         </p>
       ) : (
         <div className="space-y-6">
           <section>
             <h2 className="text-sm font-medium mb-2">
-              À valider{" "}
+              {t("pendingHeading")}{" "}
               <span className="text-muted-foreground">({pending.length})</span>
             </h2>
             {pending.length === 0 ? (
               <p className="text-sm text-muted-foreground px-1">
-                Rien en attente.
+                {t("pendingEmpty")}
               </p>
             ) : (
               <div className="border rounded-lg divide-y">
@@ -70,12 +69,12 @@ export default async function MemoryPage() {
 
           <section>
             <h2 className="text-sm font-medium mb-2">
-              Validés{" "}
+              {t("approvedHeading")}{" "}
               <span className="text-muted-foreground">({approved.length})</span>
             </h2>
             {approved.length === 0 ? (
               <p className="text-sm text-muted-foreground px-1">
-                Aucun fait validé.
+                {t("approvedEmpty")}
               </p>
             ) : (
               <div className="border rounded-lg divide-y">

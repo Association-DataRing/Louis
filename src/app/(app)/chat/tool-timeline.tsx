@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import hljs from "highlight.js/lib/core";
 import json from "highlight.js/lib/languages/json";
 import {
@@ -50,6 +51,7 @@ export function ToolTimeline({
   isStreaming: boolean;
   renderDetail: (row: ToolTimelineRow) => ReactNode;
 }) {
+  const t = useTranslations("chat");
   // Replié par défaut : les appels d'outils sont un détail de progression,
   // pas le signal principal. Le résumé (« 3 outils · 2 recherches ») + la
   // ligne d'aperçu de l'action en cours suffisent à suivre ; on déplie au clic.
@@ -60,7 +62,7 @@ export function ToolTimeline({
 
   if (rows.length === 0) return null;
 
-  const summary = summarizeTools(rows.map((r) => r.name));
+  const summary = summarizeTools(rows.map((r) => r.name), t);
   // Action en cours/dernière : la dernière ligne pending pendant le stream,
   // sinon la dernière ligne tout court. Affichée en aperçu quand replié.
   const pendingRow = isStreaming
@@ -156,7 +158,7 @@ export function ToolTimeline({
                       )}
                     </span>
                     <span className="shrink-0 text-[11px] text-muted-foreground rounded-md bg-muted/60 px-2 py-0.5">
-                      {meta.chip}
+                      {t(`toolMeta.chips.${meta.chipKey}`)}
                     </span>
                   </button>
                   {isOpen && !row.pending && (
@@ -171,7 +173,7 @@ export function ToolTimeline({
                 <span className="relative z-10 grid place-items-center size-7 rounded-full border border-border/70 bg-background text-success/80">
                   <IconCircleCheck className="size-4" />
                 </span>
-                <span className="text-[15px] text-muted-foreground">Terminé</span>
+                <span className="text-[15px] text-muted-foreground">{t("tools.done")}</span>
               </li>
             )}
           </ul>
@@ -192,6 +194,7 @@ export function JsonDetail({
   input?: unknown;
   output?: unknown;
 }) {
+  const t = useTranslations("chat");
   const [copied, setCopied] = useState(false);
   const payload = JSON.stringify(
     { input: input ?? null, output: output ?? null },
@@ -227,7 +230,7 @@ export function JsonDetail({
         <button
           type="button"
           onClick={copy}
-          aria-label="Copier le JSON"
+          aria-label={t("tools.copyJson")}
           className="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           {copied ? (

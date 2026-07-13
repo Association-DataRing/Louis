@@ -1,0 +1,18 @@
+{
+  "criticalError": {
+    "title": "Erreur critique",
+    "body": "L'application a rencontré une erreur inattendue. Rechargez la page ; si le problème persiste, contactez l'administrateur.",
+    "reload": "Recharger"
+  },
+  "appError": {
+    "title": "Une erreur est survenue",
+    "body": "Quelque chose s'est mal passé de notre côté. Vous pouvez réessayer ; si le problème persiste, contactez l'administrateur de votre cabinet.",
+    "retry": "Réessayer",
+    "dashboard": "Tableau de bord"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Cette page n'existe pas, a été déplacée, ou ne vous est pas accessible.",
+    "backToDashboard": "Retour au tableau de bord"
+  }
+}

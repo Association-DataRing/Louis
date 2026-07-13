@@ -1,0 +1,10 @@
+{
+  "mistral": "Leading French models — Le Chat, Mistral Large, Codestral.",
+  "scaleway": "Open-source models hosted in France by Scaleway.",
+  "ovh": "AI endpoints hosted in France by OVHcloud.",
+  "albert": "The French State's sovereign AI platform.",
+  "anthropic": "Claude Opus, Sonnet, Haiku — US models.",
+  "openai": "GPT-4, GPT-5, o-series — US models.",
+  "openai_compatible": "Ollama, vLLM, llama.cpp, LiteLLM, or any OpenAI-compatible server.",
+  "openrouter": "Multi-provider aggregator (Claude, GPT, Mistral, Llama, Gemini…) with a single key."
+}

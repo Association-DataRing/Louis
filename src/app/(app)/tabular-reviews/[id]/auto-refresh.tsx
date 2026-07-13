@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -20,6 +21,7 @@ export function AutoRefresh({
   intervalMs?: number;
 }) {
   const router = useRouter();
+  const t = useTranslations("tabularReviews");
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [paused, setPaused] = useState(false);
   const [announce, setAnnounce] = useState("");
@@ -30,11 +32,11 @@ export function AutoRefresh({
   const wasRunning = useRef(false);
   useEffect(() => {
     if (wasRunning.current && !hasRunning) {
-      toast.success("Extraction terminée.");
-      setAnnounce("Extraction terminée.");
+      toast.success(t("autoRefresh.extractionDone"));
+      setAnnounce(t("autoRefresh.extractionDone"));
     }
     wasRunning.current = hasRunning;
-  }, [hasRunning]);
+  }, [hasRunning, t]);
 
   useEffect(() => {
     if (!hasRunning || paused) return;
@@ -43,7 +45,7 @@ export function AutoRefresh({
       if (tickRef.current) return;
       tickRef.current = setInterval(() => {
         router.refresh();
-        setAnnounce("Statuts mis à jour.");
+        setAnnounce(t("autoRefresh.statusesUpdated"));
       }, intervalMs);
     };
     const stop = () => {
@@ -67,7 +69,7 @@ export function AutoRefresh({
       document.removeEventListener("visibilitychange", onVis);
       stop();
     };
-  }, [hasRunning, intervalMs, router, paused]);
+  }, [hasRunning, intervalMs, router, paused, t]);
 
   // Quand plus rien ne tourne, on garde la région live montée pour annoncer
   // la fin (le toast est déjà déclenché par l'effet ci-dessus).
@@ -87,7 +89,7 @@ export function AutoRefresh({
         size="sm"
         onClick={() => setPaused((p) => !p)}
       >
-        {paused ? "Reprendre" : "Suspendre l'actualisation"}
+        {paused ? t("autoRefresh.resume") : t("autoRefresh.pause")}
       </Button>
       <span aria-live="polite" className="sr-only">
         {announce}

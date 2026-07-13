@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { IconArrowLeft, IconLock } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { loginAction, type LoginState } from "./actions";
 const initialState: LoginState = { step: "credentials" };
 
 export function LoginForm() {
+  const t = useTranslations("login.form");
   const [state, formAction, pending] = useActionState(loginAction, initialState);
 
   // `view` = l'étape réellement affichée. On la dérive du retour serveur en
@@ -50,12 +52,12 @@ export function LoginForm() {
     <div className="w-full max-w-sm">
       <div className="mb-8 space-y-1.5">
         <h1 className="font-heading text-3xl tracking-tight text-foreground">
-          {view === "credentials" ? "Bon retour" : "Vérification"}
+          {view === "credentials" ? t("titleCredentials") : t("titleTotp")}
         </h1>
         <p className="text-sm text-muted-foreground">
           {view === "credentials"
-            ? "Connectez-vous pour accéder à vos dossiers."
-            : "Saisissez le code de votre application d'authentification."}
+            ? t("subtitleCredentials")
+            : t("subtitleTotp")}
         </p>
       </div>
 
@@ -67,7 +69,7 @@ export function LoginForm() {
           {view === "credentials" ? (
             <motion.div key="credentials" className="space-y-4" {...slide}>
               <div className="space-y-2">
-                <Label htmlFor="email">Adresse e-mail</Label>
+                <Label htmlFor="email">{t("emailLabel")}</Label>
                 <Input
                   id="email"
                   name="email"
@@ -76,7 +78,7 @@ export function LoginForm() {
                   required
                   autoFocus
                   className="h-11"
-                  placeholder="vous@cabinet.fr"
+                  placeholder={t("emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   aria-invalid={!!state.error}
@@ -84,7 +86,7 @@ export function LoginForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Mot de passe</Label>
+                <Label htmlFor="password">{t("passwordLabel")}</Label>
                 <Input
                   id="password"
                   name="password"
@@ -116,12 +118,12 @@ export function LoginForm() {
                   onClick={() => setView("credentials")}
                   className="-my-2 ml-auto shrink-0 rounded-md px-1 py-2 text-xs font-medium text-primary underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
-                  Changer
+                  {t("change")}
                 </button>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="totp">Code de vérification</Label>
+                <Label htmlFor="totp">{t("totpLabel")}</Label>
                 <Input
                   ref={totpRef}
                   id="totp"
@@ -135,7 +137,7 @@ export function LoginForm() {
                   aria-describedby={state.error ? "login-error" : "totp-hint"}
                 />
                 <p id="totp-hint" className="text-xs text-muted-foreground">
-                  Code à 6 chiffres, ou un code de secours si besoin.
+                  {t("totpHint")}
                 </p>
               </div>
             </motion.div>
@@ -154,10 +156,10 @@ export function LoginForm() {
           className="h-11 w-full text-sm"
         >
           {pending
-            ? "Connexion…"
+            ? t("submitting")
             : view === "credentials"
-              ? "Se connecter"
-              : "Vérifier le code"}
+              ? t("submitCredentials")
+              : t("submitTotp")}
         </Button>
 
         {view === "totp" && (
@@ -167,14 +169,13 @@ export function LoginForm() {
             className="flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <IconArrowLeft aria-hidden className="size-3.5" />
-            Revenir à l&apos;identification
+            {t("backToCredentials")}
           </button>
         )}
       </form>
 
       <p className="mt-8 text-center text-xs text-muted-foreground">
-        Mot de passe oublié ? Votre administrateur de cabinet peut le
-        réinitialiser.
+        {t("forgotPassword")}
       </p>
     </div>
   );

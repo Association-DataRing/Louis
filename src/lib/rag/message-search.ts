@@ -32,9 +32,12 @@ export async function searchProjectMessages(
   const limit = options?.limit ?? 6;
   const candidates = limit * 3;
   const exclude = options?.excludeConversationId ?? null;
+  // Périmètre = le projet (frontière d'autorisation, déjà vérifiée en amont).
+  // Pas de filtre c.user_id : l'historique d'un projet partagé couvre les
+  // conversations de TOUS les membres (collaboration).
   const scope = exclude
-    ? sql`c.user_id = ${userId} AND c.project_id = ${projectId} AND c.id <> ${exclude}::uuid`
-    : sql`c.user_id = ${userId} AND c.project_id = ${projectId}`;
+    ? sql`c.project_id = ${projectId} AND c.id <> ${exclude}::uuid`
+    : sql`c.project_id = ${projectId}`;
 
   let queryEmbedding: number[] | null = null;
   try {

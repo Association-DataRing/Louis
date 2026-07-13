@@ -6,6 +6,7 @@ import {
   IconCircleDashed,
 } from "@tabler/icons-react";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { providerKeys } from "@/db/schema";
@@ -19,6 +20,7 @@ export default async function MyModelsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("settings.models");
 
   const [enabled, keys] = await Promise.all([
     listEnabledModels(userId),
@@ -54,22 +56,19 @@ export default async function MyModelsPage() {
       <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
           <p className="text-xs text-foreground/70 uppercase tracking-wider">
-            Bibliothèque
+            {t("mine.eyebrow")}
           </p>
           <h1 className="mt-1 font-heading text-3xl tracking-tight">
-            Mes modèles
+            {t("mine.title")}
           </h1>
           <p className="mt-2 text-muted-foreground text-sm">
-            Les modèles que vous avez ajoutés à votre plateforme. Seuls ceux
-            listés ici apparaissent dans les pickers du Chat et du Board.
-            Parcourez la bibliothèque pour découvrir et ajouter de nouveaux
-            modèles.
+            {t("mine.subtitle")}
           </p>
         </div>
         <Button asChild variant="default" size="default">
           <Link href="/settings/models/library">
             <IconBooks className="size-4" />
-            Explorer la bibliothèque
+            {t("mine.explore")}
           </Link>
         </Button>
       </header>
@@ -77,21 +76,21 @@ export default async function MyModelsPage() {
       <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard
           icon={IconCircleCheck}
-          label="Modèles ajoutés"
+          label={t("mine.stats.added.label")}
           value={liveEnabled.length}
-          hint="disponibles dans Chat & Board"
+          hint={t("mine.stats.added.hint")}
         />
         <StatCard
           icon={IconBooks}
-          label="Providers actifs"
+          label={t("mine.stats.providers.label")}
           value={activeTypes.size}
-          hint="clés API configurées"
+          hint={t("mine.stats.providers.hint")}
         />
         <StatCard
           icon={IconCircleDashed}
-          label="Orphelins"
+          label={t("mine.stats.orphans.label")}
           value={orphanCount}
-          hint="clé provider retirée — à nettoyer"
+          hint={t("mine.stats.orphans.hint")}
         />
       </div>
 
@@ -115,7 +114,7 @@ export default async function MyModelsPage() {
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {models.length} modèle{models.length > 1 ? "s" : ""}
+                    {t("mine.modelCount", { count: models.length })}
                   </span>
                 </div>
 
@@ -184,21 +183,21 @@ function StatCard({
   );
 }
 
-function EmptyState() {
+async function EmptyState() {
+  const t = await getTranslations("settings.models");
   return (
     <div className="py-12 border-y border-dashed border-border text-center">
       <p className="font-heading text-2xl tracking-tight">
-        Aucun modèle ajouté.
+        {t("mine.empty.title")}
       </p>
       <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-        Allez explorer la bibliothèque pour choisir les modèles que vous
-        voulez rendre disponibles dans le Chat et le Board.
+        {t("mine.empty.body")}
       </p>
       <div className="mt-6">
         <Button asChild>
           <Link href="/settings/models/library">
             <IconBooks className="size-4" />
-            Ouvrir la bibliothèque
+            {t("mine.empty.cta")}
           </Link>
         </Button>
       </div>

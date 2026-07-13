@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { IconPencil } from "@tabler/icons-react";
 import type { PipelineAgent } from "@/db/schema";
 import { roleMeta } from "./agent-role-meta";
@@ -28,6 +29,7 @@ export function AgentCard({
   modelLabel,
   providerLabel,
 }: AgentCardProps) {
+  const t = useTranslations("board");
   const meta = roleMeta(agent.role);
   const Icon = meta.icon;
 
@@ -57,11 +59,11 @@ export function AgentCard({
               {agent.label}
             </span>
             <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              {meta.label}
+              {t(meta.labelKey)}
             </span>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-            {meta.pitch}
+            {t(meta.pitchKey)}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
             {modelLabel && (
@@ -79,13 +81,13 @@ export function AgentCard({
                 className="inline-flex items-center rounded border border-border/60 bg-background px-1.5 py-0.5"
                 title={
                   agent.toolAllowlist.length === 0
-                    ? "Aucun outil autorisé"
+                    ? t("agentCard.noToolAllowed")
                     : agent.toolAllowlist.join(", ")
                 }
               >
-                {agent.toolAllowlist.length === 0
-                  ? "0 outil"
-                  : `${agent.toolAllowlist.length} outil${agent.toolAllowlist.length > 1 ? "s" : ""}`}
+                {t("agentCard.toolsCount", {
+                  count: agent.toolAllowlist.length,
+                })}
               </span>
             )}
           </div>
@@ -95,7 +97,7 @@ export function AgentCard({
             type="button"
             onClick={onEdit}
             className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity size-8 grid place-items-center rounded-md hover:bg-accent"
-            aria-label={`Modifier ${agent.label}`}
+            aria-label={t("agentCard.edit", { label: agent.label })}
           >
             <IconPencil className="size-3.5" />
           </button>

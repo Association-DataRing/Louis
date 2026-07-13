@@ -9,7 +9,6 @@ import {
   type HTMLAttributes,
   type MouseEventHandler,
 } from "react"
-import Image from "next/image"
 import { useControllableState } from "@radix-ui/react-use-controllable-state"
 import { motion, useReducedMotion } from "motion/react"
 
@@ -20,7 +19,7 @@ import { cn } from "@/lib/utils"
 // ============================================================================
 
 /** Border + shadow stack using theme tokens so elevation reads in light and dark. */
-export const cutoutCardSurfaceShadowClassName = cn(
+const cutoutCardSurfaceShadowClassName = cn(
   "border border-border/80 dark:border-border/60",
   "shadow-[0px_1px_2px_-1px_color-mix(in_oklab,var(--foreground)_8%,transparent),0px_4px_8px_-2px_color-mix(in_oklab,var(--foreground)_6%,transparent),0px_8px_16px_-4px_color-mix(in_oklab,var(--foreground)_5%,transparent)]",
   "transition-[box-shadow,border-color] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]",
@@ -31,49 +30,6 @@ export const cutoutCardSurfaceClassName = cn(
   "group/cutout relative cursor-pointer overflow-hidden rounded-[28px] bg-card text-card-foreground",
   cutoutCardSurfaceShadowClassName
 )
-
-/** Staggered text/footer entrance inside `CutoutCardContent` — use with `motion.div` children. */
-export function useCutoutContentStaggerVariants() {
-  const reduceMotion = useReducedMotion()
-
-  return useMemo(() => {
-    if (reduceMotion) {
-      return {
-        container: {
-          hidden: {},
-          show: {
-            transition: { staggerChildren: 0.03, delayChildren: 0 },
-          },
-        },
-        item: {
-          hidden: { opacity: 0 },
-          show: {
-            opacity: 1,
-            transition: { duration: 0.2, ease: [0.23, 1, 0.32, 1] },
-          },
-        },
-      } as const
-    }
-
-    return {
-      container: {
-        hidden: {},
-        show: {
-          transition: { staggerChildren: 0.055, delayChildren: 0.06 },
-        },
-      },
-      item: {
-        hidden: { opacity: 0, y: 12, filter: "blur(5px)" },
-        show: {
-          opacity: 1,
-          y: 0,
-          filter: "blur(0px)",
-          transition: { type: "spring", duration: 0.48, bounce: 0.14 },
-        },
-      },
-    } as const
-  }, [reduceMotion])
-}
 
 const CORNER_PATH = "M0 200C155.996 199.961 200.029 156.308 200 0V200H0Z"
 
@@ -94,10 +50,6 @@ export function useCutoutCard() {
     throw new Error("useCutoutCard must be used within <CutoutCard>")
   }
   return ctx
-}
-
-export function useOptionalCutoutCard() {
-  return useContext(CutoutCardContext)
 }
 
 // ============================================================================
@@ -209,32 +161,6 @@ export function CutoutCardMedia({ className, ...props }: CutoutCardMediaProps) {
   )
 }
 
-export type CutoutCardImageProps = ComponentProps<typeof Image>
-
-/** Uses `fill` by default; parent `CutoutCardMedia` should be `relative` with a defined block size. */
-export function CutoutCardImage({
-  className,
-  alt = "",
-  fill = true,
-  sizes = "(max-width: 768px) 100vw, 28rem",
-  ...props
-}: CutoutCardImageProps) {
-  return (
-    <Image
-      alt={alt}
-      className={cn(
-        "object-cover transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover/cutout:scale-105",
-        fill && "h-full w-full",
-        className
-      )}
-      data-slot="cutout-card-image"
-      {...props}
-      fill={fill}
-      sizes={fill ? sizes : undefined}
-    />
-  )
-}
-
 export type CutoutCardOverlayProps = HTMLAttributes<HTMLDivElement>
 
 export function CutoutCardOverlay({
@@ -263,21 +189,6 @@ export function CutoutCardContent({
     <div
       className={cn("p-6", className)}
       data-slot="cutout-card-content"
-      {...props}
-    />
-  )
-}
-
-export type CutoutCardFooterProps = HTMLAttributes<HTMLDivElement>
-
-export function CutoutCardFooter({
-  className,
-  ...props
-}: CutoutCardFooterProps) {
-  return (
-    <div
-      className={cn("flex items-center justify-between", className)}
-      data-slot="cutout-card-footer"
       {...props}
     />
   )

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconAdjustments,
   IconUser,
@@ -18,36 +19,36 @@ import {
 
 const sections = [
   {
-    group: "Compte",
+    group: "nav.account",
     items: [
-      { href: "/settings/general", label: "Général", icon: IconAdjustments },
-      { href: "/settings/profile", label: "Profil", icon: IconUser },
-      { href: "/settings/security", label: "Sécurité", icon: IconShieldLock },
-      { href: "/settings/usage", label: "Coûts & usage", icon: IconCash },
+      { href: "/settings/general", label: "nav.general", icon: IconAdjustments },
+      { href: "/settings/profile", label: "nav.profile", icon: IconUser },
+      { href: "/settings/security", label: "nav.security", icon: IconShieldLock },
+      { href: "/settings/usage", label: "nav.usage", icon: IconCash },
     ],
   },
   {
-    group: "Intégrations",
+    group: "nav.integrations",
     items: [
-      { href: "/settings/providers", label: "Providers IA", icon: IconKey },
-      { href: "/settings/models", label: "Modèles", icon: IconCpu },
-      { href: "/settings/ocr", label: "OCR", icon: IconScan },
-      { href: "/settings/skills", label: "Skills", icon: IconSparkles },
-      { href: "/settings/memory", label: "Mémoire", icon: IconBrain },
+      { href: "/settings/providers", label: "nav.providers", icon: IconKey },
+      { href: "/settings/models", label: "nav.models", icon: IconCpu },
+      { href: "/settings/ocr", label: "nav.ocr", icon: IconScan },
+      { href: "/settings/skills", label: "nav.skills", icon: IconSparkles },
+      { href: "/settings/memory", label: "nav.memory", icon: IconBrain },
       {
         href: "/settings/connectors",
-        label: "Connecteurs",
+        label: "nav.connectors",
         icon: IconPlugConnected,
       },
-      { href: "/settings/mcp", label: "Serveurs MCP", icon: IconBolt },
+      { href: "/settings/mcp", label: "nav.mcp", icon: IconBolt },
     ],
   },
 ];
 
 const adminSection = {
-  group: "Administration",
+  group: "nav.administration",
   items: [
-    { href: "/admin/users", label: "Utilisateurs", icon: IconShieldLock },
+    { href: "/admin/users", label: "nav.users", icon: IconShieldLock },
   ],
 };
 
@@ -59,6 +60,7 @@ export function SettingsNav({
   horizontal?: boolean;
 }) {
   const pathname = usePathname();
+  const t = useTranslations("settings.layout");
   const all = isAdmin ? [...sections, adminSection] : sections;
 
   if (horizontal) {
@@ -80,7 +82,7 @@ export function SettingsNav({
               }`}
             >
               <Icon className="size-3.5" />
-              {item.label}
+              {t(item.label)}
             </Link>
           );
         })}
@@ -93,7 +95,7 @@ export function SettingsNav({
       {all.map((group) => (
         <div key={group.group}>
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1 px-2">
-            {group.group}
+            {t(group.group)}
           </p>
           <ul className="space-y-0.5">
             {group.items.map((item) => {
@@ -111,7 +113,7 @@ export function SettingsNav({
                     }`}
                   >
                     <Icon className="size-4 shrink-0" />
-                    {item.label}
+                    {t(item.label)}
                   </Link>
                 </li>
               );

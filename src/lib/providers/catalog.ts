@@ -24,7 +24,6 @@ export type SovereigntyTier = "fr" | "eu" | "us";
 export type ProviderMeta = {
   type: ProviderType;
   label: string;
-  description: string;
   icon: Icon;
   /** Where users get their API key. */
   docsUrl: string;
@@ -55,7 +54,6 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
   mistral: {
     type: "mistral",
     label: "Mistral",
-    description: "Modèles français de référence — Le Chat, Mistral Large, Codestral.",
     icon: IconSparkles,
     docsUrl: "https://console.mistral.ai/api-keys/",
     sovereignty: "fr",
@@ -69,7 +67,6 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
   scaleway: {
     type: "scaleway",
     label: "Scaleway Generative APIs",
-    description: "Modèles open-source hébergés en France par Scaleway.",
     icon: IconCloud,
     docsUrl: "https://console.scaleway.com/iam/api-keys",
     sovereignty: "fr",
@@ -86,7 +83,6 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
   ovh: {
     type: "ovh",
     label: "OVHcloud AI Endpoints",
-    description: "Endpoints IA hébergés en France par OVHcloud.",
     icon: IconServer2,
     docsUrl: "https://endpoints.ai.cloud.ovh.net/",
     sovereignty: "fr",
@@ -104,7 +100,6 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
   albert: {
     type: "albert",
     label: "Albert (Etalab)",
-    description: "Plateforme IA souveraine de l'État français.",
     icon: IconFlag,
     docsUrl: "https://albert.api.etalab.gouv.fr/",
     sovereignty: "fr",
@@ -118,7 +113,6 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
   anthropic: {
     type: "anthropic",
     label: "Anthropic",
-    description: "Claude Opus, Sonnet, Haiku — modèles US.",
     icon: IconRobot,
     docsUrl: "https://console.anthropic.com/settings/keys",
     sovereignty: "us",
@@ -132,7 +126,6 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
   openai: {
     type: "openai",
     label: "OpenAI",
-    description: "GPT-4, GPT-5, o-séries — modèles US.",
     icon: IconCpu,
     docsUrl: "https://platform.openai.com/api-keys",
     sovereignty: "us",
@@ -146,7 +139,6 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
   openai_compatible: {
     type: "openai_compatible",
     label: "Endpoint OpenAI-compatible",
-    description: "Ollama, vLLM, llama.cpp, LiteLLM ou tout serveur OpenAI-compatible.",
     icon: IconBuildingBank,
     docsUrl: "https://ollama.com/",
     sovereignty: "eu",
@@ -163,8 +155,6 @@ export const PROVIDER_CATALOG: Record<ProviderType, ProviderMeta> = {
   openrouter: {
     type: "openrouter",
     label: "OpenRouter",
-    description:
-      "Agrégateur multi-providers (Claude, GPT, Mistral, Llama, Gemini…) avec une clé unique.",
     icon: IconCloud,
     docsUrl: "https://openrouter.ai/keys",
     sovereignty: "us",

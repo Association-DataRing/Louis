@@ -4,11 +4,10 @@ import { conversations, messages, users } from "@/db/schema";
 import { aggregateCosts } from "@/lib/providers/pricing";
 
 /**
- * Début du mois courant (00:00 heure locale serveur). Borne UNIQUE partagée
- * par l'enforcement de quota et l'affichage, pour éviter toute divergence de
- * période.
+ * Début du mois courant (00:00 heure locale serveur), borne de période pour
+ * l'enforcement de quota (getMonthlySpendCents).
  */
-export function currentMonthStart(now: Date = new Date()): Date {
+function currentMonthStart(now: Date = new Date()): Date {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 

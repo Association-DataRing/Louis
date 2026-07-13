@@ -1,28 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { LouisLogo } from "@/components/louis-logo";
-
-/**
- * Phrases qui cyclent toutes les 2s pendant que l'assistant prépare sa
- * réponse. Beaucoup plus vivant qu'un seul label statique avec shimmer —
- * crée la sensation d'un raisonnement en marche sans recourir à une
- * animation graphique tape-à-l'œil.
- */
-const PHRASES = [
-  "Réflexion",
-  "Analyse",
-  "Examen",
-  "Raisonnement",
-  "Délibération",
-];
 
 /**
  * Indicateur affiché entre le moment où l'utilisateur envoie son message
  * et la première lettre de la réponse — y compris pendant les tool calls
  * qui n'ont pas encore produit de texte.
+ *
+ * Les phrases cyclent toutes les 2s pendant que l'assistant prépare sa
+ * réponse. Beaucoup plus vivant qu'un seul label statique avec shimmer.
  */
 export function ThinkingIndicator() {
+  const t = useTranslations("chat");
+  const PHRASES = [
+    t("reasoning.phrases.thinking"),
+    t("reasoning.phrases.analysis"),
+    t("reasoning.phrases.examination"),
+    t("reasoning.phrases.reasoning"),
+    t("reasoning.phrases.deliberation"),
+  ];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -30,13 +28,14 @@ export function ThinkingIndicator() {
       setIndex((i) => (i + 1) % PHRASES.length);
     }, 2000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div
       className="flex items-start gap-2 text-sm text-muted-foreground"
       role="status"
-      aria-label="Louis prépare sa réponse"
+      aria-label={t("reasoning.preparingAria")}
     >
       <LouisLogo className="size-4 text-primary mt-0.5 shrink-0" />
       <span className="inline-flex items-baseline gap-1.5" aria-hidden>

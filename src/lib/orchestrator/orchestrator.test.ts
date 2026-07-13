@@ -1,14 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { Orchestrator } from "./orchestrator";
+import { Orchestrator, type OrchestratorWriter } from "./orchestrator";
 import type {
   Agent,
   AgentContext,
   AgentDefinition,
   AgentRunResult,
   OrchestratorEvent,
-  OrchestratorWriter,
   PipelineConfig,
-} from "./index";
+} from "./types";
 
 /**
  * Agent factice qui retourne `{ kind: "text" }` — pratique pour tester la

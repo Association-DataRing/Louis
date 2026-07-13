@@ -10,10 +10,13 @@ import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import {
   projects,
+  projectMembers,
   conversations,
   documents,
   documentFolders,
+  users,
 } from "@/db/schema";
+import { resolveProjectAccess } from "@/lib/projects/access";
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -131,6 +134,80 @@ export async function deleteProject(id: string): Promise<void> {
   revalidatePath("/projects");
   revalidatePath("/chat");
   redirect("/projects");
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Collaboration : gestion des membres d'un projet (intra-cabinet).
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ajoute un compte du cabinet comme collaborateur d'un projet. Réservé au
+ * propriétaire et aux admins (`canManage`). No-op si déjà membre. On refuse
+ * d'ajouter le propriétaire (il a déjà tous les droits) ou un compte inactif.
+ */
+export async function addProjectCollaborator(
+  projectId: string,
+  collaboratorUserId: string
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const access = await resolveProjectAccess(userId, projectId);
+  if (!access) return { ok: false, error: "Projet introuvable." };
+  if (!access.canManage) {
+    return { ok: false, error: "Réservé au propriétaire ou à un administrateur." };
+  }
+  if (collaboratorUserId === access.ownerId) {
+    return { ok: false, error: "Le propriétaire a déjà accès au projet." };
+  }
+
+  const [target] = await db
+    .select({ id: users.id, isActive: users.isActive })
+    .from(users)
+    .where(eq(users.id, collaboratorUserId))
+    .limit(1);
+  if (!target || !target.isActive) {
+    return { ok: false, error: "Utilisateur introuvable ou désactivé." };
+  }
+
+  await db
+    .insert(projectMembers)
+    .values({ projectId, userId: collaboratorUserId, addedBy: userId })
+    .onConflictDoNothing({
+      target: [projectMembers.projectId, projectMembers.userId],
+    });
+
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/chat");
+  return { ok: true };
+}
+
+/**
+ * Retire un collaborateur d'un projet. Réservé au propriétaire et aux admins.
+ */
+export async function removeProjectCollaborator(
+  projectId: string,
+  collaboratorUserId: string
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+  const access = await resolveProjectAccess(userId, projectId);
+  if (!access) return { ok: false, error: "Projet introuvable." };
+  if (!access.canManage) {
+    return { ok: false, error: "Réservé au propriétaire ou à un administrateur." };
+  }
+
+  await db
+    .delete(projectMembers)
+    .where(
+      and(
+        eq(projectMembers.projectId, projectId),
+        eq(projectMembers.userId, collaboratorUserId)
+      )
+    );
+
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/chat");
+  return { ok: true };
 }
 
 export async function moveConversationToProject(

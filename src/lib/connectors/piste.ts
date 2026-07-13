@@ -8,7 +8,7 @@ import {
 } from "@/lib/tools/result";
 
 const OAUTH_URL = "https://oauth.piste.gouv.fr/api/oauth/token";
-const API_BASE = "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app";
+const LEGIFRANCE_PATH = "/dila/legifrance/lf-engine-app";
 const TIMEOUT_MS = 15_000;
 
 /**
@@ -111,46 +111,19 @@ export async function testPisteConnection(
 
 const PISTE_BASE = "https://api.piste.gouv.fr";
 
-async function pisteRequest<T>(
-  userId: string,
-  path: string,
-  body: unknown
-): Promise<ToolResult<T>> {
-  const tok = await getToken(userId);
-  if (!tok.ok) return tok;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${tok.data}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      if (res.status === 401) tokenCache.delete(userId);
-      return { ok: false, ...httpReason("Légifrance", res.status) };
-    }
-    return toolOk((await res.json()) as T);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 /**
- * Requête GET authentifiée vers PISTE. Utilisée par les sous-APIs qui
- * exposent des endpoints REST GET (ex: Judilibre).
+ * Requête authentifiée vers PISTE (api.piste.gouv.fr). `path` est le chemin
+ * complet relatif à la racine PISTE (ex: "/cassation/judilibre/v1.0/search",
+ * `${LEGIFRANCE_PATH}/search`). POST quand `body` est fourni, GET sinon.
+ * `serviceName` ne sert qu'au libellé d'erreur.
  */
-export async function pisteGet<T>(
+export async function pisteFetch<T>(
   userId: string,
+  method: "GET" | "POST",
   path: string,
-  serviceName = "PISTE"
+  opts: { body?: unknown; serviceName?: string } = {}
 ): Promise<ToolResult<T>> {
+  const { body, serviceName = "PISTE" } = opts;
   const tok = await getToken(userId);
   if (!tok.ok) return tok;
 
@@ -158,47 +131,13 @@ export async function pisteGet<T>(
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(`${PISTE_BASE}${path}`, {
-      method: "GET",
+      method,
       headers: {
         Authorization: `Bearer ${tok.data}`,
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         Accept: "application/json",
       },
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      if (res.status === 401) tokenCache.delete(userId);
-      return { ok: false, ...httpReason(serviceName, res.status) };
-    }
-    return toolOk((await res.json()) as T);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Requête POST authentifiée vers PISTE avec basePath configurable.
- * Généralise pisteRequest pour cibler d'autres sous-APIs (ex: BOFIP via fond CIRC).
- */
-export async function pistePost<T>(
-  userId: string,
-  fullPath: string,
-  body: unknown,
-  serviceName = "PISTE"
-): Promise<ToolResult<T>> {
-  const tok = await getToken(userId);
-  if (!tok.ok) return tok;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(`${PISTE_BASE}${fullPath}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${tok.data}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -233,7 +172,7 @@ export async function legifranceSearch(
       }>;
     };
 
-    const r = await pisteRequest<Raw>(userId, "/search", {
+    const searchBody = {
       fond,
       recherche: {
         champs: [
@@ -252,6 +191,10 @@ export async function legifranceSearch(
         sort: "PERTINENCE",
         typePagination: "DEFAUT",
       },
+    };
+    const r = await pisteFetch<Raw>(userId, "POST", `${LEGIFRANCE_PATH}/search`, {
+      body: searchBody,
+      serviceName: "Légifrance",
     });
     if (!r.ok) return r;
 

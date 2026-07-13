@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconCheck,
   IconCopy,
@@ -27,6 +28,7 @@ import {
  * paragraphe) sans introduire la complexité d'éditer un PDF source.
  */
 export function EditCard({ raw }: { raw: string }) {
+  const t = useTranslations("chat");
   const parsed = parseEditBlock(raw);
   const [decision, setDecision] = useState<"none" | "kept" | "rejected">(
     "none"
@@ -48,7 +50,7 @@ export function EditCard({ raw }: { raw: string }) {
   if (decision === "rejected") {
     return (
       <div className="not-prose my-3 rounded-md border border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
-        Suggestion ignorée.
+        {t("editCard.ignored")}
       </div>
     );
   }
@@ -58,12 +60,12 @@ export function EditCard({ raw }: { raw: string }) {
       <header className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2">
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <IconPencil className="size-3.5" />
-          Suggestion d&apos;édition
+          {t("editCard.title")}
         </div>
         {decision === "kept" && (
           <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary font-medium">
             <IconCheck className="size-3" />
-            Conservée
+            {t("editCard.kept")}
           </span>
         )}
       </header>
@@ -71,25 +73,25 @@ export function EditCard({ raw }: { raw: string }) {
       <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border">
         <section className="p-4 bg-destructive/5">
           <div className="text-[10px] uppercase tracking-wider text-destructive/80 font-semibold mb-1.5">
-            Avant
+            {t("editCard.before")}
           </div>
           <pre className="font-mono whitespace-pre-wrap text-xs leading-relaxed text-foreground/80">
-            {parsed.before || <em className="text-muted-foreground">(vide)</em>}
+            {parsed.before || <em className="text-muted-foreground">{t("editCard.empty")}</em>}
           </pre>
         </section>
         <section className="p-4 bg-primary/5">
           <div className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-1.5">
-            Après
+            {t("editCard.after")}
           </div>
           <pre className="font-mono whitespace-pre-wrap text-xs leading-relaxed text-foreground">
-            {parsed.after || <em className="text-muted-foreground">(vide)</em>}
+            {parsed.after || <em className="text-muted-foreground">{t("editCard.empty")}</em>}
           </pre>
         </section>
       </div>
 
       {parsed.reason && (
         <p className="px-4 py-2 text-xs text-muted-foreground border-t border-border">
-          <span className="font-medium text-foreground">Raison :</span>{" "}
+          <span className="font-medium text-foreground">{t("editCard.reason")}</span>{" "}
           {parsed.reason}
         </p>
       )}
@@ -101,7 +103,7 @@ export function EditCard({ raw }: { raw: string }) {
           className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
         >
           <IconX className="size-3.5" />
-          Ignorer
+          {t("editCard.dismiss")}
         </button>
         <button
           type="button"
@@ -109,7 +111,7 @@ export function EditCard({ raw }: { raw: string }) {
           className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs hover:bg-accent transition-colors"
         >
           <IconCopy className="size-3.5" />
-          {copied ? "Copié" : "Copier"}
+          {copied ? t("editCard.copied") : t("editCard.copy")}
         </button>
         <button
           type="button"
@@ -120,7 +122,7 @@ export function EditCard({ raw }: { raw: string }) {
           className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <IconCheck className="size-3.5" />
-          Accepter et copier
+          {t("editCard.acceptCopy")}
         </button>
       </footer>
     </div>

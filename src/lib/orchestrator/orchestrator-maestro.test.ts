@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { Orchestrator, agentToolName } from "./orchestrator";
+import {
+  Orchestrator,
+  agentToolName,
+  type OrchestratorWriter,
+} from "./orchestrator";
 import type {
   Agent,
   AgentContext,
   AgentDefinition,
   AgentRunResult,
   OrchestratorEvent,
-  OrchestratorWriter,
   PipelineConfig,
-} from "./index";
+} from "./types";
 
 /** Agent factice texte (cf. orchestrator.test.ts). */
 class FakeAgent implements Agent {

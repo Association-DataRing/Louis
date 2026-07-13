@@ -13,7 +13,7 @@ import {
   type Pipeline,
   type PipelineAgent,
 } from "@/db/schema";
-import { findPreset, seedPresetsForUser } from "@/lib/orchestrator";
+import { seedPresetsForUser } from "@/lib/orchestrator";
 
 export type ActionResult = BaseActionResult;
 export type ActionResultWith<T> = BaseActionResult<T>;
@@ -154,52 +154,6 @@ export async function clonePipeline(
           modelOverride: a.modelOverride,
           systemPrompt: a.systemPrompt,
           toolAllowlist: a.toolAllowlist,
-          position: i,
-        }))
-      );
-    }
-    return created.id;
-  });
-
-  revalidatePath("/board");
-  return { ok: true, id: newId };
-}
-
-export async function clonePresetBySlug(
-  slug: string
-): Promise<ActionResultWith<{ id: string }>> {
-  const userId = await requireUserId();
-  const preset = findPreset(slug);
-  if (!preset) return { ok: false, error: "Preset inconnu." };
-
-  const newSlug = await uniqueSlug(userId, slug);
-
-  // Transaction : pipeline + agents atomiques (cf. clonePipeline).
-  const newId = await db.transaction(async (tx) => {
-    const [created] = await tx
-      .insert(pipelines)
-      .values({
-        userId,
-        slug: newSlug,
-        name: `${preset.name} (copie)`,
-        description: preset.description,
-        isPreset: false,
-        mode: preset.mode ?? "sequential",
-        rounds: preset.rounds ?? 1,
-      })
-      .returning({ id: pipelines.id });
-
-    if (preset.agents.length > 0) {
-      await tx.insert(pipelineAgents).values(
-        preset.agents.map((a, i) => ({
-          pipelineId: created.id,
-          role: a.role,
-          label: a.label,
-          providerKeyId: null,
-          modelOverride: null,
-          systemPrompt: a.systemPrompt ?? null,
-          toolAllowlist:
-            a.toolAllowlist === undefined ? null : a.toolAllowlist,
           position: i,
         }))
       );

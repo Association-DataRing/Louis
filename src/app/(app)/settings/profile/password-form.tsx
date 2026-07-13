@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { updatePassword } from "./actions";
 
 export function PasswordForm() {
+  const t = useTranslations("settings.profile");
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -30,7 +32,7 @@ export function PasswordForm() {
   return (
     <form ref={formRef} action={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+        <Label htmlFor="currentPassword">{t("passwordForm.current")}</Label>
         <Input
           id="currentPassword"
           name="currentPassword"
@@ -40,7 +42,7 @@ export function PasswordForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+        <Label htmlFor="newPassword">{t("passwordForm.new")}</Label>
         <Input
           id="newPassword"
           name="newPassword"
@@ -51,12 +53,11 @@ export function PasswordForm() {
           aria-describedby="newPassword-help"
         />
         <p id="newPassword-help" className="text-xs text-muted-foreground">
-          Minimum 10 caractères. Un gestionnaire de mots de passe est
-          recommandé.
+          {t("passwordForm.hint")}
         </p>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="confirm">Confirmation</Label>
+        <Label htmlFor="confirm">{t("passwordForm.confirm")}</Label>
         <Input
           id="confirm"
           name="confirm"
@@ -73,12 +74,12 @@ export function PasswordForm() {
       )}
       {success && (
         <Alert>
-          <AlertDescription>Mot de passe mis à jour.</AlertDescription>
+          <AlertDescription>{t("toast.passwordUpdated")}</AlertDescription>
         </Alert>
       )}
 
       <Button type="submit" disabled={pending}>
-        {pending ? "Enregistrement…" : "Changer le mot de passe"}
+        {pending ? t("passwordForm.saving") : t("passwordForm.submit")}
       </Button>
     </form>
   );

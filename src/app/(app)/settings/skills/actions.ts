@@ -8,7 +8,7 @@ import { z } from "zod";
 import { requireUserId } from "@/lib/auth/permissions";
 import { db } from "@/db";
 import { skills, type Skill } from "@/db/schema";
-import { SKILL_PRESETS, findSkillPreset } from "@/lib/skills/presets";
+import { SKILL_PRESETS } from "@/lib/skills/presets";
 
 export type ActionResult = BaseActionResult;
 
@@ -151,7 +151,7 @@ export async function importSkillTemplate(
   presetSlug: string
 ): Promise<ActionResult> {
   const userId = await requireUserId();
-  const preset = findSkillPreset(presetSlug);
+  const preset = SKILL_PRESETS.find((s) => s.slug === presetSlug);
   if (!preset) return { ok: false, error: "Modèle inconnu." };
 
   const existing = await db
@@ -205,19 +205,4 @@ export async function listSkillTemplates(): Promise<
     ...p,
     alreadyImported: set.has(p.slug),
   }));
-}
-
-/**
- * Nettoie les anciens presets auto-seedés (avant le changement de
- * politique no-auto-seed). Permet aux comptes existants de repartir
- * d'une bibliothèque vide.
- */
-export async function purgeSeededPresets(): Promise<ActionResult> {
-  const userId = await requireUserId();
-  await db
-    .delete(skills)
-    .where(and(eq(skills.userId, userId), eq(skills.isPreset, true)));
-  revalidatePath("/settings/skills");
-  revalidatePath("/chat");
-  return { ok: true };
 }

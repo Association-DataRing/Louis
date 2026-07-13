@@ -1,0 +1,11 @@
+{
+  "sectionLabel": "Getting started",
+  "heading": "Getting started",
+  "hideAria": "Hide getting started",
+  "hideTitle": "Hide",
+  "stepProvider": "Connect an AI key",
+  "stepModel": "Enable a model",
+  "stepDocument": "Import a document",
+  "stepConversation": "First conversation",
+  "loading": "Loading…"
+}

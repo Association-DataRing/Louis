@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { IconPlus } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export function AddDocumentsDialog({
   availableDocuments: DocOption[];
 }) {
   const router = useRouter();
+  const t = useTranslations("tabularReviews");
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
@@ -50,10 +52,10 @@ export function AddDocumentsDialog({
     startTransition(async () => {
       const r = await addReviewDocuments(reviewId, ids);
       if (!r.ok) {
-        toast.error("Ajout impossible", { description: r.error });
+        toast.error(t("addDocuments.toastErrorTitle"), { description: r.error });
         return;
       }
-      toast.success(`${ids.length} document${ids.length > 1 ? "s" : ""} ajouté${ids.length > 1 ? "s" : ""}.`);
+      toast.success(t("addDocuments.toastSuccess", { count: ids.length }));
       setSelected(new Set());
       setOpen(false);
       router.refresh();
@@ -68,20 +70,19 @@ export function AddDocumentsDialog({
           disabled={availableDocuments.length === 0}
           title={
             availableDocuments.length === 0
-              ? "Tous vos documents indexés sont déjà dans l'analyse"
+              ? t("addDocuments.triggerTitleAllAdded")
               : undefined
           }
         >
           <IconPlus className="size-4" />
-          Ajouter des documents
+          {t("addDocuments.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Ajouter des documents</DialogTitle>
+          <DialogTitle>{t("addDocuments.dialogTitle")}</DialogTitle>
           <DialogDescription>
-            Les documents ajoutés apparaîtront « en attente » ; lancez ensuite
-            l&apos;extraction.
+            {t("addDocuments.dialogDescription")}
           </DialogDescription>
         </DialogHeader>
         <div className="-mx-1 flex max-h-[50vh] flex-col gap-1 overflow-y-auto px-1">
@@ -106,12 +107,14 @@ export function AddDocumentsDialog({
             onClick={() => setOpen(false)}
             disabled={pending}
           >
-            Annuler
+            {t("addDocuments.cancel")}
           </Button>
           <Button onClick={submit} disabled={pending || selected.size === 0}>
             {pending
-              ? "Ajout…"
-              : `Ajouter${selected.size > 0 ? ` (${selected.size})` : ""}`}
+              ? t("addDocuments.adding")
+              : selected.size > 0
+                ? t("addDocuments.addCount", { count: selected.size })
+                : t("addDocuments.add")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconDotsVertical,
   IconEdit,
@@ -41,6 +42,7 @@ interface Props {
 
 export function SkillRowActions({ skill }: Props) {
   const router = useRouter();
+  const t = useTranslations("settings.skills");
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -51,9 +53,9 @@ export function SkillRowActions({ skill }: Props) {
       if (result.ok) {
         setDeleteOpen(false);
         router.refresh();
-        toast.success("Compétence supprimée", { description: skill.name });
+        toast.success(t("toast.deleted"), { description: skill.name });
       } else {
-        toast.error("Suppression impossible", { description: result.error });
+        toast.error(t("toast.deleteError"), { description: result.error });
       }
     });
   }
@@ -66,7 +68,7 @@ export function SkillRowActions({ skill }: Props) {
             variant="ghost"
             size="icon"
             className="size-8 text-muted-foreground hover:text-foreground"
-            aria-label={`Actions pour ${skill.name}`}
+            aria-label={t("rowActions.aria", { name: skill.name })}
           >
             <IconDotsVertical className="size-4" />
           </Button>
@@ -74,7 +76,7 @@ export function SkillRowActions({ skill }: Props) {
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>
             <IconEdit className="size-4" />
-            Éditer
+            {t("rowActions.edit")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -82,7 +84,7 @@ export function SkillRowActions({ skill }: Props) {
             onSelect={() => setDeleteOpen(true)}
           >
             <IconTrash className="size-4" />
-            Supprimer
+            {t("rowActions.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -106,14 +108,15 @@ export function SkillRowActions({ skill }: Props) {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer cette compétence ?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              « {skill.name} » sera définitivement supprimée. L&apos;IA ne
-              l&apos;activera plus automatiquement.
+              {t("deleteDialog.description", { name: skill.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending}>
+              {t("deleteDialog.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -122,7 +125,9 @@ export function SkillRowActions({ skill }: Props) {
               disabled={pending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {pending ? "Suppression…" : "Supprimer"}
+              {pending
+                ? t("deleteDialog.deleting")
+                : t("deleteDialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

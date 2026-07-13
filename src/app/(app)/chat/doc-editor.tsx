@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslations } from "next-intl";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -44,6 +45,7 @@ export const DocEditor = forwardRef<DocEditorHandle, Props>(function DocEditor(
   { documentId, onDirtyChange },
   ref
 ) {
+  const t = useTranslations("chat");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Le setContent initial déclenche un onUpdate « faux » : on le neutralise
@@ -104,13 +106,13 @@ export const DocEditor = forwardRef<DocEditorHandle, Props>(function DocEditor(
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Erreur de chargement");
+        setError(err instanceof Error ? err.message : t("docPanel.loadError"));
         setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [editor, documentId, onDirtyChange]);
+  }, [editor, documentId, onDirtyChange, t]);
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
@@ -143,6 +145,7 @@ export const DocEditor = forwardRef<DocEditorHandle, Props>(function DocEditor(
 /* ------------------------------ Toolbar ------------------------------ */
 
 function Toolbar({ editor }: { editor: Editor }) {
+  const t = useTranslations("chat");
   // Re-render à chaque transaction pour refléter l'état actif des boutons.
   const [, force] = useState(0);
 
@@ -160,21 +163,21 @@ function Toolbar({ editor }: { editor: Editor }) {
         <TBtn
           active={editor.isActive("heading", { level: 1 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          label="Titre 1"
+          label={t("docPanel.toolbar.heading1")}
         >
           <IconH1 className="size-4" />
         </TBtn>
         <TBtn
           active={editor.isActive("heading", { level: 2 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          label="Titre 2"
+          label={t("docPanel.toolbar.heading2")}
         >
           <IconH2 className="size-4" />
         </TBtn>
         <TBtn
           active={editor.isActive("heading", { level: 3 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          label="Titre 3"
+          label={t("docPanel.toolbar.heading3")}
         >
           <IconH3 className="size-4" />
         </TBtn>
@@ -184,14 +187,14 @@ function Toolbar({ editor }: { editor: Editor }) {
         <TBtn
           active={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}
-          label="Gras"
+          label={t("docPanel.toolbar.bold")}
         >
           <IconBold className="size-4" />
         </TBtn>
         <TBtn
           active={editor.isActive("italic")}
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          label="Italique"
+          label={t("docPanel.toolbar.italic")}
         >
           <IconItalic className="size-4" />
         </TBtn>
@@ -201,21 +204,21 @@ function Toolbar({ editor }: { editor: Editor }) {
         <TBtn
           active={editor.isActive("bulletList")}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          label="Liste à puces"
+          label={t("docPanel.toolbar.bulletList")}
         >
           <IconList className="size-4" />
         </TBtn>
         <TBtn
           active={editor.isActive("orderedList")}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          label="Liste numérotée"
+          label={t("docPanel.toolbar.orderedList")}
         >
           <IconListNumbers className="size-4" />
         </TBtn>
         <TBtn
           active={editor.isActive("blockquote")}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          label="Citation"
+          label={t("docPanel.toolbar.quote")}
         >
           <IconBlockquote className="size-4" />
         </TBtn>

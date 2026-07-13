@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
@@ -6,6 +6,7 @@ import { generateDocx } from "@/lib/docgen/docx";
 import { storeBuffer } from "@/lib/docgen";
 import { editorJsonToSpec } from "@/lib/docgen/from-prosemirror";
 import { recordAudit } from "@/lib/audit";
+import { userCanAccessDocument } from "@/lib/projects/access";
 
 type Params = { id: string };
 
@@ -50,10 +51,11 @@ export async function POST(
       parentDocumentId: documents.parentDocumentId,
     })
     .from(documents)
-    .where(and(eq(documents.id, id), eq(documents.userId, userId)))
+    .where(eq(documents.id, id))
     .limit(1);
 
-  if (!src) {
+  // Accès : propriétaire ou collaborateur d'un projet contenant le document.
+  if (!src || !(await userCanAccessDocument(userId, id))) {
     return new Response("Not found", { status: 404 });
   }
   if (src.contentType !== DOCX_MEDIA_TYPE) {
@@ -64,14 +66,14 @@ export async function POST(
   const rootId = src.parentDocumentId ?? src.id;
 
   // Prochain numéro de version = max de la famille + 1.
+  // Numérotation sur toute la famille de versions (rootId = frontière), sans
+  // filtre userId : dans un projet partagé, des versions peuvent appartenir à
+  // des collaborateurs différents — la séquence doit rester continue.
   const family = await db
     .select({ version: documents.version })
     .from(documents)
     .where(
-      and(
-        eq(documents.userId, userId),
-        or(eq(documents.id, rootId), eq(documents.parentDocumentId, rootId))
-      )
+      or(eq(documents.id, rootId), eq(documents.parentDocumentId, rootId))
     );
   const nextVersion =
     family.reduce((max, r) => Math.max(max, r.version), 0) + 1;

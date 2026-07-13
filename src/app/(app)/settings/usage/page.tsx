@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { and, eq, gte, sql } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { conversations, messages } from "@/db/schema";
@@ -13,6 +14,7 @@ import { getUserMonthlyQuotaCents } from "@/lib/usage/quota";
 import { aggregateToolStats } from "@/lib/observability/query";
 
 export default async function UsagePage() {
+  const t = await getTranslations("settings.usage");
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
@@ -60,7 +62,7 @@ export default async function UsagePage() {
     { count: number; input: number; output: number }
   >();
   for (const r of rowsThisMonth) {
-    const key = r.modelId ?? "(non spécifié)";
+    const key = r.modelId ?? t("unspecifiedModel");
     const entry = perModel.get(key) ?? { count: 0, input: 0, output: 0 };
     entry.count += 1;
     entry.input += r.inputTokens ?? 0;
@@ -113,11 +115,10 @@ export default async function UsagePage() {
           {capitalize(monthLabel)}
         </p>
         <h1 className="mt-2 font-heading text-4xl tracking-tight">
-          Coûts &amp; usage.
+          {t("title")}
         </h1>
         <p className="mt-3 text-muted-foreground max-w-2xl">
-          Estimation selon les tarifs publics. Les valeurs réelles peuvent
-          varier (remises négociées, changements de tarification).
+          {t("subtitle")}
         </p>
       </header>
 
@@ -125,7 +126,7 @@ export default async function UsagePage() {
       <section className="mb-14 grid lg:grid-cols-[2fr_3fr] gap-x-12 gap-y-6 items-end border-b border-border pb-12">
         <dl>
           <dt className="text-xs text-muted-foreground uppercase tracking-wider">
-            Coût estimé ce mois
+            {t("estimatedThisMonth")}
           </dt>
           <dd className="mt-3 font-heading text-6xl md:text-7xl tracking-tight tabular-nums">
             {formatTotals(totalsMonth)}
@@ -133,14 +134,14 @@ export default async function UsagePage() {
         </dl>
         <dl className="grid grid-cols-3 gap-x-6 gap-y-2">
           <Metric
-            label="Tokens entrée"
+            label={t("inputTokens")}
             value={totalInputTokens.toLocaleString("fr-FR")}
           />
           <Metric
-            label="Tokens sortie"
+            label={t("outputTokens")}
             value={totalOutputTokens.toLocaleString("fr-FR")}
           />
-          <Metric label="Messages IA" value={messageCount.toString()} />
+          <Metric label={t("aiMessages")} value={messageCount.toString()} />
         </dl>
       </section>
 
@@ -158,7 +159,7 @@ export default async function UsagePage() {
             <section className="mb-14 max-w-2xl border-b border-border pb-12">
               <div className="flex items-baseline justify-between">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                  Plafond mensuel
+                  {t("monthlyCap")}
                 </p>
                 <p className="font-heading tabular-nums">
                   {fmt(spentCentsMonth)}{" "}
@@ -173,7 +174,7 @@ export default async function UsagePage() {
                 aria-valuemin={0}
                 aria-valuemax={quotaCents}
                 aria-valuenow={Math.min(spentCentsMonth, quotaCents)}
-                aria-label="Consommation du plafond mensuel"
+                aria-label={t("capProgressLabel")}
               >
                 <div
                   className={`h-full rounded-full transition-all ${
@@ -196,10 +197,10 @@ export default async function UsagePage() {
                 }`}
               >
                 {reached
-                  ? "Plafond atteint — vos requêtes IA sont bloquées jusqu'au mois prochain ou jusqu'à un relèvement par l'administrateur de votre cabinet."
+                  ? t("capReached")
                   : warning
-                    ? `Vous approchez du plafond (${pct} %).`
-                    : "Défini par l'administrateur de votre cabinet."}
+                    ? t("capApproaching", { pct })
+                    : t("capDefined")}
               </p>
             </section>
           );
@@ -208,12 +209,12 @@ export default async function UsagePage() {
       <section className="mb-14">
         <div className="grid lg:grid-cols-[280px_1fr] gap-x-12 gap-y-6">
           <h2 className="font-heading text-2xl tracking-tight">
-            Détail par modèle.
+            {t("perModelHeading")}
           </h2>
           <div>
             {modelRows.length === 0 ? (
               <p className="text-sm text-muted-foreground py-6 border-y border-dashed border-border">
-                Aucun message IA ce mois-ci.
+                {t("noMessagesThisMonth")}
               </p>
             ) : (
               <ul className="divide-y divide-border border-y border-border">
@@ -223,7 +224,7 @@ export default async function UsagePage() {
                       {r.modelId}
                     </span>
                     <span className="text-xs text-muted-foreground tabular-nums hidden sm:inline">
-                      {r.messages} msg
+                      {t("msgUnit", { count: r.messages })}
                     </span>
                     <span className="text-xs text-muted-foreground tabular-nums hidden sm:inline">
                       {r.input.toLocaleString("fr-FR")}/{r.output.toLocaleString("fr-FR")}
@@ -241,12 +242,12 @@ export default async function UsagePage() {
 
       <section className="mb-14 grid lg:grid-cols-[280px_1fr] gap-x-12">
         <h2 className="font-heading text-2xl tracking-tight">
-          Depuis votre inscription.
+          {t("sinceSignupHeading")}
         </h2>
         <div className="flex items-baseline gap-x-8 gap-y-2 flex-wrap">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              Total estimé
+              {t("totalEstimated")}
             </p>
             <p className="mt-2 font-heading text-4xl tracking-tight tabular-nums">
               {formatTotals(totalsAllTime)}
@@ -254,7 +255,7 @@ export default async function UsagePage() {
           </div>
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              Messages
+              {t("messages")}
             </p>
             <p className="mt-2 font-heading text-4xl tracking-tight tabular-nums">
               {allTimeMessages.toLocaleString("fr-FR")}
@@ -266,44 +267,44 @@ export default async function UsagePage() {
       <section className="mb-14 grid lg:grid-cols-[280px_1fr] gap-x-12 gap-y-6">
         <div>
           <h2 className="font-heading text-2xl tracking-tight">
-            Fiabilité des outils.
+            {t("toolReliabilityHeading")}
           </h2>
           {toolStats.totalCalls > 0 && (
             <p className="mt-2 text-xs text-muted-foreground tabular-nums">
-              {toolStats.totalCalls} appel
-              {toolStats.totalCalls > 1 ? "s" : ""} ce mois ·{" "}
-              {Math.round(toolStats.successRate)} % de succès
+              {t("toolCallsSummary", {
+                count: toolStats.totalCalls,
+                rate: Math.round(toolStats.successRate),
+              })}
             </p>
           )}
         </div>
         <div>
           {toolStats.byTool.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 border-y border-dashed border-border">
-              Aucun appel d&apos;outil ce mois-ci (Légifrance, Pappers,
-              recherche documentaire, génération de documents, MCP).
+              {t("noToolCalls")}
             </p>
           ) : (
             <ul className="divide-y divide-border border-y border-border">
-              {toolStats.byTool.map((t) => {
-                const rate = Math.round(t.successRate);
+              {toolStats.byTool.map((tool) => {
+                const rate = Math.round(tool.successRate);
                 const healthy = rate >= 95;
                 const degraded = rate >= 80 && rate < 95;
                 return (
                   <li
-                    key={t.toolName}
+                    key={tool.toolName}
                     className="py-3 grid grid-cols-[1fr_auto_auto_auto] gap-x-6 items-baseline"
                   >
                     <span className="font-mono text-xs truncate">
-                      {t.toolName}
+                      {tool.toolName}
                     </span>
                     <span className="text-xs text-muted-foreground tabular-nums hidden sm:inline">
-                      {t.calls} appel{t.calls > 1 ? "s" : ""}
+                      {t("callsCount", { count: tool.calls })}
                     </span>
                     <span className="text-xs text-muted-foreground tabular-nums">
-                      {formatMs(t.avgMs)}
+                      {formatMs(tool.avgMs)}
                       <span className="opacity-60">
                         {" "}
-                        / {formatMs(t.maxMs)}
+                        / {formatMs(tool.maxMs)}
                       </span>
                     </span>
                     <span
@@ -326,10 +327,11 @@ export default async function UsagePage() {
       </section>
 
       <aside className="mt-12 max-w-2xl border-l-2 border-primary/40 pl-4 text-sm text-muted-foreground">
-        Les coûts utilisent les grilles publiques des providers (mai 2026).
-        Pour les modèles auto-hébergés (Ollama, vLLM, Albert d&apos;Etalab),
-        le coût affiché est <strong className="text-foreground">0</strong>{" "}
-        — vous payez l&apos;infrastructure ailleurs.
+        {t.rich("disclaimer", {
+          strong: (chunks) => (
+            <strong className="text-foreground">{chunks}</strong>
+          ),
+        })}
       </aside>
     </main>
   );

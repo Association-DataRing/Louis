@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { desc, eq } from "drizzle-orm";
 import { IconSparkles } from "@tabler/icons-react";
 import { auth } from "@/auth";
@@ -13,6 +14,7 @@ export default async function WorkflowsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("workflows");
 
   const list = await db
     .select()
@@ -25,39 +27,36 @@ export default async function WorkflowsPage() {
       <header className="mb-10 flex items-end justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Bibliothèque cabinet
+            {t("list.eyebrow")}
           </p>
           <h1 className="mt-2 font-heading text-4xl tracking-tight">
-            Trames.
+            {t("list.title")}
           </h1>
           <p className="mt-3 text-muted-foreground">
-            Prompts réutilisables du cabinet — résumé d&apos;arrêt, analyse de
-            clause, due diligence. Insérez-les d&apos;un clic dans une
-            conversation via l&apos;icône{" "}
-            <IconSparkles className="inline size-3.5 align-text-bottom" />.
+            {t.rich("list.subtitle", {
+              icon: () => (
+                <IconSparkles className="inline size-3.5 align-text-bottom" />
+              ),
+            })}
           </p>
         </div>
         <AddWorkflowDialog />
       </header>
 
       {list.length === 0 ? (
-        <EmptyState title="Pas encore de trame.">
-          <p>
-            Une trame est un prompt réutilisable que vous insérez d&apos;un clic
-            dans une conversation. Créez-en un depuis votre pratique — Louis ne
-            livre pas de templates par défaut, c&apos;est votre cabinet qui
-            définit sa bibliothèque.
-          </p>
+        <EmptyState title={t("list.emptyTitle")}>
+          <p>{t("list.emptyBody1")}</p>
           <p className="mt-3">
-            Besoin d&apos;inspiration ?{" "}
-            <Link
-              href="/settings/skills"
-              className="text-primary hover:underline underline-offset-2"
-            >
-              Importez des modèles de skills juridiques
-            </Link>{" "}
-            comme point de départ — relisez-les et adaptez-les avant de les
-            utiliser.
+            {t.rich("list.emptyBody2", {
+              link: (chunks) => (
+                <Link
+                  href="/settings/skills"
+                  className="text-primary hover:underline underline-offset-2"
+                >
+                  {chunks}
+                </Link>
+              ),
+            })}
           </p>
         </EmptyState>
       ) : (

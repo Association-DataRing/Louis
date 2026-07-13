@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
 import { IconSun, IconMoon, IconDeviceLaptop } from "@tabler/icons-react";
 
 /**
@@ -25,6 +26,7 @@ function useMounted(): boolean {
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const mounted = useMounted();
+  const t = useTranslations("theme");
 
   if (!mounted) {
     return (
@@ -41,10 +43,10 @@ export function ThemeToggle({ className }: { className?: string }) {
   const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
   const label =
     theme === "light"
-      ? "Thème : clair (clic pour sombre)"
+      ? t("toggleLight")
       : theme === "dark"
-        ? "Thème : sombre (clic pour système)"
-        : "Thème : système (clic pour clair)";
+        ? t("toggleDark")
+        : t("toggleSystem");
   const Icon =
     theme === "light"
       ? IconSun

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { IconPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createUser } from "./actions";
 
 export function AddUserDialog() {
+  const t = useTranslations("admin.users");
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<"admin" | "member">("member");
   const [error, setError] = useState<string | null>(null);
@@ -44,40 +46,37 @@ export function AddUserDialog() {
       <DialogTrigger asChild>
         <Button>
           <IconPlus className="size-4" />
-          Ajouter un utilisateur
+          {t("addUser")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="font-heading">
-            Ajouter un utilisateur
+            {t("addUser")}
           </DialogTitle>
-          <DialogDescription>
-            Définissez un mot de passe temporaire — le collaborateur pourra le
-            changer dans Paramètres après sa première connexion.
-          </DialogDescription>
+          <DialogDescription>{t("addUserDescription")}</DialogDescription>
         </DialogHeader>
 
         <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("emailLabel")}</Label>
             <Input
               id="email"
               name="email"
               type="email"
               required
               autoComplete="off"
-              placeholder="prenom.nom@cabinet.fr"
+              placeholder={t("emailPlaceholder")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="name">Nom affiché</Label>
+            <Label htmlFor="name">{t("nameLabel")}</Label>
             <Input id="name" name="name" required maxLength={80} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe temporaire</Label>
+            <Label htmlFor="password">{t("tempPasswordLabel")}</Label>
             <Input
               id="password"
               name="password"
@@ -87,13 +86,12 @@ export function AddUserDialog() {
               autoComplete="off"
             />
             <p className="text-xs text-muted-foreground">
-              Minimum 10 caractères. Transmettez-le à l&apos;utilisateur via un
-              canal sûr (gestionnaire de mots de passe, messagerie chiffrée).
+              {t("tempPasswordHelp")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role">Rôle</Label>
+            <Label htmlFor="role">{t("roleLabel")}</Label>
             <Select
               name="role"
               value={role}
@@ -103,12 +101,8 @@ export function AddUserDialog() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="member">
-                  Membre — utilisateur standard
-                </SelectItem>
-                <SelectItem value="admin">
-                  Administrateur — gère les utilisateurs
-                </SelectItem>
+                <SelectItem value="member">{t("roleMember")}</SelectItem>
+                <SelectItem value="admin">{t("roleAdmin")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -121,10 +115,10 @@ export function AddUserDialog() {
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Annuler
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? "Création…" : "Créer"}
+              {pending ? t("creating") : t("create")}
             </Button>
           </DialogFooter>
         </form>

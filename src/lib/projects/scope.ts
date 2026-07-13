@@ -23,7 +23,7 @@ export type ProjectScope = {
 };
 
 /** IDs des dossiers du sous-arbre enraciné en `rootFolderId` (inclus). */
-function collectSubtree(
+export function collectSubtree(
   rootFolderId: string,
   childrenByParent: Map<string | null, string[]>
 ): string[] {
@@ -38,7 +38,7 @@ function collectSubtree(
   return out;
 }
 
-function buildChildrenMap(
+export function buildChildrenMap(
   folders: { id: string; parentFolderId: string | null }[]
 ): Map<string | null, string[]> {
   const childrenByParent = new Map<string | null, string[]>();
@@ -83,12 +83,15 @@ export async function getProjectScope(
     buildChildrenMap(folders)
   );
 
+  // Appartenance documentaire = rangé dans un dossier du sous-arbre. On ne
+  // filtre PAS par userId ici : le sous-arbre est déjà celui du propriétaire,
+  // et un document déposé par un collaborateur dans ce dossier fait bien partie
+  // du projet (collaboration). L'autorisation d'accès au projet est vérifiée
+  // en amont (resolveProjectAccess).
   const docs = await db
     .select({ id: documents.id })
     .from(documents)
-    .where(
-      and(eq(documents.userId, userId), inArray(documents.folderId, folderIds))
-    );
+    .where(inArray(documents.folderId, folderIds));
 
   return {
     folderId: project.folderId,

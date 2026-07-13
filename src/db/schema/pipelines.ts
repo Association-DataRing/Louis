@@ -84,9 +84,9 @@ export type NewPipeline = typeof pipelines.$inferInsert;
 
 /**
  * Agents définis au sein d'un pipeline. L'ordre d'exécution séquentiel
- * est donné par `position`. Le `role` détermine quelle classe Agent
- * est instanciée côté runtime (default-chat, research, citator, reviewer,
- * orchestrator).
+ * est donné par `position`. Le `role` sélectionne les defaults d'agent
+ * appliqués côté runtime (default-chat, research, citator, reviewer,
+ * orchestrator) — cf. AGENT_DEFAULTS.
  *
  * `toolAllowlist` = null/empty → tous les outils disponibles. Sinon, sous-
  * ensemble (par nom AI SDK : "legifrance_search", "rag_search"…).

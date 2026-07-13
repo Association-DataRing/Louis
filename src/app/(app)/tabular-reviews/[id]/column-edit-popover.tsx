@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   IconDots,
   IconTrash,
@@ -30,13 +31,13 @@ import {
   rerunReviewColumn,
 } from "../actions";
 
-const FORMAT_LABELS: Record<ReviewColumnFormat, string> = {
-  text: "Texte",
-  bulleted_list: "Liste à puces",
-  date: "Date",
-  money: "Montant",
-  boolean: "Oui / Non",
-};
+const FORMAT_KEYS: ReviewColumnFormat[] = [
+  "text",
+  "bulleted_list",
+  "date",
+  "money",
+  "boolean",
+];
 
 type Props = {
   reviewId: string;
@@ -55,6 +56,7 @@ type Props = {
  */
 export function ColumnEditPopover({ reviewId, column }: Props) {
   const router = useRouter();
+  const t = useTranslations("tabularReviews");
   const [open, setOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [label, setLabel] = useState(column.label);
@@ -79,7 +81,7 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
       }
       setOpen(false);
       router.refresh();
-      toast.success("Colonne mise à jour", { description: label.trim() });
+      toast.success(t("columnEdit.toastUpdated"), { description: label.trim() });
     });
   }
 
@@ -102,7 +104,7 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
       }
       setOpen(false);
       router.refresh();
-      toast.success("Colonne enregistrée — ré-extraction lancée", {
+      toast.success(t("columnEdit.toastSavedRerun"), {
         description: label.trim(),
       });
     });
@@ -112,13 +114,13 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
     startTransition(async () => {
       const result = await deleteReviewColumn(reviewId, column.id);
       if (!result.ok) {
-        toast.error("Suppression impossible", { description: result.error });
+        toast.error(t("columnEdit.toastDeleteError"), { description: result.error });
         return;
       }
       setDeleteOpen(false);
       setOpen(false);
       router.refresh();
-      toast.success("Colonne supprimée");
+      toast.success(t("columnEdit.toastDeleted"));
     });
   }
 
@@ -127,7 +129,7 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           asChild
-          aria-label={`Modifier la colonne ${column.label}`}
+          aria-label={t("columnEdit.editColumnAria", { label: column.label })}
         >
           <button
             type="button"
@@ -144,13 +146,13 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
         >
           <div className="flex items-center justify-between mb-3">
             <p className="font-heading text-sm tracking-tight">
-              Modifier la colonne
+              {t("columnEdit.heading")}
             </p>
           </div>
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor={`label-${column.id}`} className="text-xs">
-                Libellé
+                {t("columnEdit.labelLabel")}
               </Label>
               <Input
                 id={`label-${column.id}`}
@@ -162,7 +164,7 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`format-${column.id}`} className="text-xs">
-                Format
+                {t("columnEdit.formatLabel")}
               </Label>
               <Select
                 value={format}
@@ -176,19 +178,17 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(FORMAT_LABELS) as ReviewColumnFormat[]).map(
-                    (k) => (
-                      <SelectItem key={k} value={k}>
-                        {FORMAT_LABELS[k]}
-                      </SelectItem>
-                    )
-                  )}
+                  {FORMAT_KEYS.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {t(`columnEdit.formats.${k}`)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`prompt-${column.id}`} className="text-xs">
-                Prompt
+                {t("columnEdit.promptLabel")}
               </Label>
               <textarea
                 id={`prompt-${column.id}`}
@@ -199,9 +199,7 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
                 className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm leading-snug focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
               />
               <p className="text-[10px] text-muted-foreground">
-                Décrivez ce que Louis doit extraire. Modifier le prompt ne
-                recalcule pas les valeurs déjà extraites — utilisez «&nbsp;Ré-extraire&nbsp;»
-                pour relancer cette colonne sur tous les documents.
+                {t("columnEdit.promptHint")}
               </p>
             </div>
             {error && (
@@ -216,7 +214,7 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
               className="inline-flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
             >
               <IconTrash className="size-3.5" />
-              Supprimer
+              {t("columnEdit.deleteColumn")}
             </button>
             <div className="flex items-center gap-2">
               <Button
@@ -226,16 +224,16 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
                 onClick={handleSave}
                 disabled={pending || !label.trim() || !prompt.trim()}
               >
-                Enregistrer
+                {t("columnEdit.save")}
               </Button>
               <Button
                 type="button"
                 size="sm"
                 onClick={handleSaveAndRerun}
                 disabled={pending || !label.trim() || !prompt.trim()}
-                title="Enregistre et relance l'extraction de cette colonne sur tous les documents"
+                title={t("columnEdit.rerunButtonTitle")}
               >
-                {pending ? "…" : "Ré-extraire"}
+                {pending ? t("columnEdit.rerunSaving") : t("columnEdit.rerun")}
               </Button>
             </div>
           </div>
@@ -245,14 +243,8 @@ export function ColumnEditPopover({ reviewId, column }: Props) {
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Supprimer cette colonne ?"
-        description={
-          <>
-            « {column.label} » sera retirée de l&apos;analyse. Les valeurs
-            extraites pour cette colonne dans toutes les lignes seront
-            définitivement perdues.
-          </>
-        }
+        title={t("columnEdit.deleteConfirmTitle")}
+        description={t("columnEdit.deleteConfirmDescription", { label: column.label })}
         pending={pending}
         onConfirm={handleDelete}
       />

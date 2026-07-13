@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { eq, inArray, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentChunks, documentFolders } from "@/db/schema";
@@ -12,6 +12,10 @@ import { ocrPdf } from "@/lib/ocr";
 import { chunkText } from "@/lib/rag/chunk";
 import { embedTexts, NoEmbeddingProviderError } from "@/lib/rag/embed";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import {
+  userCanAccessDocument,
+  userCanAccessFolder,
+} from "@/lib/projects/access";
 import {
   generateDek,
   encryptWithDek,
@@ -78,9 +82,12 @@ export async function POST(req: Request) {
         parentDocumentId: documents.parentDocumentId,
       })
       .from(documents)
-      .where(and(eq(documents.id, replacesId), eq(documents.userId, userId)))
+      .where(eq(documents.id, replacesId))
       .limit(1);
-    if (!parent) {
+    // Accès : propriétaire du document ou collaborateur d'un projet le
+    // contenant (un membre peut verser une nouvelle version dans le dossier
+    // partagé).
+    if (!parent || !(await userCanAccessDocument(userId, replacesId))) {
       return new Response("Parent document not found", { status: 404 });
     }
     parentDocumentId = parent.parentDocumentId ?? parent.id;
@@ -106,14 +113,13 @@ export async function POST(req: Request) {
       const [folder] = await db
         .select({ id: documentFolders.id })
         .from(documentFolders)
-        .where(
-          and(
-            eq(documentFolders.id, folderRaw),
-            eq(documentFolders.userId, userId)
-          )
-        )
+        .where(eq(documentFolders.id, folderRaw))
         .limit(1);
-      if (folder) folderIdOverride = folder.id;
+      // Accès : propriétaire du dossier ou collaborateur d'un projet le
+      // contenant (dépôt d'un document dans le dossier partagé).
+      if (folder && (await userCanAccessFolder(userId, folder.id))) {
+        folderIdOverride = folder.id;
+      }
     }
   }
 

@@ -39,9 +39,50 @@ du Droit. Conçue par l'**Association DataRing**
 
 ## Nouveautés récentes
 
-Fonctionnalités récemment ajoutées au projet : chiffrement des documents à
-enveloppe, OCR souverain pluggable, conversion PDF → Markdown canonique et
-citations cliquables avec surlignage précis.
+Fonctionnalités récemment ajoutées au projet : internationalisation de
+l'interface (français + anglais), collaboration de projet entre membres du
+cabinet, chiffrement des documents à enveloppe, OCR souverain pluggable,
+conversion PDF → Markdown canonique et citations cliquables avec surlignage
+précis.
+
+### Internationalisation (français + anglais)
+
+L'interface est désormais entièrement traduisible. **next-intl** en mode
+cookie-based (`LOUIS_LOCALE`, sans préfixe d'URL ni middleware) sert les messages
+selon la langue choisie — **français par défaut, anglais disponible**, bascule
+depuis **Settings → Général**. Aucun appel réseau : les catalogues sont locaux,
+souverains.
+
+- Messages organisés par namespace dans `messages/{fr,en}/<namespace>.json`,
+  agrégés par des barrels statiques (`messages/{fr,en}/index.ts`).
+- ~1480 clés ; alignement fr ↔ en vérifié par `scripts/i18n-check.ts`.
+- Toute l'UI est externalisée (nav, chat, settings, admin, Board, documents,
+  projets, analyses tabulaires, workflows, login, impression…).
+- Architecture et conventions : [`docs/design/i18n-internationalization.md`](./docs/design/i18n-internationalization.md).
+
+### Collaboration de projet
+
+Un projet (dossier client) peut être partagé avec d'autres comptes du cabinet.
+Le **propriétaire** ajoute des **collaborateurs** depuis `/projects/[id]` ; un
+projet partagé porte un badge **« Partagé »** dans `/projects`.
+
+- **Modèle d'accès** : « membre = accès complet » au périmètre du projet
+  (dossiers + documents). Pas de rôle lecteur/éditeur distinct à ce stade. La
+  gestion des membres est réservée au **propriétaire** et aux **admins**.
+- **Le périmètre appartient au propriétaire** : `resolveProjectAccess` /
+  `getProjectScope(ownerId, …)` calculent les documents et dossiers du projet
+  côté propriétaire, et cette liste **est** la frontière d'autorisation. Le RAG,
+  les outils et les routes documents sont scopés via `ownerId` /
+  `userCanAccessDocument` plutôt que par un simple filtre `userId`.
+- **Lecture et écriture partagées** : un collaborateur voit les conversations du
+  projet, interroge ses documents (RAG + outils scopés), et peut déposer,
+  versionner, renommer, déplacer ou supprimer dans le périmètre partagé.
+- **Mono-cabinet** (single-tenant). Repose sur la table `project_members` et la
+  master key globale (ADR 0005 phase 1) — pas de re-chiffrement par membre.
+
+> La page `/documents` n'est pas encore adaptée au partage : un collaborateur
+> accède aux dossiers/documents du projet via `/projects/[id]`. Architecture et
+> questions ouvertes : issue de design dédiée (#36).
 
 ### PDF → Markdown canonique
 
@@ -555,6 +596,9 @@ pour la référence complète.
   BOFIP, BODACC), Pappers
 - **MCP-native** — serveurs MCP custom par utilisateur
 - **Multi-utilisateur** — NextAuth v5 Credentials + RBAC admin/member
+- **Collaboration de projet** — partage d'un projet (dossier client) entre
+  comptes du cabinet : badge « Partagé », membres autorisés (accès complet),
+  RAG / outils / routes documents scopés via le périmètre du propriétaire
 - **Journal d'audit** append-only sur les opérations sensibles
   (auth, users, providers, connecteurs, documents, cabinet)
 - **Docker Compose** une commande
@@ -565,6 +609,10 @@ pour la référence complète.
 
 #### Ajouts récents
 
+- **Internationalisation (fr + en)** — next-intl cookie-based, bascule de langue
+  (Settings → Général), ~1480 clés, alignement fr/en vérifié (`scripts/i18n-check.ts`)
+- **Collaboration de projet** — partage d'un dossier client entre membres du
+  cabinet (table `project_members`, périmètre scopé sur le propriétaire)
 - **PDF → Markdown** — conversion locale pdfjs, souverain, hors-ligne
 - **OCR pluggable** — Mistral OCR → vision → Tesseract local `fra`, page
   paramètres dédiée
@@ -583,8 +631,10 @@ pour la référence complète.
 ### ⚪ Planifié
 
 - Sub-APIs PISTE supplémentaires : JADE (Conseil d'État), INPI
-- Project sharing par email entre membres du cabinet
-- Internationalisation anglaise
+- Collaboration de projet : invitation par email (hors comptes déjà créés) et
+  rôles fins (lecteur / éditeur)
+- Internationalisation : langues supplémentaires (au-delà de fr / en) et
+  traduction des messages d'erreur des server actions
 - Veille juridique automatisée — surveillance Légifrance / JADE / BODACC
 - Mode SecNumCloud-ready — checklist et configuration documentée
 - CSP nonces (durcissement script-src)
@@ -597,6 +647,7 @@ pour la référence complète.
   Compiler, output `standalone`
 - **UI** : shadcn/ui · Tailwind CSS v4 · Tabler Icons · EB Garamond
   (heading) + Geist Sans (body)
+- **i18n** : next-intl 4 — français + anglais, cookie-based (sans routing)
 - **Base de données** : PostgreSQL 16 + pgvector · Drizzle ORM
 - **Auth** : NextAuth v5 — Credentials, sessions JWT signées
 - **IA** : Vercel AI SDK v6, multi-providers
@@ -614,8 +665,8 @@ pour la référence complète.
 |---|---|---|
 | v0.1 — Fondation publique · orchestrateur mono-agent | 2026-Q2 | ✅ Livré |
 | v0.2 — Board multi-agents + connecteurs PISTE étendus (Judilibre, BOFIP, BODACC) + chiffrement DEK des documents + OCR souverain + RAG souverain | 2026-Q2 | ✅ Livré |
-| v0.2.x — JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
-| v0.3 — i18n, project sharing, config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
+| v0.2.x — collaboration de projet, i18n (fr + en), JADE/INPI, durcissement sécurité, affinage UX | 2026-Q3 | 🟡 En cours |
+| v0.3 — config pipeline YAML déclarative | 2027-Q1 | ⚪ À venir |
 | v1.0 — Production-ready, documentation complète | 2027 | ⚪ À venir |
 
 ---

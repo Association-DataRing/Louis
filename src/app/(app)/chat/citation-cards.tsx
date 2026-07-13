@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import {
   IconExternalLink,
   IconScale,
@@ -105,11 +106,12 @@ function CardShell({
 }
 
 export function LegifranceCitations({ hits }: { hits: LegifranceHitView[] }) {
+  const t = useTranslations("chat");
   return (
     <CardShell
       icon={<IconScale className="size-3 text-primary" />}
       source="Légifrance"
-      count={`${hits.length} source${hits.length > 1 ? "s" : ""}`}
+      count={t("citations.sourcesCount", { count: hits.length })}
     >
       {hits.map((h, i) => (
         <ExternalCard
@@ -142,11 +144,12 @@ function pappersUrl(siren: string): string {
 }
 
 export function PappersResults({ results }: { results: PappersResultView[] }) {
+  const t = useTranslations("chat");
   return (
     <CardShell
       icon={<IconBuilding className="size-3 text-primary" />}
       source="Pappers"
-      count={`${results.length} entreprise${results.length > 1 ? "s" : ""}`}
+      count={t("citations.companiesCount", { count: results.length })}
     >
       {results.map((r, i) => (
         <ExternalCard
@@ -172,11 +175,12 @@ export function PappersResults({ results }: { results: PappersResultView[] }) {
 }
 
 export function PappersCompany({ d }: { d: PappersDetailsView }) {
+  const t = useTranslations("chat");
   const dirigeants = (d.dirigeants ?? []).slice(0, 4);
   return (
     <CardShell
       icon={<IconBuilding className="size-3 text-primary" />}
-      source="Pappers — fiche entreprise"
+      source={t("citations.pappersCompanySource")}
     >
       <ExternalCard
         href={safeHttpUrl(pappersUrl(d.siren))}

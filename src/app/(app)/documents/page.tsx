@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { asc, desc, eq, and, sql } from "drizzle-orm";
 import { IconFolder, IconChevronRight } from "@tabler/icons-react";
 import { auth } from "@/auth";
@@ -32,6 +33,7 @@ export default async function DocumentsPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
+  const t = await getTranslations("documents.page");
   const { folder: folderParam } = await searchParams;
   const currentFolderId = folderParam ?? null;
 
@@ -160,20 +162,20 @@ export default async function DocumentsPage({
       <header className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Fichiers · dossiers · versions
+            {t("eyebrow")}
           </p>
           <div className="mt-2 flex items-center gap-2">
-            <h1 className="font-heading text-4xl tracking-tight">Documents</h1>
-            <ModuleHelp slug="user/documents" title="Gérer les documents">
-              Importez vos PDF / DOCX (≤ 25 Mo), organisez-les en dossiers et
-              versionnez-les. Interrogez-les ensuite depuis le chat (pièce
-              jointe ou recherche sémantique).
+            <h1 className="font-heading text-4xl tracking-tight">
+              {t("title")}
+            </h1>
+            <ModuleHelp slug="user/documents" title={t("helpTitle")}>
+              {t("helpBody")}
             </ModuleHelp>
           </div>
           <p className="mt-2 text-muted-foreground max-w-2xl">
-            Vos fichiers sont stockés sur <strong>votre</strong> infrastructure
-            (S3, MinIO, OVH Object Storage…). Organisez-les en dossiers et
-            attachez-les à vos conversations.
+            {t.rich("intro", {
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -184,7 +186,7 @@ export default async function DocumentsPage({
       </header>
 
       <nav
-        aria-label="Fil d'Ariane"
+        aria-label={t("breadcrumbAria")}
         className="mb-5 flex items-center gap-1 text-sm text-muted-foreground flex-wrap"
       >
         <Link
@@ -194,7 +196,7 @@ export default async function DocumentsPage({
           }`}
         >
           <IconFolder className="size-3.5" />
-          Racine
+          {t("root")}
         </Link>
         {breadcrumb.map((f, i) => (
           <span key={f.id} className="flex items-center gap-1">
@@ -213,12 +215,10 @@ export default async function DocumentsPage({
 
       {totalDocs > 0 && (
         <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline">
-            {totalDocs} document{totalDocs > 1 ? "s" : ""} au total
-          </Badge>
+          <Badge variant="outline">{t("docsTotal", { count: totalDocs })}</Badge>
           {allFolders.length > 0 && (
             <Badge variant="outline">
-              {allFolders.length} dossier{allFolders.length > 1 ? "s" : ""}
+              {t("foldersCount", { count: allFolders.length })}
             </Badge>
           )}
         </div>
@@ -272,31 +272,26 @@ function countDescendantFolders(
     .reduce((n, c) => n + 1 + countDescendantFolders(c.id, all), 0);
 }
 
-function EmptyState({ isRoot }: { isRoot: boolean }) {
+async function EmptyState({ isRoot }: { isRoot: boolean }) {
+  const t = await getTranslations("documents.page");
   return (
     <div className="border border-dashed border-border rounded-lg p-10 text-center">
       <h2 className="font-heading text-lg">
-        {isRoot ? "Aucun document" : "Dossier vide"}
+        {isRoot ? t("emptyRootTitle") : t("emptyFolderTitle")}
       </h2>
       <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-        {isRoot
-          ? "Importez vos premiers fichiers — Louis en extrait le texte automatiquement. Vous pourrez ensuite les attacher à une conversation pour interroger leur contenu."
-          : "Aucun document ni sous-dossier ici. Utilisez Importer ou Nouveau dossier."}
+        {isRoot ? t("emptyRootBody") : t("emptyFolderBody")}
       </p>
     </div>
   );
 }
 
-function FormatsNote() {
+async function FormatsNote() {
+  const t = await getTranslations("documents.page");
   return (
     <aside className="mt-10 border-l-2 border-primary/50 pl-4 text-sm text-muted-foreground">
-      <p className="font-medium text-foreground">Formats acceptés</p>
-      <p className="mt-1">
-        PDF, DOCX et texte brut. Limite : 25 Mo par fichier, ~500 000
-        caractères extraits (au-delà, l&apos;extraction est tronquée). Chaque
-        document est indexé pour la recherche sémantique (RAG) dès qu&apos;une
-        clé Mistral active est configurée.
-      </p>
+      <p className="font-medium text-foreground">{t("formatsTitle")}</p>
+      <p className="mt-1">{t("formatsBody")}</p>
     </aside>
   );
 }

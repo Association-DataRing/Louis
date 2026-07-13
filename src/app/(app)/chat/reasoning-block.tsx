@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   IconChevronDown,
   IconBulb,
@@ -27,6 +28,7 @@ export function ReasoningBlock({
   text: string;
   isStreaming: boolean;
 }) {
+  const t = useTranslations("chat");
   const [expanded, setExpanded] = useState(false);
 
   const trimmed = text.trim();
@@ -54,7 +56,7 @@ export function ReasoningBlock({
           <IconBulb className="size-3.5 shrink-0 text-foreground/55" />
         )}
         <span className="shrink-0 font-medium text-foreground/70">
-          {isStreaming ? "Réflexion en cours" : "Raisonnement"}
+          {isStreaming ? t("reasoning.thinking") : t("reasoning.label")}
         </span>
         {!expanded && isStreaming && preview && (
           <span
