@@ -1120,6 +1120,405 @@ function DocPickerContent({
   );
 }
 
+// Défauts stables (référence constante) pour ne pas invalider le memo de
+// MessageRow : un `?? []` inline créerait un nouveau tableau à chaque render.
+const EMPTY_ATTACHMENTS: string[] = [];
+const EMPTY_ARTIFACTS: DocumentArtifactMeta[] = [];
+
+type MessageRowProps = {
+  message: UIMessage;
+  /** Dernier message assistant ET stream en cours — seule ligne réactive. */
+  isLive: boolean;
+  /** Stream/submit en cours (désactive les actions). Stable token-à-token. */
+  isBusy: boolean;
+  mergedDocuments: DocumentOption[];
+  /** Artefacts persistés de CE message (documentArtifactsByMessageId[id]). */
+  persistedArtifacts: DocumentArtifactMeta[];
+  /** Doc ids joints à CE message (attachmentsByMessageId[id]). */
+  attachments: string[];
+  isEditing: boolean;
+  /** Brouillon d'édition — significatif seulement si isEditing. */
+  editingDraft: string;
+  editError: string | null;
+  selectedModelValue: string;
+  assistantActionModels: ModelOption[];
+  onOpenDoc: (documentId: string, targetText: string) => void;
+  onStartEditing: (messageId: string, currentText: string) => void;
+  onCancelEditing: () => void;
+  onSaveEditing: (messageId: string, draftText: string) => void;
+  onChangeDraft: (value: string) => void;
+  onOpenTheatre: (messageId: string) => void;
+  onRegenerateCurrent: () => void;
+  onRegenerateWithModel: (modelKey: string) => void;
+  /** Forke la conversation jusqu'à ce message inclus (undefined si non forkable). */
+  onFork?: () => void;
+};
+
+/**
+ * Une ligne de message du fil. Mémoïsée : pendant le streaming, `useChat`
+ * recrée le tableau `messages` à chaque token mais ne mute QUE l'objet du
+ * message en cours — les objets historiques gardent leur référence. Avec
+ * React.memo + props stables (callbacks useCallback, slices par message), le
+ * memo bypasse les N-1 lignes historiques et ne re-rend que la ligne live.
+ *
+ * Les calculs lourds par message (buildToolRows, buildDocCards,
+ * dedupeAgentEvents, sumAgentLatency) sont mémoïsés sur `message.parts` :
+ * recalculés uniquement quand les parts changent — donc seulement sur la
+ * ligne en streaming.
+ */
+const MessageRow = memo(function MessageRow({
+  message: m,
+  isLive,
+  isBusy,
+  mergedDocuments,
+  persistedArtifacts,
+  attachments,
+  isEditing,
+  editingDraft,
+  editError,
+  selectedModelValue,
+  assistantActionModels,
+  onOpenDoc,
+  onStartEditing,
+  onCancelEditing,
+  onSaveEditing,
+  onChangeDraft,
+  onOpenTheatre,
+  onRegenerateCurrent,
+  onRegenerateWithModel,
+  onFork,
+}: MessageRowProps) {
+  const isUser = m.role === "user";
+  const t = useTranslations("chat");
+
+  const dedupedAgentEvents = useMemo(
+    () =>
+      isUser
+        ? []
+        : dedupeAgentEvents(m.parts as { type: string; data?: unknown }[]),
+    [isUser, m.parts]
+  );
+
+  const toolRows = useMemo(
+    () =>
+      isUser
+        ? []
+        : buildToolRows(
+            t,
+            m.parts as {
+              type: string;
+              input?: unknown;
+              output?: unknown;
+              state?: string;
+            }[]
+          ),
+    [isUser, m.parts, t]
+  );
+
+  const firstToolIdx = useMemo(
+    () =>
+      m.parts.findIndex(
+        (p) => typeof p.type === "string" && p.type.startsWith("tool-")
+      ),
+    [m.parts]
+  );
+
+  const docCards = useMemo(
+    () =>
+      isUser
+        ? []
+        : buildDocCards(
+            t,
+            m.parts as { type: string; output?: unknown }[],
+            persistedArtifacts,
+            extractTextFromParts(m.parts as { type: string; text?: string }[]),
+            mergedDocuments
+          ),
+    [isUser, m.parts, persistedArtifacts, mergedDocuments, t]
+  );
+
+  const toolDurationMs = useMemo(
+    () => sumAgentLatency(m.parts as { type: string; data?: unknown }[]),
+    [m.parts]
+  );
+
+  const renderToolDetail = useCallback(
+    (row: ToolTimelineRow) =>
+      RICH_TOOLS.has(row.name) ? (
+        <ToolPart
+          name={row.name}
+          input={row.input}
+          output={row.output}
+          state="output-available"
+          onOpenDoc={onOpenDoc}
+        />
+      ) : (
+        <JsonDetail input={row.input} output={row.output} />
+      ),
+    [onOpenDoc]
+  );
+
+  return (
+    <div
+      aria-label={isUser ? t("composer.you") : t("composer.assistant")}
+      className={`flex flex-col gap-1.5 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 ${isUser ? "items-end" : "items-start group/msg"}`}
+    >
+      {/* Wrapper d'étapes : utile UNIQUEMENT pour pipelines
+          multi-agents (2+ agents distincts). En mode chat-simple
+          mono-agent, le seul step serait « Assistant Louis ·
+          Travaille / Terminé » — redondant avec le markdown qui
+          se déroule et le ThinkingIndicator. On revient au
+          stream IA classique. */}
+      {dedupedAgentEvents.length > 1 && (
+        <div className="w-full max-w-xl">
+          <AgentStepsWrapper
+            stepCount={dedupedAgentEvents.length}
+            shouldMinimize={hasRenderableText(
+              m.parts as { type: string; text?: string }[]
+            )}
+            isStreaming={isLive}
+          >
+            {dedupedAgentEvents.map((evt, i) => (
+              <AgentEventBadge
+                key={evt.agentId}
+                event={evt}
+                isLive={isLive}
+                showConnector={i < dedupedAgentEvents.length - 1}
+              />
+            ))}
+          </AgentStepsWrapper>
+          {/* Accès PERMANENT à la délibération de ce message (le
+              panneau live disparaît, pas ça). */}
+          {!isLive && (
+            <div className="mt-1">
+              <OpenTheatreButton onClick={() => onOpenTheatre(m.id)} />
+            </div>
+          )}
+        </div>
+      )}
+      {m.parts.map((part, i) => {
+        if (part.type === "data-agent-event") {
+          // Rendu déjà fait via dedupedAgentEvents au-dessus —
+          // on skippe ici pour éviter les doublons.
+          return null;
+        }
+        if (part.type === "data-approval-request") {
+          // Garde-fou human-in-the-loop : un outil sensible
+          // attend le feu vert. Actionnable uniquement pendant
+          // le streaming (la part n'est pas persistée).
+          const data = (part as { data?: ApprovalRequestData }).data;
+          if (!data?.approvalId) return null;
+          return (
+            <ApprovalCard
+              key={`approval-${data.approvalId}`}
+              data={data}
+              isLive={isLive}
+            />
+          );
+        }
+        if (part.type === "reasoning") {
+          // Tokens de raisonnement d'un modèle « thinking »
+          // (DeepSeek R1, Magistral, o-series, Claude extended
+          // thinking…). Rendu dans un bloc repliable, jamais
+          // injecté dans la réponse finale.
+          const reasoningText = (part as { text?: string }).text;
+          if (!reasoningText) return null;
+          const reasoningStreaming =
+            isLive && (part as { state?: string }).state !== "done";
+          return (
+            <ReasoningBlock
+              key={i}
+              text={reasoningText}
+              isStreaming={reasoningStreaming}
+            />
+          );
+        }
+        if (part.type === "text") {
+          if (isUser) {
+            if (isEditing) {
+              return (
+                <div
+                  key={i}
+                  className="w-full max-w-[85%] flex flex-col gap-2"
+                >
+                  <textarea
+                    value={editingDraft}
+                    onChange={(e) => onChangeDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") onCancelEditing();
+                      if (
+                        (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ||
+                        (e.key === "Enter" && !e.shiftKey)
+                      ) {
+                        e.preventDefault();
+                        onSaveEditing(m.id, editingDraft);
+                      }
+                    }}
+                    autoFocus
+                    rows={Math.min(
+                      6,
+                      Math.max(2, editingDraft.split("\n").length)
+                    )}
+                    className="w-full resize-none rounded-2xl border border-input bg-card px-4 py-3 text-[15px] leading-[1.55] focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                  {editError && (
+                    <p className="text-xs text-destructive">{editError}</p>
+                  )}
+                  <div className="flex justify-end items-center gap-2 text-xs">
+                    <span className="text-muted-foreground mr-auto">
+                      {t("composer.editHint")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={onCancelEditing}
+                      className="px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    >
+                      {t("composer.cancel")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSaveEditing(m.id, editingDraft)}
+                      disabled={!editingDraft.trim() || isBusy}
+                      className="px-2.5 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      {t("composer.send")}
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div
+                key={i}
+                className="group/user relative max-w-[85%] flex flex-col items-end gap-1.5"
+              >
+                {attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {attachments.map((docId) => {
+                      const doc = mergedDocuments.find((d) => d.id === docId);
+                      return (
+                        <Badge
+                          key={docId}
+                          variant="secondary"
+                          className="gap-1 text-[11px]"
+                        >
+                          <IconPaperclip className="size-3" />
+                          <span className="max-w-[200px] truncate">
+                            {doc?.filename ??
+                              t("composer.attachmentFallback", {
+                                id: docId.slice(0, 8),
+                              })}
+                          </span>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex items-start gap-1 w-full justify-end">
+                  <button
+                    type="button"
+                    onClick={() => onStartEditing(m.id, part.text ?? "")}
+                    disabled={isBusy}
+                    title={t("composer.editQuestion")}
+                    aria-label={t("composer.editQuestion")}
+                    className="opacity-0 group-hover/user:opacity-100 focus:opacity-100 inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-opacity disabled:opacity-0 mt-1"
+                  >
+                    <IconPencil className="size-3.5" />
+                  </button>
+                  <div className="rounded-2xl px-4 py-3 text-[15px] leading-[1.55] whitespace-pre-wrap bg-secondary text-foreground">
+                    {part.text}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div
+              key={i}
+              className="w-full text-[15px] leading-[1.65] prose prose-neutral dark:prose-invert max-w-none prose-base prose-pre:my-2 prose-headings:font-heading prose-headings:tracking-tight prose-p:my-2 prose-ul:my-2.5 prose-li:my-0.5"
+            >
+              {part.text ? (
+                <AssistantMarkdownPart
+                  text={part.text}
+                  isLive={isLive}
+                  mergedDocuments={mergedDocuments}
+                  onOpenDoc={onOpenDoc}
+                />
+              ) : (
+                <Spinner className="size-4" />
+              )}
+            </div>
+          );
+        }
+        if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+          // Tous les outils du message sont consolidés dans UNE
+          // timeline, rendue à la position du premier outil ; les
+          // suivants sont skippés.
+          if (i !== firstToolIdx) return null;
+          return (
+            <ToolTimeline
+              key={i}
+              rows={toolRows}
+              durationMs={toolDurationMs}
+              isStreaming={isLive}
+              renderDetail={renderToolDetail}
+            />
+          );
+        }
+        return null;
+      })}
+
+      {/* Artefacts documents — cartes proéminentes (façon Claude/
+          Sana) : un document généré/édité doit être un objet de
+          premier plan, pas un lien noyé dans la prose. */}
+      {!isUser && docCards.length > 0 && (
+        <div className="flex w-full flex-col gap-2">
+          {docCards.map((c) =>
+            c.variant === "edited" ? (
+              <EditedDocumentCard
+                key={`art-${c.documentId}`}
+                documentId={c.documentId}
+                filename={c.doc.filename}
+                applied={c.doc.applied}
+                errors={c.doc.errors}
+                appliedCount={c.doc.applied_count}
+                errorsCount={c.doc.errors_count}
+                onPreview={() => onOpenDoc(c.documentId, "")}
+              />
+            ) : (
+              <DocumentDownloadCard
+                key={`art-${c.documentId}`}
+                title={c.title}
+                filename={c.filename}
+                documentId={c.documentId}
+                format={c.format}
+                onPreview={() => onOpenDoc(c.documentId, "")}
+              />
+            )
+          )}
+        </div>
+      )}
+      {/* Actions au survol du message assistant — masquées
+          pendant le streaming et sur les messages user. */}
+      {!isUser && !isLive && (
+        <div className="opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity -mt-1">
+          <AssistantMessageActions
+            text={extractTextFromParts(
+              m.parts as { type: string; text?: string }[]
+            )}
+            currentModelId={selectedModelValue}
+            availableModels={assistantActionModels}
+            onRegenerate={onRegenerateCurrent}
+            onRegenerateWith={onRegenerateWithModel}
+            onFork={onFork}
+            disabled={isBusy}
+          />
+        </div>
+      )}
+    </div>
+  );
+});
+
 export function ChatShell({
   providerKeys,
   initialProviderKeyId,
@@ -1342,13 +1741,17 @@ export function ChatShell({
 
   // Pour le composer : trouve la clé provider à utiliser quand on
   // sélectionne un modèle. Priorité à la clé par défaut, sinon la
-  // première active du même type.
-  function findKeyForModel(modelProviderType: string): string | null {
-    const matching = providerKeys.filter((k) => k.type === modelProviderType);
-    if (matching.length === 0) return null;
-    const def = matching.find((k) => k.isDefault);
-    return (def ?? matching[0]).id;
-  }
+  // première active du même type. useCallback : consommé par les handlers
+  // de régénération passés à MessageRow mémoïsé — doit rester stable.
+  const findKeyForModel = useCallback(
+    (modelProviderType: string): string | null => {
+      const matching = providerKeys.filter((k) => k.type === modelProviderType);
+      if (matching.length === 0) return null;
+      const def = matching.find((k) => k.isDefault);
+      return (def ?? matching[0]).id;
+    },
+    [providerKeys]
+  );
 
   function handleModelChange(newModelId: string) {
     // Le value du Select est "providerType:modelId" pour garantir
@@ -1620,22 +2023,32 @@ export function ChatShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [isBusy, stop, messages]);
 
-  function startEditing(messageId: string, currentText: string) {
-    setEditingMessageId(messageId);
-    setEditingDraft(currentText);
-    setEditError(null);
-  }
+  // Handlers passés à MessageRow mémoïsé → useCallback obligatoire pour que
+  // le memo bypasse les messages historiques pendant le streaming. Leurs
+  // deps (conversationId, modelId, attachedDocIds…) sont stables token-à-token.
+  const startEditing = useCallback(
+    (messageId: string, currentText: string) => {
+      setEditingMessageId(messageId);
+      setEditingDraft(currentText);
+      setEditError(null);
+    },
+    []
+  );
 
-  function cancelEditing() {
+  const cancelEditing = useCallback(() => {
     setEditingMessageId(null);
     setEditingDraft("");
     setEditError(null);
     // Le textarea inline d'édition se démonte → rendre le focus au composer.
     composerRef.current?.focus();
-  }
+  }, []);
 
-  async function saveEditing(messageId: string) {
-    const trimmed = editingDraft.trim();
+  // `draftText` est passé en argument (au lieu de lire l'état editingDraft)
+  // pour que ce callback reste stable à chaque frappe — sinon toutes les
+  // lignes se re-rendraient pendant l'édition.
+  const saveEditing = useCallback(
+    async (messageId: string, draftText: string) => {
+    const trimmed = draftText.trim();
     if (!trimmed) return;
     if (!conversationId) {
       setEditError(t("composer.noConversation"));
@@ -1681,12 +2094,23 @@ export function ChatShell({
         pipelineId,
       },
     });
-  }
+    },
+    [
+      conversationId,
+      providerKeyId,
+      attachedDocIds,
+      modelId,
+      initialProjectId,
+      pipelineId,
+      regenerate,
+      setMessages,
+    ]
+  );
 
   // Régénère le dernier message assistant avec le modèle actuel — équivalent
   // d'un retry de la même requête. Les events agents, tool calls et docs
   // joints sont conservés via les paramètres body que l'orchestrateur lit.
-  function handleRegenerateCurrent() {
+  const handleRegenerateCurrent = useCallback(() => {
     regenerate({
       body: {
         providerKeyId,
@@ -1697,30 +2121,49 @@ export function ChatShell({
         pipelineId,
       },
     });
-  }
+  }, [
+    regenerate,
+    providerKeyId,
+    conversationId,
+    attachedDocIds,
+    modelId,
+    initialProjectId,
+    pipelineId,
+  ]);
 
   // Régénère avec un autre modèle. Switch le state model+provider à la
   // volée (pour que les futurs messages utilisent aussi ce modèle) puis
   // relance la requête avec les overrides body.
-  function handleRegenerateWithModel(modelKey: string) {
-    const sepIdx = modelKey.indexOf(":");
-    if (sepIdx < 0) return;
-    const ptype = modelKey.slice(0, sepIdx);
-    const mid = modelKey.slice(sepIdx + 1);
-    const keyId = findKeyForModel(ptype);
-    if (keyId) setProviderKeyId(keyId);
-    setModelId(mid);
-    regenerate({
-      body: {
-        providerKeyId: keyId ?? providerKeyId,
-        conversationId,
-        documentIds: attachedDocIds,
-        modelOverride: mid,
-        projectId: initialProjectId,
-        pipelineId,
-      },
-    });
-  }
+  const handleRegenerateWithModel = useCallback(
+    (modelKey: string) => {
+      const sepIdx = modelKey.indexOf(":");
+      if (sepIdx < 0) return;
+      const ptype = modelKey.slice(0, sepIdx);
+      const mid = modelKey.slice(sepIdx + 1);
+      const keyId = findKeyForModel(ptype);
+      if (keyId) setProviderKeyId(keyId);
+      setModelId(mid);
+      regenerate({
+        body: {
+          providerKeyId: keyId ?? providerKeyId,
+          conversationId,
+          documentIds: attachedDocIds,
+          modelOverride: mid,
+          projectId: initialProjectId,
+          pipelineId,
+        },
+      });
+    },
+    [
+      findKeyForModel,
+      regenerate,
+      providerKeyId,
+      conversationId,
+      attachedDocIds,
+      initialProjectId,
+      pipelineId,
+    ]
+  );
 
   // Forke la conversation jusqu'à un message donné (inclus), à la manière de
   // la webui llama.cpp. On envoie l'ID du message ET sa position : l'ID est
@@ -2042,349 +2485,45 @@ export function ChatShell({
         ) : (
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
             {messages.map((m, msgIdx) => {
-              const isUser = m.role === "user";
-              // Pour les messages assistants : on déduplique les events
-              // d'agents en amont du rendering pour n'afficher qu'UN badge
-              // par agentId (latest state). Le chrono « live » ne tourne
-              // que sur le dernier message en cours de streaming.
-              const isLastAssistant =
-                !isUser && msgIdx === messages.length - 1;
-              const isLiveMessage = isLastAssistant && isBusy;
-              const dedupedAgentEvents = !isUser
-                ? dedupeAgentEvents(
-                    m.parts as { type: string; data?: unknown }[]
-                  )
-                : [];
-
-              // Timeline consolidée des outils de CE message (cf. ToolTimeline).
-              const toolRows = isUser
-                ? []
-                : buildToolRows(
-                    t,
-                    m.parts as {
-                      type: string;
-                      input?: unknown;
-                      output?: unknown;
-                      state?: string;
-                    }[]
-                  );
-              const firstToolIdx = m.parts.findIndex(
-                (p) =>
-                  typeof p.type === "string" && p.type.startsWith("tool-")
-              );
-              // Cartes d'artefact document → live tool parts ∪ metadata
-              // persistée (survit remount/reload) ∪ fallback prose, dédupliqué.
-              const docCards = isUser
-                ? []
-                : buildDocCards(
-                    t,
-                    m.parts as { type: string; output?: unknown }[],
-                    documentArtifactsByMessageId[m.id] ?? [],
-                    extractTextFromParts(
-                      m.parts as { type: string; text?: string }[]
-                    ),
-                    mergedDocuments
-                  );
-              const toolDurationMs = sumAgentLatency(
-                m.parts as { type: string; data?: unknown }[]
-              );
-              const renderToolDetail = (row: ToolTimelineRow) =>
-                RICH_TOOLS.has(row.name) ? (
-                  <ToolPart
-                    name={row.name}
-                    input={row.input}
-                    output={row.output}
-                    state="output-available"
-                    onOpenDoc={handleOpenDoc}
-                  />
-                ) : (
-                  <JsonDetail input={row.input} output={row.output} />
-                );
-
+              // Seul le dernier message assistant pendant un stream est
+              // « live » — la seule ligne autorisée à se re-rendre token-à-
+              // token. Toutes les autres bypassent le memo (objet message
+              // référentiellement stable + props stables ci-dessous).
+              const isLive =
+                m.role !== "user" &&
+                msgIdx === messages.length - 1 &&
+                isBusy;
+              const isEditingThis = editingMessageId === m.id;
               return (
-                <div
+                <MessageRow
                   key={m.id}
-                  aria-label={isUser ? t("composer.you") : t("composer.assistant")}
-                  className={`flex flex-col gap-1.5 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 ${isUser ? "items-end" : "items-start group/msg"}`}
-                >
-                  {/* Wrapper d'étapes : utile UNIQUEMENT pour pipelines
-                      multi-agents (2+ agents distincts). En mode chat-simple
-                      mono-agent, le seul step serait « Assistant Louis ·
-                      Travaille / Terminé » — redondant avec le markdown qui
-                      se déroule et le ThinkingIndicator. On revient au
-                      stream IA classique. */}
-                  {dedupedAgentEvents.length > 1 && (
-                    <div className="w-full max-w-xl">
-                      <AgentStepsWrapper
-                        stepCount={dedupedAgentEvents.length}
-                        shouldMinimize={hasRenderableText(
-                          m.parts as { type: string; text?: string }[]
-                        )}
-                        isStreaming={isLiveMessage}
-                      >
-                        {dedupedAgentEvents.map((evt, i) => (
-                          <AgentEventBadge
-                            key={evt.agentId}
-                            event={evt}
-                            isLive={isLiveMessage}
-                            showConnector={
-                              i < dedupedAgentEvents.length - 1
-                            }
-                          />
-                        ))}
-                      </AgentStepsWrapper>
-                      {/* Accès PERMANENT à la délibération de ce message (le
-                          panneau live disparaît, pas ça). */}
-                      {!isLiveMessage && (
-                        <div className="mt-1">
-                          <OpenTheatreButton
-                            onClick={() => setTheatreMessageId(m.id)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {m.parts.map((part, i) => {
-                    if (part.type === "data-agent-event") {
-                      // Rendu déjà fait via dedupedAgentEvents au-dessus —
-                      // on skippe ici pour éviter les doublons.
-                      return null;
-                    }
-                    if (part.type === "data-approval-request") {
-                      // Garde-fou human-in-the-loop : un outil sensible
-                      // attend le feu vert. Actionnable uniquement pendant
-                      // le streaming (la part n'est pas persistée).
-                      const data = (part as { data?: ApprovalRequestData })
-                        .data;
-                      if (!data?.approvalId) return null;
-                      return (
-                        <ApprovalCard
-                          key={`approval-${data.approvalId}`}
-                          data={data}
-                          isLive={isLiveMessage}
-                        />
-                      );
-                    }
-                    if (part.type === "reasoning") {
-                      // Tokens de raisonnement d'un modèle « thinking »
-                      // (DeepSeek R1, Magistral, o-series, Claude extended
-                      // thinking…). Rendu dans un bloc repliable, jamais
-                      // injecté dans la réponse finale.
-                      const reasoningText = (part as { text?: string }).text;
-                      if (!reasoningText) return null;
-                      const reasoningStreaming =
-                        isLiveMessage &&
-                        (part as { state?: string }).state !== "done";
-                      return (
-                        <ReasoningBlock
-                          key={i}
-                          text={reasoningText}
-                          isStreaming={reasoningStreaming}
-                        />
-                      );
-                    }
-                    if (part.type === "text") {
-                      if (isUser) {
-                        const isEditing = editingMessageId === m.id;
-                        if (isEditing) {
-                          return (
-                            <div
-                              key={i}
-                              className="w-full max-w-[85%] flex flex-col gap-2"
-                            >
-                              <textarea
-                                value={editingDraft}
-                                onChange={(e) =>
-                                  setEditingDraft(e.target.value)
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Escape") cancelEditing();
-                                  if (
-                                    (e.key === "Enter" &&
-                                      (e.metaKey || e.ctrlKey)) ||
-                                    (e.key === "Enter" && !e.shiftKey)
-                                  ) {
-                                    e.preventDefault();
-                                    saveEditing(m.id);
-                                  }
-                                }}
-                                autoFocus
-                                rows={Math.min(
-                                  6,
-                                  Math.max(2, editingDraft.split("\n").length)
-                                )}
-                                className="w-full resize-none rounded-2xl border border-input bg-card px-4 py-3 text-[15px] leading-[1.55] focus:outline-none focus:ring-2 focus:ring-ring/40"
-                              />
-                              {editError && (
-                                <p className="text-xs text-destructive">
-                                  {editError}
-                                </p>
-                              )}
-                              <div className="flex justify-end items-center gap-2 text-xs">
-                                <span className="text-muted-foreground mr-auto">
-                                  {t("composer.editHint")}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={cancelEditing}
-                                  className="px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                                >
-                                  {t("composer.cancel")}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => saveEditing(m.id)}
-                                  disabled={!editingDraft.trim() || isBusy}
-                                  className="px-2.5 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                                >
-                                  {t("composer.send")}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        }
-                        const msgAttachments =
-                          attachmentsByMessageId[m.id] ?? [];
-                        return (
-                          <div
-                            key={i}
-                            className="group/user relative max-w-[85%] flex flex-col items-end gap-1.5"
-                          >
-                            {msgAttachments.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 justify-end">
-                                {msgAttachments.map((docId) => {
-                                  const doc = mergedDocuments.find(
-                                    (d) => d.id === docId
-                                  );
-                                  return (
-                                    <Badge
-                                      key={docId}
-                                      variant="secondary"
-                                      className="gap-1 text-[11px]"
-                                    >
-                                      <IconPaperclip className="size-3" />
-                                      <span className="max-w-[200px] truncate">
-                                        {doc?.filename ??
-                                          t("composer.attachmentFallback", {
-                                            id: docId.slice(0, 8),
-                                          })}
-                                      </span>
-                                    </Badge>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            <div className="flex items-start gap-1 w-full justify-end">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  startEditing(m.id, part.text ?? "")
-                                }
-                                disabled={isBusy}
-                                title={t("composer.editQuestion")}
-                                aria-label={t("composer.editQuestion")}
-                                className="opacity-0 group-hover/user:opacity-100 focus:opacity-100 inline-flex items-center justify-center size-7 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-opacity disabled:opacity-0 mt-1"
-                              >
-                                <IconPencil className="size-3.5" />
-                              </button>
-                              <div className="rounded-2xl px-4 py-3 text-[15px] leading-[1.55] whitespace-pre-wrap bg-secondary text-foreground">
-                                {part.text}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div
-                          key={i}
-                          className="w-full text-[15px] leading-[1.65] prose prose-neutral dark:prose-invert max-w-none prose-base prose-pre:my-2 prose-headings:font-heading prose-headings:tracking-tight prose-p:my-2 prose-ul:my-2.5 prose-li:my-0.5"
-                        >
-                          {part.text ? (
-                            <AssistantMarkdownPart
-                              text={part.text}
-                              isLive={isLiveMessage}
-                              mergedDocuments={mergedDocuments}
-                              onOpenDoc={handleOpenDoc}
-                            />
-                          ) : (
-                            <Spinner className="size-4" />
-                          )}
-                        </div>
-                      );
-                    }
-                    if (
-                      typeof part.type === "string" &&
-                      part.type.startsWith("tool-")
-                    ) {
-                      // Tous les outils du message sont consolidés dans UNE
-                      // timeline, rendue à la position du premier outil ; les
-                      // suivants sont skippés.
-                      if (i !== firstToolIdx) return null;
-                      return (
-                        <ToolTimeline
-                          key={i}
-                          rows={toolRows}
-                          durationMs={toolDurationMs}
-                          isStreaming={isLiveMessage}
-                          renderDetail={renderToolDetail}
-                        />
-                      );
-                    }
-                    return null;
-                  })}
-
-                  {/* Artefacts documents — cartes proéminentes (façon Claude/
-                      Sana) : un document généré/édité doit être un objet de
-                      premier plan, pas un lien noyé dans la prose. */}
-                  {!isUser && docCards.length > 0 && (
-                    <div className="flex w-full flex-col gap-2">
-                      {docCards.map((c) =>
-                        c.variant === "edited" ? (
-                          <EditedDocumentCard
-                            key={`art-${c.documentId}`}
-                            documentId={c.documentId}
-                            filename={c.doc.filename}
-                            applied={c.doc.applied}
-                            errors={c.doc.errors}
-                            appliedCount={c.doc.applied_count}
-                            errorsCount={c.doc.errors_count}
-                            onPreview={() => handleOpenDoc(c.documentId, "")}
-                          />
-                        ) : (
-                          <DocumentDownloadCard
-                            key={`art-${c.documentId}`}
-                            title={c.title}
-                            filename={c.filename}
-                            documentId={c.documentId}
-                            format={c.format}
-                            onPreview={() => handleOpenDoc(c.documentId, "")}
-                          />
-                        )
-                      )}
-                    </div>
-                  )}
-                  {/* Actions au survol du message assistant — masquées
-                      pendant le streaming et sur les messages user. */}
-                  {!isUser && !isLiveMessage && (
-                    <div className="opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity -mt-1">
-                      <AssistantMessageActions
-                        text={extractTextFromParts(
-                          m.parts as { type: string; text?: string }[]
-                        )}
-                        currentModelId={selectedModelValue}
-                        availableModels={assistantActionModels}
-                        onRegenerate={handleRegenerateCurrent}
-                        onRegenerateWith={handleRegenerateWithModel}
-                        onFork={
-                          conversationId
-                            ? () => handleForkMessage(m.id, msgIdx + 1)
-                            : undefined
-                        }
-                        disabled={isBusy}
-                      />
-                    </div>
-                  )}
-                </div>
+                  message={m}
+                  isLive={isLive}
+                  isBusy={isBusy}
+                  mergedDocuments={mergedDocuments}
+                  persistedArtifacts={
+                    documentArtifactsByMessageId[m.id] ?? EMPTY_ARTIFACTS
+                  }
+                  attachments={attachmentsByMessageId[m.id] ?? EMPTY_ATTACHMENTS}
+                  isEditing={isEditingThis}
+                  editingDraft={isEditingThis ? editingDraft : ""}
+                  editError={isEditingThis ? editError : null}
+                  selectedModelValue={selectedModelValue}
+                  assistantActionModels={assistantActionModels}
+                  onOpenDoc={handleOpenDoc}
+                  onStartEditing={startEditing}
+                  onCancelEditing={cancelEditing}
+                  onSaveEditing={saveEditing}
+                  onChangeDraft={setEditingDraft}
+                  onOpenTheatre={setTheatreMessageId}
+                  onRegenerateCurrent={handleRegenerateCurrent}
+                  onRegenerateWithModel={handleRegenerateWithModel}
+                  onFork={
+                    conversationId
+                      ? () => handleForkMessage(m.id, msgIdx + 1)
+                      : undefined
+                  }
+                />
               );
             })}
 
