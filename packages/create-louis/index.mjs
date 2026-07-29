@@ -82,6 +82,49 @@ const PROVIDERS = [
   { type: "openrouter", label: "OpenRouter", sovereignty: "US", requiresBaseUrl: false, testBaseUrl: "https://openrouter.ai/api/v1", authStyle: "bearer", docsUrl: "https://openrouter.ai/keys" },
 ];
 
+// ── Modèles (miroir de src/lib/providers/models.ts) ──────────────────────────
+// Le premier de chaque liste est le défaut (= DEFAULT_MODEL côté app), et il
+// est proposé pré-sélectionné. On n'expose qu'une poignée d'entrées par
+// provider : l'installeur sème le modèle choisi, le reste s'ajoute depuis
+// Réglages › Modèles.
+const MODELS = {
+  mistral: [
+    { id: "mistral-small-latest", label: "Mistral Small", hint: "Rapide, peu coûteux" },
+    { id: "mistral-large-latest", label: "Mistral Large", hint: "Plus capable" },
+  ],
+  scaleway: [
+    { id: "mistral-small-3-instruct-2503", label: "Mistral Small 3 (24B)" },
+    { id: "llama-3.3-70b-instruct", label: "Llama 3.3 70B", hint: "Plus capable" },
+  ],
+  ovh: [
+    { id: "Meta-Llama-3_1-8B-Instruct", label: "Llama 3.1 8B", hint: "Rapide" },
+    { id: "Meta-Llama-3_1-70B-Instruct", label: "Llama 3.1 70B", hint: "Plus capable" },
+  ],
+  albert: [
+    { id: "AgentPublic/llama3-instruct-8b", label: "Llama 3 Instruct 8B", hint: "Rapide" },
+    { id: "AgentPublic/llama3-70b-instruct", label: "Llama 3 Instruct 70B", hint: "Plus capable" },
+  ],
+  anthropic: [
+    { id: "claude-sonnet-4-7", label: "Claude Sonnet 4.7", hint: "Équilibré" },
+    { id: "claude-opus-4-7", label: "Claude Opus 4.7", hint: "Plus capable" },
+    { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "Rapide" },
+  ],
+  openai: [
+    { id: "gpt-4o-mini", label: "GPT-4o mini", hint: "Rapide, peu coûteux" },
+    { id: "gpt-4o", label: "GPT-4o", hint: "Plus capable" },
+  ],
+  openai_compatible: [
+    { id: "gpt-3.5-turbo", label: "gpt-3.5-turbo (par défaut)" },
+    { id: "llama3.1:8b", label: "Llama 3.1 8B (Ollama)" },
+    { id: "mistral-small", label: "mistral-small (Ollama)" },
+  ],
+  openrouter: [
+    { id: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5", hint: "Équilibré" },
+    { id: "openai/gpt-4o-mini", label: "GPT-4o mini", hint: "Rapide, peu coûteux" },
+    { id: "mistralai/mistral-large", label: "Mistral Large", hint: "Souverain via OpenRouter" },
+  ],
+};
+
 // ── CLI args ─────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
   const args = { yes: false, flags: {} };
@@ -121,7 +164,10 @@ ${bold("Options")}
   -y, --yes                Mode non-interactif (CI / pipe). Nécessite au moins
                            les identifiants admin ci-dessous pour tout finaliser.
   --dir <chemin>           Dossier d'installation           (défaut : ./louis)
-  --port <n>               Port HTTP local                  (défaut : 3000)
+  --port <n>               Port HTTP local                  (défaut : 3000, ou
+                           le premier port libre au-dessus s'il est occupé)
+  --model <id>             Modèle par défaut à activer      (défaut : le premier
+                           du catalogue pour le provider choisi)
   --tag <version>          Tag d'image (ex. v0.2.0)         (défaut : latest)
   --repo-raw <url>         Base raw GitHub (fork / miroir)
   -h, --help               Affiche cette aide.
@@ -132,6 +178,7 @@ ${bold("Variables d'environnement (surtout pour --yes)")}
   LOUIS_PROVIDER            type de provider (mistral, anthropic, openai, …)
   LOUIS_PROVIDER_KEY        clé API du provider
   LOUIS_PROVIDER_BASE_URL   base URL (Scaleway / OVH / endpoint compatible)
+  LOUIS_MODEL               identifiant du modèle activé à l'installation
 
 ${bold("Exemples")}
   # Interactif
@@ -293,6 +340,14 @@ function portFree(port) {
     srv.once("listening", () => srv.close(() => resolve(true)));
     srv.listen(port, "127.0.0.1");
   });
+}
+
+/** Premier port libre à partir de `start` (20 essais, puis abandon). */
+async function findFreePort(start) {
+  for (let p = start + 1; p < start + 21 && p < 65536; p++) {
+    if (await portFree(p)) return p;
+  }
+  return null;
 }
 
 async function testProviderKey(meta, apiKey, baseUrl) {
@@ -532,6 +587,11 @@ function seedSetup(installDir, admin, provider) {
     envLines.push("SEED_PROVIDER_API_KEY=" + provider.apiKey);
     envLines.push("SEED_PROVIDER_BASE_URL=" + (provider.baseUrl || ""));
     envLines.push("SEED_PROVIDER_TEST_STATUS=" + (provider.testStatus || "skipped"));
+    if (provider.model) {
+      envLines.push("SEED_MODEL_ID=" + provider.model.id);
+      envLines.push("SEED_MODEL_LABEL=" + provider.model.label);
+      envLines.push("SEED_MODEL_HINT=" + (provider.model.hint || ""));
+    }
   }
   const tmp = path.join(os.tmpdir(), `louis-seed-${randomBytes(6).toString("hex")}.env`);
   writeFileSync(tmp, envLines.join("\n") + "\n", { mode: 0o600 });
@@ -609,17 +669,20 @@ async function main() {
     return;
   }
 
-  // Port
+  // Port : plus jamais demandé. Un cabinet d'avocats n'a pas à savoir ce
+  // qu'est un port HTTP — 3000 par défaut, et on glisse au suivant libre s'il
+  // est occupé. `--port` / LOUIS_PORT restent là pour les cas explicites.
+  const portExplicit =
+    args.flags.port !== undefined || !!process.env.LOUIS_PORT;
   let port = String(conf(args.flags, "port", "LOUIS_PORT", "3000"));
-  if (interactive) {
-    port = await textPrompt("Port HTTP local", {
-      def: port,
-      validate: (v) =>
-        /^\d+$/.test(v) && +v > 0 && +v < 65536 ? null : "Port invalide (1–65535).",
-    });
-  }
   if (!(await portFree(+port))) {
-    warnLine(`Le port ${port} semble déjà utilisé — poursuite quand même (Docker le signalera si conflit).`);
+    const free = portExplicit ? null : await findFreePort(+port);
+    if (free) {
+      warnLine(`Le port ${port} est occupé — Louis utilisera le ${free}.`);
+      port = String(free);
+    } else {
+      warnLine(`Le port ${port} semble déjà utilisé — poursuite quand même (Docker le signalera si conflit).`);
+    }
   }
 
   // Version
@@ -693,7 +756,11 @@ async function collectProvider(args, interactive) {
     if (!meta) die(`Provider inconnu : ${envType}. Valeurs : ${PROVIDERS.map((p) => p.type).join(", ")}.`);
     const testStatus = await testProviderKey(meta, envKey, envBase);
     if (testStatus === "auth_error") die("Le provider a refusé la clé fournie (LOUIS_PROVIDER_KEY).");
-    return { type: meta.type, label: meta.label, apiKey: envKey, baseUrl: envBase, testStatus };
+    const envModel = conf(args.flags, "model", "LOUIS_MODEL", "");
+    const model = envModel
+      ? { id: envModel, label: envModel, hint: "" }
+      : MODELS[meta.type]?.[0] || null;
+    return { type: meta.type, label: meta.label, apiKey: envKey, baseUrl: envBase, testStatus, model };
   }
 
   step("Intelligence (IA)");
@@ -742,8 +809,28 @@ async function collectProvider(args, interactive) {
       apiKey,
       baseUrl,
       testStatus: status,
+      model: await collectModel(meta.type),
     };
   }
+}
+
+/**
+ * Choix du modèle par défaut. Sans ça le compte démarre avec une clé mais
+ * un sélecteur de modèles VIDE (`model_settings` est opt-in côté app), donc
+ * impossible de converser sans passer par les réglages.
+ */
+async function collectModel(providerType) {
+  const catalog = MODELS[providerType] || [];
+  const custom = { label: "Autre — saisir l'identifiant", value: null };
+  const picked = await selectPrompt(
+    "Modèle par défaut",
+    [...catalog.map((m) => ({ label: m.label, value: m, hint: m.hint })), custom]
+  );
+  if (picked) return picked;
+  const id = await textPrompt("Identifiant du modèle", {
+    validate: (v) => (v.trim() ? null : "Identifiant requis."),
+  });
+  return { id: id.trim(), label: id.trim(), hint: "" };
 }
 
 async function collectAdmin(args, interactive) {
