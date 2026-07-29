@@ -344,7 +344,7 @@ function dockerReady() {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function waitForDocker(sp) {
+async function waitForDocker() {
   if (dockerReady()) return true;
   if (process.platform === "darwin") {
     spawnSync("open", ["-a", "Docker"], { stdio: "ignore" });
@@ -385,8 +385,10 @@ hdiutil detach "$mnt" >/dev/null 2>&1 || true
 xattr -dr com.apple.quarantine /Applications/Docker.app 2>/dev/null || true
 `;
     const r = spawnSync("sh", ["-c", script], { stdio: "inherit" });
-    if (r.status !== 0)
-      sp.fail("Installation Docker échouée — voir https://docs.docker.com/desktop/install/mac-install/") || process.exit(1);
+    if (r.status !== 0) {
+      sp.fail("Installation Docker échouée");
+      die("Installez Docker manuellement : https://docs.docker.com/desktop/install/mac-install/");
+    }
     sp.succeed("Docker Desktop installé");
   } else if (process.platform === "linux") {
     const sp = spinner("Installation de Docker Engine (script officiel)");
@@ -416,10 +418,10 @@ async function ensureDocker() {
     warnLine("Docker n'est pas installé.");
     installDocker();
   }
-  const sp = spinner("Démarrage de Docker");
   if (process.platform === "darwin")
     info(gray("Si une fenêtre Docker s'ouvre, cliquez « Accepter » pour finaliser."));
-  const ready = await waitForDocker(sp);
+  const sp = spinner("Démarrage de Docker");
+  const ready = await waitForDocker();
   if (!ready) {
     sp.fail("Docker ne répond pas");
     die(
@@ -601,7 +603,9 @@ async function main() {
     okLine(`Installation existante détectée dans ${installDir}`);
     info(gray("Mise à jour : configuration et secrets conservés."));
     mkdirSync(installDir, { recursive: true });
-    await refreshAndStart(installDir, repoRaw, readEnvValue(envPath, "LOUIS_PORT") || "3000", true);
+    const knownPort = readEnvValue(envPath, "LOUIS_PORT") || "3000";
+    await refreshAndStart(installDir, repoRaw, knownPort, true);
+    done(knownPort, { update: true });
     return;
   }
 
@@ -796,8 +800,10 @@ async function refreshAndStart(installDir, repoRaw, port, isUpdate) {
     writeUpdateScripts(installDir);
   }
 
-  const spPull = spinner("Téléchargement des images (premier lancement : quelques minutes)");
-  spPull.stop();
+  // ponytail: pas de spinner ici — `docker compose pull` écrit sa propre
+  // barre de progression sur le même terminal (stdio: inherit) et les deux
+  // se marchent dessus. Une ligne d'attente suffit.
+  info(gray("Téléchargement des images (premier lancement : quelques minutes)…"));
   const pull = runDocker(["compose", "-f", COMPOSE_FILE, "pull"], {
     cwd: installDir,
     stdio: "inherit",
@@ -830,12 +836,14 @@ async function refreshAndStart(installDir, repoRaw, port, isUpdate) {
   );
 }
 
-function done(port, { admin, provider }) {
+function done(port, { admin, provider, update = false }) {
   const url = `http://localhost:${port}`;
   out("");
-  out(`  ${green("●")} ${bold("Installation terminée.")}`);
+  out(`  ${green("●")} ${bold(update ? "Mise à jour terminée." : "Installation terminée.")}`);
   out("");
-  if (admin && provider) {
+  if (update) {
+    info(`Louis est à jour. Ouvrez ${cyan(url)} — vos données et vos réglages sont intacts.`);
+  } else if (admin && provider) {
     info("Tout est prêt : compte administrateur et clé IA en place.");
     info(`Ouvrez ${cyan(url)} et connectez-vous pour commencer à converser.`);
   } else if (admin) {
