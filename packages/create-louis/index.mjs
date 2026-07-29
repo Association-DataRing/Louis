@@ -342,6 +342,57 @@ function portFree(port) {
   });
 }
 
+// ── Détection de l'IA déjà présente sur la machine ───────────────────────────
+// Beaucoup d'installations se font sur un poste qui a déjà un Ollama qui tourne
+// ou une clé exportée dans l'environnement. Autant s'en servir plutôt que de
+// faire saisir une clé à quelqu'un qui n'en a pas sous la main.
+const ENV_KEY_VARS = {
+  mistral: "MISTRAL_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+};
+const OLLAMA_URL = "http://localhost:11434/v1";
+
+/** Endpoint OpenAI-compatible local : renvoie les ids de modèles servis. */
+async function probeLocalEndpoint(baseUrl) {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 1500);
+    const res = await fetch(`${baseUrl}/models`, { signal: c.signal });
+    clearTimeout(t);
+    if (!res.ok) return null;
+    const body = await res.json();
+    const ids = (body?.data || []).map((m) => m?.id).filter(Boolean);
+    return ids.length ? ids : null;
+  } catch {
+    return null;
+  }
+}
+
+async function detectExisting() {
+  const found = [];
+  for (const [type, varName] of Object.entries(ENV_KEY_VARS)) {
+    const key = process.env[varName]?.trim();
+    if (key)
+      found.push({
+        kind: "env",
+        meta: PROVIDERS.find((p) => p.type === type),
+        apiKey: key,
+        varName,
+      });
+  }
+  const ids = await probeLocalEndpoint(OLLAMA_URL);
+  if (ids)
+    found.push({
+      kind: "local",
+      meta: PROVIDERS.find((p) => p.type === "openai_compatible"),
+      baseUrl: OLLAMA_URL,
+      models: ids,
+    });
+  return found;
+}
+
 /** Premier port libre à partir de `start` (20 essais, puis abandon). */
 async function findFreePort(start) {
   for (let p = start + 1; p < start + 21 && p < 65536; p++) {
@@ -765,14 +816,30 @@ async function collectProvider(args, interactive) {
 
   step("Intelligence (IA)");
   info(dim("Louis fonctionne avec vos propres clés — elles ne quittent jamais votre instance."));
-  const choice = await selectPrompt(
-    "Connecter un provider maintenant ?",
-    [
-      { label: "Oui, choisir un provider", value: "yes" },
-      { label: "Plus tard (dans le navigateur)", value: "no", hint: "à configurer après" },
-    ]
-  );
+
+  const spDetect = spinner("Détection de l'IA déjà présente sur cette machine");
+  const detected = await detectExisting();
+  if (detected.length) spDetect.succeed(`${detected.length} source(s) d'IA détectée(s)`);
+  else spDetect.stop();
+
+  const choice = await selectPrompt("Connecter un provider maintenant ?", [
+    ...detected.map((d) => ({
+      label:
+        d.kind === "env"
+          ? `Utiliser ${d.meta.label} — clé trouvée dans ${d.varName}`
+          : `Utiliser Ollama détecté sur localhost:11434`,
+      value: d,
+      hint: d.meta.sovereignty,
+    })),
+    { label: detected.length ? "Choisir un autre provider" : "Oui, choisir un provider", value: "yes" },
+    { label: "Plus tard (dans le navigateur)", value: "no", hint: "à configurer après" },
+  ]);
   if (choice === "no") return null;
+  if (choice !== "yes") {
+    const fromDetected = await useDetected(choice);
+    if (fromDetected) return fromDetected;
+    // Détection refusée par le provider : on retombe sur la saisie manuelle.
+  }
 
   const meta = await selectPrompt(
     "Provider",
@@ -812,6 +879,40 @@ async function collectProvider(args, interactive) {
       model: await collectModel(meta.type),
     };
   }
+}
+
+/**
+ * Utilise une source d'IA détectée (clé d'environnement ou Ollama local).
+ * Renvoie null si le provider refuse la clé — l'appelant repart alors sur la
+ * saisie manuelle.
+ */
+async function useDetected(d) {
+  // Ollama ignore l'authentification, mais Louis stocke toujours une clé.
+  const apiKey = d.apiKey || "ollama";
+  const sp = spinner(`Vérification de ${d.meta.label}`);
+  const status = await testProviderKey(d.meta, apiKey, d.baseUrl || "");
+  if (status === "auth_error") {
+    sp.fail(`${d.varName || d.meta.label} a été refusée — saisie manuelle`);
+    return null;
+  }
+  sp.succeed(status === "ok" ? "Connexion vérifiée" : "Enregistrée (test indisponible)");
+
+  // Endpoint local : on propose les modèles réellement servis, pas un catalogue.
+  const model = d.models
+    ? await selectPrompt(
+        "Modèle par défaut",
+        d.models.slice(0, 8).map((id) => ({ label: id, value: { id, label: id, hint: "" } }))
+      )
+    : await collectModel(d.meta.type);
+
+  return {
+    type: d.meta.type,
+    label: d.meta.label,
+    apiKey,
+    baseUrl: d.baseUrl || "",
+    testStatus: status,
+    model,
+  };
 }
 
 /**
