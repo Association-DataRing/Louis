@@ -610,7 +610,13 @@ Write-Host "Louis est a jour."
 }
 
 async function downloadCompose(repoRaw, dest) {
-  const res = await fetch(`${repoRaw}/${COMPOSE_FILE}`);
+  let res;
+  try {
+    res = await fetch(`${repoRaw}/${COMPOSE_FILE}`);
+  } catch {
+    // `fetch failed` tel quel n'aide personne : nommer la cause probable.
+    throw new Error(`Impossible de joindre ${repoRaw} — vérifiez votre connexion Internet.`);
+  }
   if (!res.ok)
     throw new Error(`Téléchargement de ${COMPOSE_FILE} impossible (HTTP ${res.status}).`);
   writeFileSync(dest, await res.text());
@@ -739,8 +745,22 @@ async function main() {
   // Version
   const version = conf(args.flags, "tag", "LOUIS_VERSION", "latest");
 
-  // Options avancées (souveraineté)
+  // Options avancées (souveraineté). Elles étaient auparavant joignables
+  // UNIQUEMENT en interactif : en `--yes`, LOUIS_EMBEDDING_* et
+  // LOUIS_SSRF_STRICT étaient silencieusement ignorés alors que le compose
+  // les consomme. On les lit ici, les prompts interactifs restent prioritaires.
   const cfg = { port, version, embedding: null, ssrfStrict: false };
+  const envEmbedBase = conf(args.flags, "embedding-base-url", "LOUIS_EMBEDDING_BASE_URL", "");
+  if (envEmbedBase) {
+    cfg.embedding = {
+      baseUrl: envEmbedBase,
+      model: conf(args.flags, "embedding-model", "LOUIS_EMBEDDING_MODEL", ""),
+      apiKey: conf(args.flags, "embedding-api-key", "LOUIS_EMBEDDING_API_KEY", ""),
+    };
+  }
+  cfg.ssrfStrict = ["1", "true"].includes(
+    String(conf(args.flags, "ssrf-strict", "LOUIS_SSRF_STRICT", "")).toLowerCase()
+  );
   if (interactive && (await confirmPrompt("Configurer les options avancées (IA souveraine, durcissement) ?", { def: false }))) {
     if (await confirmPrompt("Utiliser un backend d'embedding auto-hébergé (Ollama/vLLM/TEI) ?", { def: false })) {
       const baseUrl = await textPrompt("  Embedding — base URL (OpenAI-compatible)", { def: "http://localhost:11434/v1" });
@@ -777,23 +797,33 @@ async function main() {
   await refreshAndStart(installDir, repoRaw, port, false);
 
   // 7. Ensemencement admin + clé
+  let seeded = false;
   if (admin) {
     const sp2 = spinner("Création du compte administrateur");
     const res = seedSetup(installDir, admin, provider);
     if (res.ok) {
+      seeded = true;
       sp2.succeed(
         provider
           ? "Compte administrateur et clé IA enregistrés"
           : "Compte administrateur créé"
       );
     } else {
-      sp2.fail("Ensemencement impossible — terminez dans le navigateur");
-      info(gray("Détails : ") + gray(res.output.trim().split("\n").slice(-3).join(" ")));
+      sp2.fail("Compte non créé — l'assistant du navigateur prendra le relais");
+      // L'image `migrate` embarque scripts/seed-setup.ts depuis la v0.2.2. Sur
+      // une image antérieure, tsx échoue sur un module introuvable : le dire
+      // franchement plutôt que de recracher une stack trace tronquée.
+      if (/seed-setup\.ts|ERR_MODULE_NOT_FOUND/.test(res.output)) {
+        info(gray("L'image Docker est antérieure à cette version de l'installeur."));
+      } else {
+        const detail = res.output.trim().split("\n").filter(Boolean).slice(-2).join(" ");
+        if (detail) info(gray("Détails : " + detail.slice(0, 200)));
+      }
     }
   }
 
-  // 8. Fin
-  done(port, { admin: !!admin, provider: !!provider });
+  // 8. Fin — on annonce ce qui a RÉELLEMENT été fait, pas ce qui a été saisi.
+  done(port, { admin: seeded, provider: seeded && !!provider });
 }
 
 async function collectProvider(args, interactive) {
@@ -898,12 +928,7 @@ async function useDetected(d) {
   sp.succeed(status === "ok" ? "Connexion vérifiée" : "Enregistrée (test indisponible)");
 
   // Endpoint local : on propose les modèles réellement servis, pas un catalogue.
-  const model = d.models
-    ? await selectPrompt(
-        "Modèle par défaut",
-        d.models.slice(0, 8).map((id) => ({ label: id, value: { id, label: id, hint: "" } }))
-      )
-    : await collectModel(d.meta.type);
+  const model = await collectModel(d.meta.type, d.models);
 
   return {
     type: d.meta.type,
@@ -920,8 +945,13 @@ async function useDetected(d) {
  * un sélecteur de modèles VIDE (`model_settings` est opt-in côté app), donc
  * impossible de converser sans passer par les réglages.
  */
-async function collectModel(providerType) {
-  const catalog = MODELS[providerType] || [];
+async function collectModel(providerType, liveModels = null) {
+  // `liveModels` : ids réellement servis par un endpoint détecté. Ils priment
+  // sur le catalogue, mais gardent l'échappatoire « Autre » — sinon on
+  // enferme l'utilisateur dans ce qu'Ollama sert à l'instant T.
+  const catalog = liveModels
+    ? liveModels.slice(0, 8).map((id) => ({ id, label: id }))
+    : MODELS[providerType] || [];
   const custom = { label: "Autre — saisir l'identifiant", value: null };
   const picked = await selectPrompt(
     "Modèle par défaut",
