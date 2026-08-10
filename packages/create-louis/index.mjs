@@ -898,7 +898,7 @@ async function collectProvider(args, interactive) {
   ]);
   if (choice === "no") return null;
   if (choice !== "yes") {
-    const fromDetected = await useDetected(choice);
+    const fromDetected = await adoptDetected(choice);
     if (fromDetected) return fromDetected;
     // Détection refusée par le provider : on retombe sur la saisie manuelle.
   }
@@ -948,7 +948,10 @@ async function collectProvider(args, interactive) {
  * Renvoie null si le provider refuse la clé — l'appelant repart alors sur la
  * saisie manuelle.
  */
-async function useDetected(d) {
+// Nommée `adoptDetected` et non `useDetected` : le préfixe `use` fait passer
+// la fonction pour un hook React aux yeux de react-hooks/rules-of-hooks, qui
+// lint aussi ce paquet.
+async function adoptDetected(d) {
   // Ollama ignore l'authentification, mais Louis stocke toujours une clé.
   const apiKey = d.apiKey || "ollama";
   const sp = spinner(`Vérification de ${d.meta.label}`);
