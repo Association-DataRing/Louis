@@ -1,0 +1,67 @@
+name: Installer branch
+
+# Publie le contenu de packages/create-louis/ à la RACINE d'une branche
+# orpheline « installer », afin que la commande
+#
+#   npx -y github:Association-DataRing/Louis#installer
+#
+# résolve un package NPM à dépendance zéro (et non tout l'arbre de l'app).
+# npx lit le package.json à la racine du ref Git ciblé : cette branche ne
+# contient donc QUE l'installeur.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/create-louis/**"
+      - ".github/workflows/installer-branch.yml"
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: installer-branch
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Mirror create-louis to orphan installer branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build orphan branch from packages/create-louis
+        env:
+          SRC: packages/create-louis
+        run: |
+          set -euo pipefail
+          test -f "$SRC/package.json" || { echo "::error::$SRC/package.json introuvable"; exit 1; }
+
+          # Copie l'installeur dans un dossier neutre hors de l'arbre de travail.
+          STAGE="$(mktemp -d)"
+          cp -R "$SRC"/. "$STAGE"/
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Branche orpheline : aucun historique de l'app, racine = installeur.
+          git checkout --orphan installer
+          git rm -rf . >/dev/null 2>&1 || true
+          # Nettoie les fichiers non suivis qui traîneraient dans l'arbre.
+          find . -maxdepth 1 -mindepth 1 \
+            ! -name '.git' -exec rm -rf {} +
+
+          cp -R "$STAGE"/. .
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Aucun changement à publier."
+            exit 0
+          fi
+          git commit -m "chore(installer): sync from ${GITHUB_SHA::7}"
+          git push --force origin installer

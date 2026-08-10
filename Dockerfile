@@ -56,6 +56,12 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json tsconfig.json drizzle.config.ts ./
 COPY src/db ./src/db
 COPY scripts/setup-db.ts ./scripts/setup-db.ts
+# Ensemencement de premier lancement (admin + clé provider) déclenché par
+# l'installeur TUI via `docker compose run migrate npx tsx scripts/seed-setup.ts`.
+# crypto.ts est autonome (node:crypto only) → chiffre la clé provider avec la
+# même ENCRYPTION_KEY que l'app.
+COPY scripts/seed-setup.ts ./scripts/seed-setup.ts
+COPY src/lib/crypto.ts ./src/lib/crypto.ts
 
 ENV NODE_ENV=production
 CMD ["sh", "-c", "npx tsx scripts/setup-db.ts && npx drizzle-kit push --force"]

@@ -1,14 +1,15 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Louis — stack de production autonome
 #
-# Consommé par l'installeur une commande (scripts/install.sh), utilisable
-# aussi directement :
+# Consommé par l'installeur interactif (packages/create-louis, lancé via
+# `npx -y github:Association-DataRing/Louis#installer`), utilisable aussi
+# directement :
 #
 #   1. créer un fichier .env à côté de ce fichier (secrets — voir ci-dessous)
 #   2. docker compose -f docker-compose.prod.yml up -d
 #   3. ouvrir http://localhost:3000 → l'assistant /setup prend le relais
 #
-# Variables .env attendues (générées automatiquement par install.sh) :
+# Variables .env attendues (générées automatiquement par l'installeur) :
 #   POSTGRES_PASSWORD=…       mot de passe Postgres interne
 #   AUTH_SECRET=…             openssl rand -base64 32
 #   ENCRYPTION_KEY=…          openssl rand -base64 32 (chiffrement des clés)
