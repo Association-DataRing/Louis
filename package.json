@@ -98,6 +98,7 @@
   },
   "overrides": {
     "tmp": "^0.2.7",
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "@swc/helpers": "^0.5.17"
   }
 }
