@@ -65,7 +65,28 @@ const okLine = (s) => out(`  ${sym.ok} ${s}`);
 const warnLine = (s) => out(`  ${sym.warn} ${yellow(s)}`);
 const errLine = (s) => process.stderr.write(`  ${sym.err} ${red(s)}\n`);
 
+// ── Écran alterné ────────────────────────────────────────────────────────────
+// L'installeur occupe tout le terminal (comme `less` ou `htop`) au lieu de
+// s'empiler à la suite des commandes précédentes. À la sortie on restitue
+// l'écran d'origine : le scrollback de l'utilisateur reste intact, et seul ce
+// qui est écrit APRÈS exitFullscreen() persiste (récapitulatif, erreurs).
+let altScreen = false;
+function enterFullscreen() {
+  if (altScreen || !process.stdout.isTTY || process.env.TERM === "dumb") return;
+  altScreen = true;
+  process.stdout.write("\x1b[?1049h\x1b[H\x1b[2J");
+}
+function exitFullscreen() {
+  if (!altScreen) return;
+  altScreen = false;
+  process.stdout.write("\x1b[?1049l");
+}
+// Filet de sécurité : quelle que soit la sortie (die, throw, exit), on ne
+// laisse jamais le terminal coincé dans l'écran alterné.
+process.on("exit", exitFullscreen);
+
 function die(msg) {
+  exitFullscreen();
   errLine(msg);
   process.exit(1);
 }
@@ -205,6 +226,7 @@ function rawOff() {
 }
 function bail() {
   rawOff();
+  exitFullscreen();
   out("\n" + gray("Installation annulée."));
   process.exit(130);
 }
@@ -691,6 +713,10 @@ async function main() {
     );
   }
 
+  // L'écran alterné n'a de sens qu'en interactif : en CI (`--yes`) ou dans un
+  // pipe, la sortie doit rester dans les logs.
+  if (interactive) enterFullscreen();
+
   // Bannière
   out("");
   out(bold(cyan("  ██╗      ██████╗ ██╗   ██╗██╗███████╗")));
@@ -798,6 +824,7 @@ async function main() {
 
   // 7. Ensemencement admin + clé
   let seeded = false;
+  let seedNote = null;
   if (admin) {
     const sp2 = spinner("Création du compte administrateur");
     const res = seedSetup(installDir, admin, provider);
@@ -812,18 +839,23 @@ async function main() {
       sp2.fail("Compte non créé — l'assistant du navigateur prendra le relais");
       // L'image `migrate` embarque scripts/seed-setup.ts depuis la v0.2.2. Sur
       // une image antérieure, tsx échoue sur un module introuvable : le dire
-      // franchement plutôt que de recracher une stack trace tronquée.
-      if (/seed-setup\.ts|ERR_MODULE_NOT_FOUND/.test(res.output)) {
-        info(gray("L'image Docker est antérieure à cette version de l'installeur."));
-      } else {
-        const detail = res.output.trim().split("\n").filter(Boolean).slice(-2).join(" ");
-        if (detail) info(gray("Détails : " + detail.slice(0, 200)));
-      }
+      // franchement plutôt que de recracher une stack trace tronquée. Le motif
+      // est gardé pour le récapitulatif final : tout ce qui est écrit ici part
+      // avec l'écran alterné, et l'utilisateur ne verrait rien.
+      seedNote = /seed-setup\.ts|ERR_MODULE_NOT_FOUND/.test(res.output)
+        ? "Cause : l'image Docker publiée est antérieure à l'ensemencement (aucune version taguée depuis)."
+        : res.output.trim().split("\n").filter(Boolean).slice(-2).join(" ").slice(0, 200) ||
+          null;
     }
   }
 
   // 8. Fin — on annonce ce qui a RÉELLEMENT été fait, pas ce qui a été saisi.
-  done(port, { admin: seeded, provider: seeded && !!provider });
+  done(port, {
+    admin: seeded,
+    provider: seeded && !!provider,
+    seedFailed: !!admin && !seeded,
+    seedNote,
+  });
 }
 
 async function collectProvider(args, interactive) {
@@ -1054,7 +1086,10 @@ async function refreshAndStart(installDir, repoRaw, port, isUpdate) {
   );
 }
 
-function done(port, { admin, provider, update = false }) {
+function done(port, { admin, provider, update = false, seedFailed = false, seedNote = null }) {
+  // Le récapitulatif doit survivre à l'installeur : on rend la main au terminal
+  // d'origine AVANT de l'écrire, sinon il disparaît avec l'écran alterné.
+  exitFullscreen();
   const url = `http://localhost:${port}`;
   out("");
   out(`  ${green("●")} ${bold(update ? "Mise à jour terminée." : "Installation terminée.")}`);
@@ -1067,6 +1102,12 @@ function done(port, { admin, provider, update = false }) {
   } else if (admin) {
     info("Compte administrateur créé. Connectez une clé IA depuis les réglages.");
     info(`Ouvrez ${cyan(url)} et connectez-vous.`);
+  } else if (seedFailed) {
+    // Ce que l'utilisateur a saisi a été perdu : le dire ici, en toutes lettres,
+    // plutôt que de le laisser croire que /setup n'est qu'une formalité.
+    warnLine("Le compte et la clé IA que vous avez saisis n'ont PAS été enregistrés.");
+    if (seedNote) info(gray(seedNote));
+    info(`Ouvrez ${cyan(url)} : l'assistant de premier lancement vous les redemandera.`);
   } else {
     info(`Ouvrez ${cyan(url)} — l'assistant de premier lancement vous guide`);
     info("(compte administrateur, première clé IA).");
@@ -1078,10 +1119,14 @@ function done(port, { admin, provider, update = false }) {
   process.exit(0);
 }
 
+// `process.on("exit")` ne voit pas les signaux : sans ces deux handlers, un
+// `kill` laisserait le terminal bloqué dans l'écran alterné.
 process.on("SIGINT", () => bail());
+process.on("SIGTERM", () => bail());
 
 main().catch((err) => {
   rawOff();
+  exitFullscreen();
   errLine(err?.stack || String(err));
   process.exit(1);
 });
