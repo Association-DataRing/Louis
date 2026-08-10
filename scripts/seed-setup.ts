@@ -15,6 +15,8 @@
  * Optionnelles (clé provider) :
  *   SEED_PROVIDER_TYPE, SEED_PROVIDER_LABEL, SEED_PROVIDER_API_KEY,
  *   SEED_PROVIDER_BASE_URL, SEED_PROVIDER_TEST_STATUS
+ * Optionnelles (modèle par défaut) :
+ *   SEED_MODEL_ID, SEED_MODEL_LABEL, SEED_MODEL_HINT
  *
  * Imports RELATIFS uniquement (pas d'alias @/) : sous tsx, seuls les
  * `import type` alias sont élidés — les imports de valeur doivent être relatifs.
@@ -22,7 +24,7 @@
 import bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
 import { db } from "../src/db";
-import { users, providerKeys } from "../src/db/schema";
+import { users, providerKeys, modelSettings } from "../src/db/schema";
 import { encrypt } from "../src/lib/crypto";
 
 const PROVIDER_TYPES = [
@@ -104,6 +106,23 @@ async function main() {
       lastTestStatus: testStatus,
     });
     console.log(`seed-setup: clé provider ${providerType} enregistrée (par défaut).`);
+
+    // `model_settings` est OPT-IN : sans row `enabled=true`, les sélecteurs de
+    // modèles sont vides et l'admin ne peut pas converser malgré sa clé. On
+    // sème donc le modèle choisi à l'installation, sinon le compte n'est pas
+    // réellement utilisable à la première connexion.
+    const modelId = process.env.SEED_MODEL_ID?.trim();
+    if (modelId) {
+      await db.insert(modelSettings).values({
+        userId: admin.id,
+        providerType: providerType as ProviderType,
+        modelId,
+        enabled: true,
+        label: process.env.SEED_MODEL_LABEL?.trim() || modelId,
+        hint: process.env.SEED_MODEL_HINT?.trim() || null,
+      });
+      console.log(`seed-setup: modèle ${modelId} activé.`);
+    }
   }
 
   process.exit(0);
