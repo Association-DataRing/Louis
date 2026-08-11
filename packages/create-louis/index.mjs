@@ -700,6 +700,55 @@ function seedSetup(installDir, admin, provider) {
   }
 }
 
+/**
+ * Une instance sans aucun utilisateur redirige /login vers /setup (voir
+ * src/lib/setup/status.ts). C'est le seul signal exploitable depuis l'hôte :
+ * la base n'est joignable que depuis le réseau Compose. En cas de doute on
+ * répond `false` — mieux vaut ne rien proposer que de reposer ses questions à
+ * une instance déjà installée.
+ */
+async function needsAdmin(port) {
+  try {
+    const res = await fetch(`http://localhost:${port}/login`, {
+      redirect: "manual",
+    });
+    return (
+      res.status >= 300 &&
+      res.status < 400 &&
+      (res.headers.get("location") || "").includes("/setup")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Ensemence l'admin (+ clé), et rend de quoi renseigner l'écran final. */
+function runSeed(installDir, admin, provider) {
+  const sp = spinner("Création du compte administrateur");
+  const res = seedSetup(installDir, admin, provider);
+  if (res.ok) {
+    sp.succeed(
+      provider
+        ? "Compte administrateur et clé IA enregistrés"
+        : "Compte administrateur créé"
+    );
+    return { seeded: true, seedNote: null };
+  }
+  sp.fail("Compte non créé — l'assistant du navigateur prendra le relais");
+  // L'image `migrate` embarque scripts/seed-setup.ts depuis la v0.2.2. Sur une
+  // image antérieure, tsx échoue sur un module introuvable : le dire
+  // franchement plutôt que de recracher une stack trace tronquée. Le motif
+  // remonte jusqu'au récapitulatif : tout ce qui s'affiche ici part avec
+  // l'écran alterné, et l'utilisateur ne verrait rien.
+  return {
+    seeded: false,
+    seedNote: /seed-setup\.ts|ERR_MODULE_NOT_FOUND/.test(res.output)
+      ? "Cause : l'image Docker publiée est antérieure à l'ensemencement (aucune version taguée depuis)."
+      : res.output.trim().split("\n").filter(Boolean).slice(-2).join(" ").slice(0, 200) ||
+        null,
+  };
+}
+
 // ── Flux principal ───────────────────────────────────────────────────────────
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -748,7 +797,33 @@ async function main() {
     mkdirSync(installDir, { recursive: true });
     const knownPort = readEnvValue(envPath, "LOUIS_PORT") || "3000";
     await refreshAndStart(installDir, repoRaw, knownPort, true);
-    done(knownPort, { update: true });
+
+    // Rattrapage : une instance peut tourner sans compte administrateur si
+    // l'ensemencement avait échoué à l'installation (image trop ancienne pour
+    // embarquer seed-setup.ts). Sans ce test, l'installeur ne le repropose
+    // jamais et l'utilisateur reste condamné à /setup à chaque passage.
+    let seeded = false;
+    let seedNote = null;
+    let seedProvider = null;
+    if (await needsAdmin(knownPort)) {
+      step("Compte administrateur");
+      warnLine("Cette instance tourne sans compte administrateur.");
+      const proceed = interactive
+        ? await confirmPrompt("Le créer maintenant ?", { def: true })
+        : true; // en --yes, on n'agit que si les LOUIS_ADMIN_* sont fournies
+      if (proceed) {
+        seedProvider = await collectProvider(args, interactive);
+        const admin = await collectAdmin(args, interactive);
+        if (admin) ({ seeded, seedNote } = runSeed(installDir, admin, seedProvider));
+      }
+    }
+    done(knownPort, {
+      update: true,
+      admin: seeded,
+      provider: seeded && !!seedProvider,
+      seedFailed: !!seedNote,
+      seedNote,
+    });
     return;
   }
 
@@ -825,29 +900,7 @@ async function main() {
   // 7. Ensemencement admin + clé
   let seeded = false;
   let seedNote = null;
-  if (admin) {
-    const sp2 = spinner("Création du compte administrateur");
-    const res = seedSetup(installDir, admin, provider);
-    if (res.ok) {
-      seeded = true;
-      sp2.succeed(
-        provider
-          ? "Compte administrateur et clé IA enregistrés"
-          : "Compte administrateur créé"
-      );
-    } else {
-      sp2.fail("Compte non créé — l'assistant du navigateur prendra le relais");
-      // L'image `migrate` embarque scripts/seed-setup.ts depuis la v0.2.2. Sur
-      // une image antérieure, tsx échoue sur un module introuvable : le dire
-      // franchement plutôt que de recracher une stack trace tronquée. Le motif
-      // est gardé pour le récapitulatif final : tout ce qui est écrit ici part
-      // avec l'écran alterné, et l'utilisateur ne verrait rien.
-      seedNote = /seed-setup\.ts|ERR_MODULE_NOT_FOUND/.test(res.output)
-        ? "Cause : l'image Docker publiée est antérieure à l'ensemencement (aucune version taguée depuis)."
-        : res.output.trim().split("\n").filter(Boolean).slice(-2).join(" ").slice(0, 200) ||
-          null;
-    }
-  }
+  if (admin) ({ seeded, seedNote } = runSeed(installDir, admin, provider));
 
   // 8. Fin — on annonce ce qui a RÉELLEMENT été fait, pas ce qui a été saisi.
   done(port, {
@@ -1099,21 +1152,31 @@ function done(port, { admin, provider, update = false, seedFailed = false, seedN
   out("");
   if (update) {
     info(`Louis est à jour. Ouvrez ${cyan(url)} — vos données et vos réglages sont intacts.`);
+    if (admin) {
+      info(
+        provider
+          ? "Compte administrateur et clé IA créés au passage."
+          : "Compte administrateur créé au passage."
+      );
+    }
   } else if (admin && provider) {
     info("Tout est prêt : compte administrateur et clé IA en place.");
     info(`Ouvrez ${cyan(url)} et connectez-vous pour commencer à converser.`);
   } else if (admin) {
     info("Compte administrateur créé. Connectez une clé IA depuis les réglages.");
     info(`Ouvrez ${cyan(url)} et connectez-vous.`);
-  } else if (seedFailed) {
-    // Ce que l'utilisateur a saisi a été perdu : le dire ici, en toutes lettres,
+  } else if (!seedFailed) {
+    info(`Ouvrez ${cyan(url)} — l'assistant de premier lancement vous guide`);
+    info("(compte administrateur, première clé IA).");
+  }
+  // Hors de la chaîne ci-dessus : un ensemencement raté doit s'annoncer aussi
+  // en mise à jour, où la branche `update` court-circuitait l'avertissement.
+  if (seedFailed) {
+    // Ce que l'utilisateur a saisi a été perdu : le dire en toutes lettres,
     // plutôt que de le laisser croire que /setup n'est qu'une formalité.
     warnLine("Le compte et la clé IA que vous avez saisis n'ont PAS été enregistrés.");
     if (seedNote) info(gray(seedNote));
     info(`Ouvrez ${cyan(url)} : l'assistant de premier lancement vous les redemandera.`);
-  } else {
-    info(`Ouvrez ${cyan(url)} — l'assistant de premier lancement vous guide`);
-    info("(compte administrateur, première clé IA).");
   }
   out("");
   info(dim(`Mettre à jour : relancez cette commande, ou ${path.join("louis", "update.sh")}`));
