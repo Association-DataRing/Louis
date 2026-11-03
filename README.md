@@ -455,7 +455,7 @@ Quatre conteneurs démarrent :
 |---|---|---|
 | `louis-postgres` | PostgreSQL 16 + extension pgvector | 5433 |
 | `louis-redis` | Cache, rate-limit | 6379 |
-| `louis-minio` | Stockage objet S3-compatible (dev) | 9000 / 9001 |
+| `louis-minio` | Stockage objet S3-compatible (dev, SeaweedFS) | 9000 |
 | `louis-gotenberg` | LibreOffice headless pour DOCX → PDF | 3001 |
 
 **3. Installer les dépendances applicatives**

@@ -33,24 +33,17 @@ services:
       timeout: 5s
       retries: 10
 
+  # MinIO no longer publishes community images (minio/minio, quay.io/minio/minio):
+  # SeaweedFS serves the same S3 API on :9000. No S3 auth configured: local dev only.
   minio:
-    image: minio/minio:latest
+    image: chrislusf/seaweedfs:latest
     container_name: louis-minio
     restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: louis
-      MINIO_ROOT_PASSWORD: louis-dev-only
+    command: "server -dir=/data -s3 -s3.port=9000 -ip.bind=0.0.0.0"
     ports:
       - "9000:9000"
-      - "9001:9001"
     volumes:
       - louis-minio:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
   # Gotenberg : LibreOffice headless exposé via HTTP, utilisé pour le rendu
   # fidèle DOCX → PDF du DocPanel. ~300 MB d'image. Activé côté app via
